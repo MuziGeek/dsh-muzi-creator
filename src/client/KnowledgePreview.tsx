@@ -1,9 +1,21 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { IconRefreshOutline16 } from "@deepseek-ai/dsh-client-ui-primitives";
+import ForceGraph3D, { type ForceGraphMethods } from "react-force-graph-3d";
+import SpriteText from "three-spritetext";
 
-import type { KnowledgeCategory, KnowledgeGraphNode, KnowledgePreviewResult } from "../muziTypes.ts";
+import type { KnowledgeCategory, KnowledgePreviewResult } from "../muziTypes.ts";
 import { setSelectedContentId } from "./contentSelection.ts";
-import { layoutKnowledgeGraph, selectKnowledgeGraph } from "./knowledgeGraphLayout.ts";
+import {
+  createKnowledgeGraphVisualData,
+  graphEndpointId,
+  pinKnowledgeGraphNode,
+  resolveKnowledgeGraphMotion,
+  type KnowledgeGraphVisualLink,
+  type KnowledgeGraphVisualLinkData,
+  type KnowledgeGraphVisualNode,
+  type KnowledgeGraphVisualNodeData,
+} from "./knowledgeGraph3d.ts";
+import { selectKnowledgeGraph } from "./knowledgeGraphLayout.ts";
 import "./KnowledgePreview.css";
 
 const CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
@@ -15,16 +27,104 @@ const CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   queries: "问题",
 };
 
+const CATEGORY_COLORS: Record<KnowledgeCategory, string> = {
+  topics: "#81967d",
+  entities: "#c49a78",
+  sources: "#9c9a91",
+  synthesis: "#a58aab",
+  comparisons: "#b48772",
+  queries: "#7f9ca2",
+};
+
+interface GraphSize {
+  width: number;
+  height: number;
+}
+
+interface TrackballControls {
+  minDistance: number;
+  maxDistance: number;
+  staticMoving: boolean;
+  dynamicDampingFactor: number;
+  update?: () => void;
+}
+
+function useGraphSize(containerRef: React.RefObject<HTMLDivElement>): GraphSize {
+  const [size, setSize] = useState<GraphSize>({ width: 0, height: 430 });
+  useLayoutEffect(() => {
+    const element = containerRef.current;
+    if (element === null) return;
+    const update = (width: number, height: number): void => {
+      setSize({ width: Math.max(1, Math.round(width)), height: Math.max(360, Math.round(height)) });
+    };
+    update(element.clientWidth, element.clientHeight);
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry !== undefined) update(entry.contentRect.width, entry.contentRect.height);
+    });
+    observer.observe(element);
+    return () => { observer.disconnect(); };
+  }, [containerRef]);
+  return size;
+}
+
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = (): void => { setReduced(query.matches); };
+    update();
+    query.addEventListener("change", update);
+    return () => { query.removeEventListener("change", update); };
+  }, []);
+  return reduced;
+}
+
+/** Checks whether this browser can create the WebGL context required by the 3D renderer. */
+export function supportsKnowledgeGraphWebGL(): boolean {
+  if (typeof document === "undefined" || typeof window === "undefined" || window.WebGLRenderingContext === undefined) return false;
+  try {
+    const canvas = document.createElement("canvas");
+    return canvas.getContext("webgl2") !== null || canvas.getContext("webgl") !== null;
+  } catch (error) {
+    void error;
+    return false;
+  }
+}
+
+function createTopicLabel(node: KnowledgeGraphVisualNode): SpriteText {
+  const label = new SpriteText(node.category === "topics" ? node.title : "");
+  label.visible = node.category === "topics";
+  label.color = "#403b35";
+  label.backgroundColor = "rgba(251, 250, 247, 0.9)";
+  label.padding = [2.5, 1.5];
+  label.borderRadius = 3;
+  label.textHeight = 6.5;
+  label.fontWeight = "600";
+  label.center.y = -0.8;
+  return label;
+}
+
+function visibleEndpointIds(link: KnowledgeGraphVisualLink): readonly [string | null, string | null] {
+  return [graphEndpointId(link.source), graphEndpointId(link.target)];
+}
+
 export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePreviewResult; onRefresh: () => Promise<void> }) {
   const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
+  const [graphVersion, setGraphVersion] = useState(0);
+  const [webGlSupported] = useState(supportsKnowledgeGraphWebGL);
+  const graphRef = useRef<ForceGraphMethods<KnowledgeGraphVisualNodeData, KnowledgeGraphVisualLinkData>>();
+  const graphContainerRef = useRef<HTMLDivElement>(null);
+  const fittedGraphRef = useRef<unknown>(null);
+  const reducedMotion = useReducedMotion();
+  const motion = resolveKnowledgeGraphMotion(reducedMotion);
+  const size = useGraphSize(graphContainerRef);
   const view = useMemo(
     () => selectKnowledgeGraph(result.nodes, result.edges, expandedTopicId),
     [result, expandedTopicId],
   );
-  const positions = useMemo(() => layoutKnowledgeGraph(view), [view]);
+  const graphData = useMemo(() => createKnowledgeGraphVisualData(view), [view]);
   const nodeById = useMemo(() => new Map(view.nodes.map((node) => [node.id, node])), [view.nodes]);
   const adjacent = useMemo(() => {
     const ids = new Set<string>();
@@ -46,10 +146,46 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
     ["待消化素材", result.stats.pendingMarkdown.toString()],
   ] as const;
 
-  const activate = (node: KnowledgeGraphNode): void => {
-    setSelectedId(node.id);
-    if (node.category === "topics") setExpandedTopicId((current) => current === node.id ? null : node.id);
-  };
+  useEffect(() => {
+    fittedGraphRef.current = null;
+  }, [graphData]);
+
+  useEffect(() => {
+    if (!webGlSupported || size.width === 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      const controls = graphRef.current?.controls() as TrackballControls | undefined;
+      if (controls === undefined) return;
+      controls.minDistance = 45;
+      controls.maxDistance = 1_200;
+      controls.staticMoving = reducedMotion;
+      controls.dynamicDampingFactor = .15;
+      controls.update?.();
+    });
+    return () => { window.cancelAnimationFrame(frame); };
+  }, [reducedMotion, size.width, webGlSupported]);
+
+  const focusNode = useCallback((node: KnowledgeGraphVisualNode): void => {
+    if (node.x === undefined || node.y === undefined || node.z === undefined) return;
+    const length = Math.hypot(node.x, node.y, node.z);
+    const distance = 72;
+    const camera = length < 1
+      ? { x: node.x, y: node.y, z: node.z + distance }
+      : { x: node.x * (1 + distance / length), y: node.y * (1 + distance / length), z: node.z * (1 + distance / length) };
+    graphRef.current?.cameraPosition(camera, { x: node.x, y: node.y, z: node.z }, motion.cameraTransitionMs);
+  }, [motion.cameraTransitionMs]);
+
+  const activate = useCallback((node: KnowledgeGraphVisualNode): void => {
+    setSelectedId(node.id === undefined ? null : String(node.id));
+    if (node.category === "topics") {
+      const id = String(node.id);
+      setExpandedTopicId((current) => current === id ? null : id);
+    }
+    focusNode(node);
+  }, [focusNode]);
+
+  const fitGraph = useCallback((): void => {
+    graphRef.current?.zoomToFit(reducedMotion ? 0 : 450, 42);
+  }, [reducedMotion]);
 
   const refresh = async (): Promise<void> => {
     setRefreshing(true);
@@ -57,10 +193,20 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
       await onRefresh();
       setSelectedId(null);
       setExpandedTopicId(null);
-      setZoom(1);
+      setGraphVersion((version) => version + 1);
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const moveKeyboardSelection = (offset: number): void => {
+    if (graphData.nodes.length === 0) return;
+    const current = graphData.nodes.findIndex((node) => String(node.id) === selectedId);
+    const nextIndex = (current + offset + graphData.nodes.length) % graphData.nodes.length;
+    const next = graphData.nodes[nextIndex];
+    if (next === undefined) return;
+    setSelectedId(String(next.id));
+    focusNode(next);
   };
 
   return (
@@ -72,12 +218,9 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
       </section>
       <section className="knowledgeGraphSection">
         <div className="knowledgeGraphHeading">
-          <div><h3>知识星图</h3><p>仅展示正式 Wiki 中可唯一解析的显式链接</p></div>
+          <div><h3>知识星图</h3><p>滚轮缩放 · 拖动画布旋转 · 拖动节点整理</p></div>
           <div className="knowledgeGraphControls" aria-label="星图控制">
-            <button type="button" aria-label="缩小" onClick={() => { setZoom((value) => Math.max(.65, value - .15)); }}>−</button>
-            <span>{Math.round(zoom * 100)}%</span>
-            <button type="button" aria-label="放大" onClick={() => { setZoom((value) => Math.min(1.7, value + .15)); }}>＋</button>
-            <button type="button" aria-label="适应视图" onClick={() => { setZoom(1); }}>适应</button>
+            <button type="button" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</button>
             <button type="button" aria-label="刷新星图" disabled={refreshing} onClick={() => { void refresh(); }}><IconRefreshOutline16 size={15} /></button>
           </div>
         </div>
@@ -91,45 +234,80 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
           <div className="knowledgeGraphEmpty">{result.status.message ?? "知识库当前不可用"}</div>
         ) : result.stats.topics === 0 ? (
           <div className="knowledgeGraphEmpty">暂无主题知识，因此不绘制实体星图。</div>
+        ) : !webGlSupported ? (
+          <div className="knowledgeGraphFallback">
+            <p>当前浏览器无法创建 3D 星图所需的 WebGL 环境，你仍可以打开主题知识。</p>
+            <div>{view.nodes.filter((node) => node.category === "topics").map((node) => <button key={node.id} type="button" onClick={() => { setSelectedContentId(`knowledge:${node.locator}`); }}>{node.title}</button>)}</div>
+          </div>
         ) : (
-          <div className="knowledgeGraphCanvas">
-            <svg viewBox="0 0 1000 600" role="img" aria-label="主题中心知识星图">
-              <g transform={`translate(500 300) scale(${zoom}) translate(-500 -300)`}>
-                {view.edges.map((edge) => {
-                  const source = positions.get(edge.sourceId);
-                  const target = positions.get(edge.targetId);
-                  if (source === undefined || target === undefined) return null;
-                  const highlighted = selectedId === null || (adjacent.has(edge.sourceId) && adjacent.has(edge.targetId));
-                  return <line key={edge.id} className={highlighted ? "graphEdge highlighted" : "graphEdge muted"} x1={source.x} y1={source.y} x2={target.x} y2={target.y} />;
-                })}
-                {view.nodes.map((node) => {
-                  const point = positions.get(node.id);
-                  if (point === undefined) return null;
-                  const topic = node.category === "topics";
-                  const muted = selectedId !== null && !adjacent.has(node.id);
-                  return (
-                    <g
-                      key={node.id}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${CATEGORY_LABELS[node.category]}：${node.title}，${node.degree} 条关联`}
-                      className={`graphNode ${node.category}${muted ? " muted" : ""}${selectedId === node.id ? " selected" : ""}`}
-                      transform={`translate(${point.x} ${point.y})`}
-                      onClick={() => { activate(node); }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        activate(node);
-                      }}
-                    >
-                      <title>{node.title}</title>
-                      <circle r={topic ? 29 : 12} />
-                      <text y={topic ? 45 : 27} textAnchor="middle">{node.title.length > (topic ? 16 : 10) ? `${node.title.slice(0, topic ? 15 : 9)}…` : node.title}</text>
-                    </g>
-                  );
-                })}
-              </g>
-            </svg>
+          <div
+            ref={graphContainerRef}
+            className="knowledgeGraphCanvas"
+            role="group"
+            tabIndex={0}
+            aria-label="3D 主题中心知识星图。使用方向键选择节点，回车展开主题。"
+            onKeyDown={(event) => {
+              if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+                event.preventDefault();
+                moveKeyboardSelection(1);
+              } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+                event.preventDefault();
+                moveKeyboardSelection(-1);
+              } else if ((event.key === "Enter" || event.key === " ") && selectedId !== null) {
+                event.preventDefault();
+                const node = graphData.nodes.find((candidate) => String(candidate.id) === selectedId);
+                if (node !== undefined) activate(node);
+              }
+            }}
+          >
+            {size.width > 0 && (
+              <ForceGraph3D<KnowledgeGraphVisualNodeData, KnowledgeGraphVisualLinkData>
+                key={graphVersion}
+                ref={graphRef}
+                graphData={graphData}
+                width={size.width}
+                height={size.height}
+                backgroundColor="#fbfaf7"
+                controlType="trackball"
+                showNavInfo={false}
+                enableNavigationControls
+                enablePointerInteraction
+                enableNodeDrag
+                nodeVal="val"
+                nodeRelSize={3.4}
+                nodeResolution={16}
+                nodeOpacity={.92}
+                nodeColor={(node) => selectedId === null || adjacent.has(String(node.id)) ? CATEGORY_COLORS[node.category] : "#d8d3ca"}
+                nodeLabel={(node) => `${CATEGORY_LABELS[node.category]}：${node.title}（${node.degree} 条关联）`}
+                nodeThreeObject={createTopicLabel}
+                nodeThreeObjectExtend
+                linkColor={(link) => {
+                  const [sourceId, targetId] = visibleEndpointIds(link);
+                  return selectedId === null || (sourceId !== null && targetId !== null && adjacent.has(sourceId) && adjacent.has(targetId)) ? "#aca99f" : "#e1ddd5";
+                }}
+                linkWidth={(link) => {
+                  const [sourceId, targetId] = visibleEndpointIds(link);
+                  return selectedId === null || (sourceId !== null && targetId !== null && adjacent.has(sourceId) && adjacent.has(targetId)) ? .7 : .18;
+                }}
+                linkOpacity={.48}
+                warmupTicks={motion.warmupTicks}
+                cooldownTicks={motion.cooldownTicks}
+                cooldownTime={motion.cooldownTime}
+                d3AlphaDecay={.035}
+                d3VelocityDecay={.38}
+                onNodeClick={activate}
+                onNodeDragEnd={pinKnowledgeGraphNode}
+                onBackgroundClick={() => { setSelectedId(null); }}
+                onEngineStop={() => {
+                  if (fittedGraphRef.current === graphData) return;
+                  fittedGraphRef.current = graphData;
+                  fitGraph();
+                }}
+              />
+            )}
+            <span className="knowledgeGraphAnnouncement" aria-live="polite">
+              {selected === null ? "" : `${CATEGORY_LABELS[selected.category]}，${selected.title}，${selected.degree} 条关联`}
+            </span>
           </div>
         )}
         {selected !== null && (

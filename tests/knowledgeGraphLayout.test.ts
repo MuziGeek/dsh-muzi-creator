@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { layoutKnowledgeGraph, selectKnowledgeGraph } from "../src/client/knowledgeGraphLayout.ts";
+import { selectKnowledgeGraph } from "../src/client/knowledgeGraphLayout.ts";
 import type { KnowledgeGraphEdge, KnowledgeGraphNode } from "../src/muziTypes.ts";
 
 function node(id: string, category: KnowledgeGraphNode["category"], degree: number): KnowledgeGraphNode {
@@ -20,11 +20,8 @@ describe("knowledge star map projection", () => {
     expect(selectKnowledgeGraph([topic, ...satellites], edges, topic.id).nodes).toHaveLength(16);
   });
 
-  it("uses stable coordinates and leaves an entity-only graph empty", () => {
-    const topic = node("topic", "topics", 1);
+  it("leaves an entity-only graph empty", () => {
     const entity = node("entity", "entities", 1);
-    const view = selectKnowledgeGraph([topic, entity], [edge(topic, entity)], null);
-    expect([...layoutKnowledgeGraph(view)]).toEqual([...layoutKnowledgeGraph(view)]);
     expect(selectKnowledgeGraph([entity], [], null)).toEqual({ nodes: [], edges: [] });
   });
 });

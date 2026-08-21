@@ -75,6 +75,9 @@ export default defineConfig([
     format: "cjs",
     platform: "browser",
     target: "es2022",
+    define: {
+      "process.env.NODE_ENV": JSON.stringify("production"),
+    },
     fixedExtension: false,
     dts: false,
     sourcemap: true,

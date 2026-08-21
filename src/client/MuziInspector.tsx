@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { MarkdownText } from "@deepseek-ai/dsh-client-ui-primitives";
+import {
+  IconCloseOutline16,
+  IconNewChatOutline16,
+  MarkdownText,
+} from "@deepseek-ai/dsh-client-ui-primitives";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
 import type {
@@ -14,6 +18,7 @@ import type {
 } from "../muziTypes.ts";
 import type { BurnStatus, WorkflowStage } from "../types.ts";
 import type { CreatorViewFace, MuziViewFace } from "./face.ts";
+import { formatKnowledgeDate, knowledgeDisplayMarkdown } from "./knowledgeDisplay.ts";
 import { KnowledgePreview } from "./KnowledgePreview.tsx";
 import {
   applyConversationInset,
@@ -114,28 +119,44 @@ function isKnowledgePreviewSelection(value: string): boolean {
 }
 
 function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: () => void }) {
+  const category = KNOWLEDGE_CATEGORY_LABELS[page.category] ?? "知识";
+  const markdown = knowledgeDisplayMarkdown(page.markdown, page.title);
   return (
     <>
-      <div className="muziInspectorHeader">
-        <div>
-          <h2>{page.title}</h2>
-          <p>{KNOWLEDGE_CATEGORY_LABELS[page.category] ?? "知识"} · 内容指纹 {page.sha256.slice(0, 12)}…</p>
+      <header className="muziInspectorHeader knowledgeDetailHeader">
+        <div className="knowledgeDetailHeading">
+          <div className="knowledgeDetailMeta">
+            <span>{category}</span>
+            <time dateTime={page.updatedAt}>更新于 {formatKnowledgeDate(page.updatedAt)}</time>
+          </div>
+          <h1>{page.title}</h1>
+          <p>内容指纹 <code>{page.sha256.slice(0, 12)}…</code></p>
         </div>
-        <button type="button" className="primary" onClick={onDiscuss}>与智能助手讨论</button>
-      </div>
+        <button type="button" className="knowledgeDiscuss" onClick={onDiscuss}>
+          <IconNewChatOutline16 size={16} />
+          <span>与智能助手讨论</span>
+        </button>
+      </header>
       <div className="muziMarkdown">
-        <MarkdownText text={page.markdown} />
+        <div className="muziMarkdownBody">
+          <MarkdownText text={markdown} />
+        </div>
         {page.related.length > 0 && (
-          <section className="muziRelatedKnowledge">
-            <div><h3>关联知识</h3><span>来自页面中的明确 Wiki 链接</span></div>
-            <div className="muziRelatedList">
-              {page.related.map((related) => (
-                <button type="button" key={related.id} onClick={() => { setSelectedContentId(`knowledge:${related.locator}`); }}>
-                  <strong>{related.title}</strong>
-                  <span>{KNOWLEDGE_CATEGORY_LABELS[related.category] ?? "知识"}</span>
-                </button>
-              ))}
+          <section className="muziRelatedKnowledge" aria-labelledby="muzi-related-title">
+            <div>
+              <h2 id="muzi-related-title">关联知识</h2>
+              <span>{page.related.length} 条 · 来自页面中的明确 Wiki 链接</span>
             </div>
+            <ul className="muziRelatedList">
+              {page.related.map((related) => (
+                <li key={related.id}>
+                  <button type="button" onClick={() => { setSelectedContentId(`knowledge:${related.locator}`); }}>
+                    <strong>{related.title}</strong>
+                    <span>{KNOWLEDGE_CATEGORY_LABELS[related.category] ?? "知识"}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
       </div>
@@ -253,8 +274,8 @@ export function MuziInspector({ muziFace, oilFace, closeDetails }: MuziInspector
   return (
     <div data-plugin="dsh-oil-creator" data-surface="muzi-inspector" className={expanded ? "open" : ""} style={{ width: shownWidth }}>
       <div className="muziInspectorTop">
-        <div className="muziInspectorTitle">{knowledgePreview !== null ? "知识预览" : page?.title ?? project?.title ?? "Muzi Creator"}</div>
-        <button type="button" aria-label="关闭详情" onClick={closeDetails}>×</button>
+        <div className="muziInspectorTitle">{knowledgePreview !== null || page !== null ? "知识预览" : project?.title ?? "Muzi Creator"}</div>
+        <button type="button" aria-label="关闭详情" onClick={closeDetails}><IconCloseOutline16 size={14} /></button>
       </div>
       {error !== null && <div className="muziInspectorEmpty error">{error}</div>}
       {error === null && page !== null && <KnowledgeDetail page={page} onDiscuss={() => { void discussKnowledge(); }} />}

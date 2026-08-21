@@ -5,3 +5,6 @@ https://github.com/oil-oil/dsh-oil-creator
 
 The upstream work and this derivative are distributed under the MIT License.
 Copyright (c) 2026 dsh-oil-creator contributors.
+
+The 3D knowledge graph uses react-force-graph-3d, Three.js, and three-spritetext.
+These dependencies are distributed under the MIT License.
