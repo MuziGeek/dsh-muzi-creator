@@ -91,6 +91,10 @@ import { AtlasReadService } from "./atlasService.ts";
 import { MuziCreatorService } from "./muziService.ts";
 import type {
   KnowledgeGetRequest,
+  KnowledgeHomeResult,
+  KnowledgePreviewResult,
+  KnowledgeListRequest,
+  KnowledgeListResult,
   KnowledgePage,
   KnowledgeSearchRequest,
   KnowledgeSearchResult,
@@ -220,6 +224,21 @@ export class OilCreatorService extends TypertRemoteService {
   async getKnowledgeStatus(_request: Record<string, never>, signal: AbortSignal): Promise<KnowledgeStatus> {
     signal.throwIfAborted();
     return this.atlas.status();
+  }
+
+  async getKnowledgeHome(_request: Record<string, never>, signal: AbortSignal): Promise<KnowledgeHomeResult> {
+    signal.throwIfAborted();
+    return this.atlas.home();
+  }
+
+  async getKnowledgePreview(_request: Record<string, never>, signal: AbortSignal): Promise<KnowledgePreviewResult> {
+    signal.throwIfAborted();
+    return this.atlas.preview();
+  }
+
+  async listKnowledgeDirectory(request: KnowledgeListRequest, signal: AbortSignal): Promise<KnowledgeListResult> {
+    signal.throwIfAborted();
+    return this.atlas.list(request);
   }
 
   async searchKnowledge(request: KnowledgeSearchRequest, signal: AbortSignal): Promise<KnowledgeSearchResult> {

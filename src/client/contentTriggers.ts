@@ -192,7 +192,7 @@ export function registerMuziTriggers(
   loadProject: (id: string) => Promise<MuziProjectDetail>,
   listProjects: () => Promise<ReadonlyArray<{ id: string; title: string }>>,
   loadKnowledge: (locator: string) => Promise<{ title: string; locator: string; sha256: string; markdown: string }>,
-  listKnowledge: () => Promise<ReadonlyArray<KnowledgePageSummary>>,
+  searchKnowledge: (query: string) => Promise<ReadonlyArray<KnowledgePageSummary>>,
 ): () => void {
   if (inputTriggers === undefined) return () => undefined;
   const source: TriggerSource = {
@@ -201,7 +201,7 @@ export function registerMuziTriggers(
     order: 25,
     async candidates(_session, req) {
       const query = req.query.trim().toLocaleLowerCase();
-      const [projects, pages] = await Promise.all([listProjects(), listKnowledge()]);
+      const [projects, pages] = await Promise.all([listProjects(), searchKnowledge(req.query.trim())]);
       const rows: TriggerCandidate[] = [];
       const selected = getSelectedContentId();
       if (selected !== null && !selected.startsWith("knowledge:") && (query === "" || "当前内容".includes(query))) {

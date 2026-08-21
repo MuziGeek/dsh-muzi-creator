@@ -115,7 +115,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  max-width: 64px;
+  max-width: 96px;
   opacity: 1;
   overflow: visible;
   transition: opacity 120ms var(--ds-ease-in-out), transform 180ms var(--ds-ease-in-out);
@@ -197,6 +197,98 @@
 [data-plugin="dsh-oil-creator"] .knowledgeBaseline strong { color: var(--dsw-alias-label-primary); }
 [data-plugin="dsh-oil-creator"] .knowledgeBaseline em { color: var(--dsw-alias-state-warning); font-style: normal; }
 
+[data-plugin="dsh-oil-creator"] .muziKnowledgeSection {
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 12px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziKnowledgeSection + .muziKnowledgeSection {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding-top: 12px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziBrowseHeading,
+[data-plugin="dsh-oil-creator"] .muziBreadcrumb {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziBrowseHeading strong,
+[data-plugin="dsh-oil-creator"] .muziBreadcrumb strong {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-plugin="dsh-oil-creator"] .muziBrowseHeading span { margin-left: auto; }
+[data-plugin="dsh-oil-creator"] .muziBreadcrumb button {
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziDirectoryRow {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+[data-plugin="dsh-oil-creator"] .muziDirectoryRow:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .muziDirectoryCount {
+  display: inline-flex;
+  min-width: 28px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-plugin="dsh-oil-creator"] .muziSectionEmpty {
+  padding: 12px 8px 16px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+[data-plugin="dsh-oil-creator"] .muziLoadMore {
+  display: block;
+  min-width: 96px;
+  height: 32px;
+  margin: 8px auto 16px;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziLoadMore:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .muziLoadMore:disabled { opacity: .55; cursor: default; }
+
 [data-plugin="dsh-oil-creator"] .muziPanelList {
   flex: 1;
   min-height: 0;
@@ -245,6 +337,13 @@
 [data-plugin="dsh-oil-creator"] .muziClearButton:focus-visible,
 [data-plugin="dsh-oil-creator"] .muziViewMenuItem:focus-visible,
 [data-plugin="dsh-oil-creator"] .muziListRow:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziDirectoryRow:focus-visible,
+[data-plugin="dsh-oil-creator"] .muziBreadcrumb button:focus-visible,
+[data-plugin="dsh-oil-creator"] .muziLoadMore:focus-visible {
   outline: 2px solid var(--dsw-alias-state-business-primary);
   outline-offset: 2px;
 }

@@ -39,7 +39,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
     name: "muzi_knowledge_search",
     description: "Search only formal llm-wiki pages. raw/ material is never searched or returned.",
     parameters: {
-      query: { type: "string", description: "Search words; omit to list formal pages." },
+      query: { type: "string", description: "Search words; omit to recommend topics and high-level analyses." },
       category: { type: "string", enum: ["entities", "topics", "sources", "comparisons", "synthesis", "queries"] },
       limit: { type: "number", description: "Maximum results within the configured limit." },
     },

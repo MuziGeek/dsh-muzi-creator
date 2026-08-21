@@ -24,6 +24,17 @@
 [data-plugin="dsh-oil-creator"] .muziInspectorHeader h2 { margin: 0 0 4px; font-size: 18px; }
 [data-plugin="dsh-oil-creator"] .muziInspectorHeader p { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; }
 [data-plugin="dsh-oil-creator"] .muziMarkdown { flex: 1; min-height: 0; overflow: auto; padding: 22px; }
+[data-plugin="dsh-oil-creator"] .muziRelatedKnowledge { display: grid; gap: 12px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--dsw-alias-border-l1); }
+[data-plugin="dsh-oil-creator"] .muziRelatedKnowledge > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+[data-plugin="dsh-oil-creator"] .muziRelatedKnowledge h3 { margin: 0; font-size: 14px; font-weight: 600; }
+[data-plugin="dsh-oil-creator"] .muziRelatedKnowledge > div:first-child span { color: var(--dsw-alias-label-tertiary); font-size: 10px; }
+[data-plugin="dsh-oil-creator"] .muziRelatedList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--dsw-alias-border-l1); }
+[data-plugin="dsh-oil-creator"] .muziRelatedList button { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 0; border-bottom: 1px solid var(--dsw-alias-border-l1); background: transparent; color: inherit; text-align: left; cursor: pointer; }
+[data-plugin="dsh-oil-creator"] .muziRelatedList button:nth-child(even) { border-left: 1px solid var(--dsw-alias-border-l1); }
+[data-plugin="dsh-oil-creator"] .muziRelatedList button:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .muziRelatedList button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
+[data-plugin="dsh-oil-creator"] .muziRelatedList strong { overflow: hidden; font-size: 12px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .muziRelatedList span { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
 [data-plugin="dsh-oil-creator"] button.primary { padding: 7px 12px; border: 0; border-radius: 8px; background: var(--dsw-alias-state-business-primary); color: var(--dsw-specific-button-label-primary); cursor: pointer; }
 [data-plugin="dsh-oil-creator"] button.primary:disabled { opacity: .45; cursor: default; }
 [data-plugin="dsh-oil-creator"] .muziOverview { display: grid; gap: 28px; max-width: 720px; margin: 0 auto; }
@@ -82,4 +93,6 @@
   [data-plugin="dsh-oil-creator"] .statusGrid { grid-template-columns: 1fr; }
   [data-plugin="dsh-oil-creator"] .statusGrid button:nth-child(even) { padding-left: 10px; border-left: 0; }
   [data-plugin="dsh-oil-creator"] .statusGrid button:nth-child(odd) { padding-right: 10px; }
+  [data-plugin="dsh-oil-creator"] .muziRelatedList { grid-template-columns: 1fr; }
+  [data-plugin="dsh-oil-creator"] .muziRelatedList button:nth-child(even) { border-left: 0; }
 }

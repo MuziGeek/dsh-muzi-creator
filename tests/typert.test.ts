@@ -45,6 +45,9 @@ describe("handwritten TYPERT", () => {
       "setMuziPublication",
       "archiveMuziProject",
       "getKnowledgeStatus",
+      "getKnowledgeHome",
+      "getKnowledgePreview",
+      "listKnowledgeDirectory",
       "searchKnowledge",
       "getKnowledgePage",
     ]);

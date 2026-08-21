@@ -115,11 +115,14 @@ export interface KnowledgeStatus {
   message: string | null;
 }
 
+export type KnowledgeCategory = "entities" | "topics" | "sources" | "comparisons" | "synthesis" | "queries";
+export type KnowledgeDirectoryRole = "primary" | "analysis" | "supporting";
+
 export interface KnowledgePageSummary {
   id: string;
   locator: string;
   title: string;
-  category: string;
+  category: KnowledgeCategory;
   sha256: string;
   updatedAt: string;
   excerpt: string;
@@ -127,11 +130,72 @@ export interface KnowledgePageSummary {
 
 export interface KnowledgePage extends KnowledgePageSummary {
   markdown: string;
+  related: KnowledgePageSummary[];
+}
+
+export interface KnowledgeDirectorySummary {
+  category: KnowledgeCategory;
+  label: string;
+  role: KnowledgeDirectoryRole;
+  count: number;
+}
+
+export interface KnowledgeHomeResult {
+  status: KnowledgeStatus;
+  directories: KnowledgeDirectorySummary[];
+  topics: KnowledgePageSummary[];
+}
+
+export interface KnowledgeGraphNode {
+  id: string;
+  locator: string;
+  title: string;
+  category: KnowledgeCategory;
+  degree: number;
+}
+
+export interface KnowledgeGraphEdge {
+  id: string;
+  sourceId: string;
+  targetId: string;
+}
+
+export interface KnowledgePreviewStats {
+  formal: number;
+  topics: number;
+  entities: number;
+  sources: number;
+  analyses: number;
+  pendingMarkdown: number;
+  rawFiles: number;
+}
+
+export interface KnowledgePreviewResult {
+  status: KnowledgeStatus;
+  stats: KnowledgePreviewStats;
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+  truncated: boolean;
+}
+
+export interface KnowledgeListRequest {
+  category: KnowledgeCategory;
+  offset?: number;
+  limit?: number;
+}
+
+export interface KnowledgeListResult {
+  status: KnowledgeStatus;
+  directory: KnowledgeDirectorySummary;
+  total: number;
+  offset: number;
+  nextOffset: number | null;
+  items: KnowledgePageSummary[];
 }
 
 export interface KnowledgeSearchRequest {
   query?: string;
-  category?: string;
+  category?: KnowledgeCategory;
   limit?: number;
 }
 

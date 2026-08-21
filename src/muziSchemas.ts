@@ -103,19 +103,74 @@ export const knowledgeStatusSchema = z.object({
   formalPageCount: z.number().int().nonnegative(),
   message: z.string().nullable(),
 });
+export const knowledgeCategorySchema = z.enum(["entities", "topics", "sources", "comparisons", "synthesis", "queries"]);
 const knowledgePageSummarySchema = z.object({
   id: z.string().regex(/^kw_[a-f0-9]{24}$/),
   locator: z.string().regex(/^atlas:\/\/wiki\/(?:entities|topics|sources|comparisons|synthesis|queries)\/[^?#]+\.md$/),
   title: z.string(),
-  category: z.string(),
+  category: knowledgeCategorySchema,
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
   updatedAt: z.string().datetime(),
   excerpt: z.string(),
 });
-export const knowledgePageSchema = knowledgePageSummarySchema.extend({ markdown: z.string() });
+export const knowledgeDirectorySummarySchema = z.object({
+  category: knowledgeCategorySchema,
+  label: z.string(),
+  role: z.enum(["primary", "analysis", "supporting"]),
+  count: z.number().int().nonnegative(),
+});
+export const knowledgeHomeResultSchema = z.object({
+  status: knowledgeStatusSchema,
+  directories: z.array(knowledgeDirectorySummarySchema),
+  topics: z.array(knowledgePageSummarySchema),
+});
+export const knowledgeGraphNodeSchema = z.object({
+  id: z.string().regex(/^kw_[a-f0-9]{24}$/),
+  locator: z.string().regex(/^atlas:\/\/wiki\/(?:entities|topics|sources|comparisons|synthesis|queries)\/[^?#]+\.md$/),
+  title: z.string(),
+  category: knowledgeCategorySchema,
+  degree: z.number().int().nonnegative(),
+});
+export const knowledgeGraphEdgeSchema = z.object({
+  id: z.string().regex(/^ke_[a-f0-9]{24}$/),
+  sourceId: z.string().regex(/^kw_[a-f0-9]{24}$/),
+  targetId: z.string().regex(/^kw_[a-f0-9]{24}$/),
+});
+export const knowledgePreviewResultSchema = z.object({
+  status: knowledgeStatusSchema,
+  stats: z.object({
+    formal: z.number().int().nonnegative(),
+    topics: z.number().int().nonnegative(),
+    entities: z.number().int().nonnegative(),
+    sources: z.number().int().nonnegative(),
+    analyses: z.number().int().nonnegative(),
+    pendingMarkdown: z.number().int().nonnegative(),
+    rawFiles: z.number().int().nonnegative(),
+  }),
+  nodes: z.array(knowledgeGraphNodeSchema),
+  edges: z.array(knowledgeGraphEdgeSchema),
+  truncated: z.boolean(),
+});
+export const knowledgeListRequestSchema = z.object({
+  category: knowledgeCategorySchema,
+  offset: z.number().int().nonnegative().optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+});
+export const knowledgeListResultSchema = z.object({
+  status: knowledgeStatusSchema,
+  directory: knowledgeDirectorySummarySchema,
+  total: z.number().int().nonnegative(),
+  offset: z.number().int().nonnegative(),
+  nextOffset: z.number().int().nonnegative().nullable(),
+  items: z.array(knowledgePageSummarySchema),
+});
+export const knowledgePageSchema = knowledgePageSummarySchema.extend({
+  markdown: z.string(),
+  related: z.array(knowledgePageSummarySchema),
+});
 export const knowledgeSearchRequestSchema = z.object({
   query: z.string().optional(),
-  category: z.enum(["entities", "topics", "sources", "comparisons", "synthesis", "queries"]).optional(),
+  category: knowledgeCategorySchema.optional(),
   limit: z.number().int().min(1).max(100).optional(),
 });
 export const knowledgeSearchResultSchema = z.object({

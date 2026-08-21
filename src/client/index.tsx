@@ -28,7 +28,11 @@ import type {
   VideoPlaybackResult,
 } from "../types.ts";
 import type {
+  KnowledgeCategory,
+  KnowledgeHomeResult,
+  KnowledgeListResult,
   KnowledgePage,
+  KnowledgePreviewResult,
   KnowledgeSearchResult,
   KnowledgeStatus,
   MuziArchiveRequest,
@@ -108,7 +112,10 @@ interface OilCreatorRemote {
   setMuziPublication: (request: MuziPublicationSetRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   archiveMuziProject: (request: MuziArchiveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   getKnowledgeStatus: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgeStatus>>;
-  searchKnowledge: (request: { query?: string; category?: string; limit?: number }) => Promise<RemoteAnswer<KnowledgeSearchResult>>;
+  getKnowledgeHome: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgeHomeResult>>;
+  getKnowledgePreview: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgePreviewResult>>;
+  listKnowledgeDirectory: (request: { category: KnowledgeCategory; offset?: number; limit?: number }) => Promise<RemoteAnswer<KnowledgeListResult>>;
+  searchKnowledge: (request: { query?: string; category?: KnowledgeCategory; limit?: number }) => Promise<RemoteAnswer<KnowledgeSearchResult>>;
   getKnowledgePage: (request: { locator: string }) => Promise<RemoteAnswer<KnowledgePage>>;
 }
 
@@ -357,6 +364,25 @@ export function apply(ctx: ClientContext): void {
       if (remote === undefined) throw new Error("remote unavailable");
       return unwrap(await remote.getKnowledgeStatus({}), "knowledge status failed");
     },
+    getKnowledgeHome: async () => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getKnowledgeHome({}), "knowledge home failed");
+    },
+    getKnowledgePreview: async () => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getKnowledgePreview({}), "knowledge preview failed");
+    },
+    listKnowledgeDirectory: async (category, offset, limit) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.listKnowledgeDirectory({
+        category,
+        ...(offset === undefined ? {} : { offset }),
+        ...(limit === undefined ? {} : { limit }),
+      }), "knowledge directory failed");
+    },
     searchKnowledge: async (query, category, limit) => {
       const remote = remoteOf();
       if (remote === undefined) throw new Error("remote unavailable");
@@ -385,7 +411,7 @@ export function apply(ctx: ClientContext): void {
         return listed.items.map((item) => ({ id: item.id, title: item.title }));
       },
       (locator) => muziFace.getKnowledgePage(locator),
-      async () => (await muziFace.searchKnowledge()).items,
+      async (query) => (await muziFace.searchKnowledge(query)).items,
     );
   }, "dsh-oil-creator: content triggers");
 

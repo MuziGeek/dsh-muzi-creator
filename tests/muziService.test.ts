@@ -23,6 +23,8 @@ async function config(): Promise<Config> {
     coverSkillDir: "",
     previewMaxBytes: 262144,
     searchResultLimit: 30,
+    graphNodeLimit: 500,
+    graphEdgeLimit: 5000,
     enabledDocuments: ["mother", "video", "wechat", "xiaohongshu", "blog"],
     enabledPublishTargets: ["bilibili", "douyin", "wechat", "xiaohongshu", "blog"],
     externalActionsEnabled: false,

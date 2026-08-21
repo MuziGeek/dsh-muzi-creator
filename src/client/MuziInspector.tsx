@@ -4,6 +4,7 @@ import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
 import type {
   KnowledgePage,
+  KnowledgePreviewResult,
   MuziDocumentKey,
   MuziDocumentStatus,
   MuziProjectDetail,
@@ -13,11 +14,13 @@ import type {
 } from "../muziTypes.ts";
 import type { BurnStatus, WorkflowStage } from "../types.ts";
 import type { CreatorViewFace, MuziViewFace } from "./face.ts";
+import { KnowledgePreview } from "./KnowledgePreview.tsx";
 import {
   applyConversationInset,
   clearConversationInset,
   getInspectorWidth,
   setInspectorWidth,
+  setSelectedContentId,
   setSidebarTab,
   useLibraryEpoch,
   useSelectedContentId,
@@ -106,6 +109,10 @@ function isKnowledgeSelection(value: string): boolean {
   return value.startsWith("knowledge:atlas://wiki/");
 }
 
+function isKnowledgePreviewSelection(value: string): boolean {
+  return value === "knowledge-preview";
+}
+
 function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: () => void }) {
   return (
     <>
@@ -116,7 +123,22 @@ function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: 
         </div>
         <button type="button" className="primary" onClick={onDiscuss}>与智能助手讨论</button>
       </div>
-      <div className="muziMarkdown"><MarkdownText text={page.markdown} /></div>
+      <div className="muziMarkdown">
+        <MarkdownText text={page.markdown} />
+        {page.related.length > 0 && (
+          <section className="muziRelatedKnowledge">
+            <div><h3>关联知识</h3><span>来自页面中的明确 Wiki 链接</span></div>
+            <div className="muziRelatedList">
+              {page.related.map((related) => (
+                <button type="button" key={related.id} onClick={() => { setSelectedContentId(`knowledge:${related.locator}`); }}>
+                  <strong>{related.title}</strong>
+                  <span>{KNOWLEDGE_CATEGORY_LABELS[related.category] ?? "知识"}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </>
   );
 }
@@ -126,6 +148,7 @@ export function MuziInspector({ muziFace, oilFace, closeDetails }: MuziInspector
   const epoch = useLibraryEpoch();
   const [project, setProject] = useState<MuziProjectDetail | null>(null);
   const [page, setPage] = useState<KnowledgePage | null>(null);
+  const [knowledgePreview, setKnowledgePreview] = useState<KnowledgePreviewResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [draft, setDraft] = useState("");
@@ -148,11 +171,14 @@ export function MuziInspector({ muziFace, oilFace, closeDetails }: MuziInspector
     setError(null);
     setProject(null);
     setPage(null);
+    setKnowledgePreview(null);
     setTab("overview");
     setDirty(false);
-    const load = isKnowledgeSelection(selectedId)
-      ? muziFace.getKnowledgePage(selectedId.slice("knowledge:".length)).then((value) => { if (!cancelled) setPage(value); })
-      : muziFace.getProject(selectedId).then((value) => { if (!cancelled) setProject(value); });
+    const load = isKnowledgePreviewSelection(selectedId)
+      ? muziFace.getKnowledgePreview().then((value) => { if (!cancelled) setKnowledgePreview(value); })
+      : isKnowledgeSelection(selectedId)
+        ? muziFace.getKnowledgePage(selectedId.slice("knowledge:".length)).then((value) => { if (!cancelled) setPage(value); })
+        : muziFace.getProject(selectedId).then((value) => { if (!cancelled) setProject(value); });
     void load.catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "读取失败"); });
     return () => { cancelled = true; };
   }, [selectedId, epoch]);
@@ -219,15 +245,20 @@ export function MuziInspector({ muziFace, oilFace, closeDetails }: MuziInspector
     setSidebarTab("sessions");
   };
 
+  const refreshKnowledgePreview = async (): Promise<void> => {
+    setKnowledgePreview(await muziFace.getKnowledgePreview());
+  };
+
   const shownWidth = expanded ? width : 0;
   return (
     <div data-plugin="dsh-oil-creator" data-surface="muzi-inspector" className={expanded ? "open" : ""} style={{ width: shownWidth }}>
       <div className="muziInspectorTop">
-        <div className="muziInspectorTitle">{page?.title ?? project?.title ?? "Muzi Creator"}</div>
+        <div className="muziInspectorTitle">{knowledgePreview !== null ? "知识预览" : page?.title ?? project?.title ?? "Muzi Creator"}</div>
         <button type="button" aria-label="关闭详情" onClick={closeDetails}>×</button>
       </div>
       {error !== null && <div className="muziInspectorEmpty error">{error}</div>}
       {error === null && page !== null && <KnowledgeDetail page={page} onDiscuss={() => { void discussKnowledge(); }} />}
+      {error === null && knowledgePreview !== null && <KnowledgePreview result={knowledgePreview} onRefresh={refreshKnowledgePreview} />}
       {error === null && project !== null && (
         <>
           <div className="muziTabs" role="tablist">

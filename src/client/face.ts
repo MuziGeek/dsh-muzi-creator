@@ -16,6 +16,10 @@ import type {
 } from "../types.ts";
 import type {
   KnowledgePage,
+  KnowledgeCategory,
+  KnowledgeHomeResult,
+  KnowledgePreviewResult,
+  KnowledgeListResult,
   KnowledgeSearchResult,
   KnowledgeStatus,
   MuziDocumentKey,
@@ -85,6 +89,9 @@ export interface MuziViewFace {
   }) => Promise<MuziProjectDetail>;
   archiveProject: (id: string, expectedRevision: number) => Promise<MuziProjectDetail>;
   getKnowledgeStatus: () => Promise<KnowledgeStatus>;
-  searchKnowledge: (query?: string, category?: string, limit?: number) => Promise<KnowledgeSearchResult>;
+  getKnowledgeHome: () => Promise<KnowledgeHomeResult>;
+  getKnowledgePreview: () => Promise<KnowledgePreviewResult>;
+  listKnowledgeDirectory: (category: KnowledgeCategory, offset?: number, limit?: number) => Promise<KnowledgeListResult>;
+  searchKnowledge: (query?: string, category?: KnowledgeCategory, limit?: number) => Promise<KnowledgeSearchResult>;
   getKnowledgePage: (locator: string) => Promise<KnowledgePage>;
 }

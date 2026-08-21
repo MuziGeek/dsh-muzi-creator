@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { chipLabel, registerContentTriggers } from "../src/client/contentTriggers.ts";
+import { chipLabel, registerContentTriggers, registerMuziTriggers } from "../src/client/contentTriggers.ts";
+import type { KnowledgePageSummary } from "../src/muziTypes.ts";
 
 describe("chipLabel", () => {
   it("keeps short names that fit the composer chip", () => {
@@ -89,5 +90,43 @@ describe("registerContentTriggers", () => {
       new AbortController().signal,
     );
     expect(path).toBe("/tmp/videos/2026-08-10_做海外社媒第一个月经验分享");
+  });
+});
+
+describe("registerMuziTriggers", () => {
+  it("forwards the composer query to formal knowledge search", async () => {
+    const sources: Array<{ name: string; candidates: (session: unknown, request: { query: string; signal: AbortSignal }) => Promise<readonly unknown[]> }> = [];
+    const queries: string[] = [];
+    const topic: KnowledgePageSummary = {
+      id: "kw_0123456789abcdef01234567",
+      locator: "atlas://wiki/topics/agent.md",
+      title: "Agent 主题",
+      category: "topics",
+      sha256: "0".repeat(64),
+      updatedAt: "2026-08-21T00:00:00.000Z",
+      excerpt: "主题摘要",
+    };
+    registerMuziTriggers(
+      {
+        registerSource(source) {
+          sources.push(source);
+          return () => undefined;
+        },
+      },
+      async () => { throw new Error("unused"); },
+      async () => [],
+      async () => { throw new Error("unused"); },
+      async (query) => {
+        queries.push(query);
+        return [topic];
+      },
+    );
+    const source = sources.find((candidate) => candidate.name === "muzi");
+    const signal = new AbortController().signal;
+    expect(await source?.candidates(undefined, { query: "", signal })).toEqual([
+      { name: "知识 · Agent 主题", description: "knowledge:atlas://wiki/topics/agent.md" },
+    ]);
+    await source?.candidates(undefined, { query: "Agent", signal });
+    expect(queries).toEqual(["", "Agent"]);
   });
 });

@@ -4,16 +4,43 @@ import { basename, join, relative, resolve, sep } from "node:path";
 
 import type { Config } from "./config.ts";
 import type {
+  KnowledgeCategory,
+  KnowledgeDirectoryRole,
+  KnowledgeDirectorySummary,
   KnowledgeGetRequest,
+  KnowledgeHomeResult,
+  KnowledgeListRequest,
+  KnowledgeListResult,
   KnowledgePage,
   KnowledgePageSummary,
+  KnowledgeGraphEdge,
+  KnowledgeGraphNode,
+  KnowledgePreviewResult,
   KnowledgeSearchRequest,
   KnowledgeSearchResult,
   KnowledgeStatus,
 } from "./muziTypes.ts";
 
-const CATEGORIES = ["entities", "topics", "sources", "comparisons", "synthesis", "queries"] as const;
-type Category = typeof CATEGORIES[number];
+const CATEGORIES = ["entities", "topics", "sources", "comparisons", "synthesis", "queries"] as const satisfies readonly KnowledgeCategory[];
+const DEFAULT_SEARCH_CATEGORIES = ["topics", "synthesis", "comparisons", "queries"] as const satisfies readonly KnowledgeCategory[];
+const CATEGORY_DETAILS: Record<KnowledgeCategory, { label: string; role: KnowledgeDirectoryRole; priority: number }> = {
+  topics: { label: "主题", role: "primary", priority: 0 },
+  synthesis: { label: "综合分析", role: "analysis", priority: 1 },
+  comparisons: { label: "比较分析", role: "analysis", priority: 2 },
+  queries: { label: "问题", role: "analysis", priority: 3 },
+  entities: { label: "实体", role: "supporting", priority: 4 },
+  sources: { label: "来源", role: "supporting", priority: 5 },
+};
+
+interface FormalPageRecord {
+  markdown: string;
+  summary: KnowledgePageSummary;
+}
+
+interface AtlasSnapshot {
+  status: KnowledgeStatus;
+  pages: FormalPageRecord[];
+}
 
 function hash(text: string): string {
   return createHash("sha256").update(text).digest("hex");
@@ -72,110 +99,314 @@ function locatorOf(atlasRoot: string, path: string): string {
   return `atlas://${relative(atlasRoot, path).replaceAll("\\", "/")}`;
 }
 
-function categoryOf(path: string): Category {
+function categoryOf(path: string): KnowledgeCategory {
   const normalized = path.replaceAll("\\", "/");
   const category = CATEGORIES.find((candidate) => normalized.includes(`/wiki/${candidate}/`));
   if (category === undefined) throw new Error("page is outside the formal Wiki categories");
   return category;
 }
 
+function compareTitles(left: KnowledgePageSummary, right: KnowledgePageSummary): number {
+  return left.title.localeCompare(right.title, "zh-CN");
+}
+
+function directoryOf(category: KnowledgeCategory, pages: readonly FormalPageRecord[]): KnowledgeDirectorySummary {
+  const details = CATEGORY_DETAILS[category];
+  return {
+    category,
+    label: details.label,
+    role: details.role,
+    count: pages.filter((page) => page.summary.category === category).length,
+  };
+}
+
+function normalizedWikilinkTarget(raw: string): string {
+  return raw.split("|", 1)[0]!.split("#", 1)[0]!.trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\.md$/i, "");
+}
+
+function aliasesOf(page: FormalPageRecord): string[] {
+  const relativeLocator = page.summary.locator.slice("atlas://wiki/".length).replace(/\.md$/i, "");
+  const base = relativeLocator.slice(relativeLocator.lastIndexOf("/") + 1);
+  return [page.summary.title, base, relativeLocator, `wiki/${relativeLocator}`].map((value) => value.toLocaleLowerCase());
+}
+
+function aliasesIndex(pages: readonly FormalPageRecord[]): Map<string, FormalPageRecord[]> {
+  const aliases = new Map<string, FormalPageRecord[]>();
+  for (const page of pages) {
+    for (const alias of aliasesOf(page)) {
+      const matches = aliases.get(alias) ?? [];
+      if (!matches.some((match) => match.summary.id === page.summary.id)) matches.push(page);
+      aliases.set(alias, matches);
+    }
+  }
+  return aliases;
+}
+
+function wikilinkTargets(markdown: string): string[] {
+  const withoutCode = markdown
+    .replaceAll(/^[ \t]*(`{3,}|~{3,})[^\r\n]*(?:\r?\n)[\s\S]*?^[ \t]*\1[ \t]*$/gm, "")
+    .replaceAll(/`[^`\r\n]*`/g, "");
+  return [...withoutCode.matchAll(/\[\[([^\]]+)\]\]/g)]
+    .map((match) => normalizedWikilinkTarget(match[1] ?? "").toLocaleLowerCase())
+    .filter((target) => target !== "");
+}
+
+function relatedPages(current: FormalPageRecord, pages: readonly FormalPageRecord[], limit: number): KnowledgePageSummary[] {
+  const aliases = aliasesIndex(pages);
+  const related: KnowledgePageSummary[] = [];
+  const seen = new Set<string>();
+  for (const target of wikilinkTargets(current.markdown)) {
+    const candidates = aliases.get(target) ?? [];
+    if (candidates.length !== 1) continue;
+    const candidate = candidates[0]!;
+    if (candidate.summary.id === current.summary.id || seen.has(candidate.summary.id)) continue;
+    seen.add(candidate.summary.id);
+    related.push(candidate.summary);
+    if (related.length >= limit) break;
+  }
+  return related;
+}
+
+interface GraphBuildResult {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+  truncated: boolean;
+}
+
+function buildGraph(pages: readonly FormalPageRecord[], nodeLimit: number, edgeLimit: number): GraphBuildResult {
+  const aliases = aliasesIndex(pages);
+  const rawEdges = new Map<string, { sourceId: string; targetId: string }>();
+  for (const page of pages) {
+    for (const target of wikilinkTargets(page.markdown)) {
+      const candidates = aliases.get(target) ?? [];
+      if (candidates.length !== 1 || candidates[0]!.summary.id === page.summary.id) continue;
+      const ids = [page.summary.id, candidates[0]!.summary.id].sort();
+      const key = `${ids[0]}:${ids[1]}`;
+      rawEdges.set(key, { sourceId: ids[0]!, targetId: ids[1]! });
+    }
+  }
+
+  const degree = new Map<string, number>();
+  const topicNeighbors = new Map<string, Set<string>>();
+  const pageById = new Map(pages.map((page) => [page.summary.id, page]));
+  for (const edge of rawEdges.values()) {
+    degree.set(edge.sourceId, (degree.get(edge.sourceId) ?? 0) + 1);
+    degree.set(edge.targetId, (degree.get(edge.targetId) ?? 0) + 1);
+    const source = pageById.get(edge.sourceId)!;
+    const target = pageById.get(edge.targetId)!;
+    if (source.summary.category === "topics") {
+      const connected = topicNeighbors.get(target.summary.id) ?? new Set<string>();
+      connected.add(source.summary.id);
+      topicNeighbors.set(target.summary.id, connected);
+    }
+    if (target.summary.category === "topics") {
+      const connected = topicNeighbors.get(source.summary.id) ?? new Set<string>();
+      connected.add(target.summary.id);
+      topicNeighbors.set(source.summary.id, connected);
+    }
+  }
+
+  const compareGraphPages = (left: FormalPageRecord, right: FormalPageRecord): number =>
+    (topicNeighbors.get(right.summary.id)?.size ?? 0) - (topicNeighbors.get(left.summary.id)?.size ?? 0)
+    || (degree.get(right.summary.id) ?? 0) - (degree.get(left.summary.id) ?? 0)
+    || CATEGORY_DETAILS[left.summary.category].priority - CATEGORY_DETAILS[right.summary.category].priority
+    || compareTitles(left.summary, right.summary);
+  const topics = pages.filter((page) => page.summary.category === "topics").sort(compareGraphPages);
+  const satellites = pages.filter((page) => page.summary.category !== "topics").sort(compareGraphPages);
+  const selectedPages = [...topics, ...satellites].slice(0, nodeLimit);
+  const selectedIds = new Set(selectedPages.map((page) => page.summary.id));
+  const edgeRows = [...rawEdges.entries()]
+    .filter(([, edge]) => selectedIds.has(edge.sourceId) && selectedIds.has(edge.targetId))
+    .sort((left, right) => {
+      const leftTopic = pageById.get(left[1].sourceId)!.summary.category === "topics" || pageById.get(left[1].targetId)!.summary.category === "topics";
+      const rightTopic = pageById.get(right[1].sourceId)!.summary.category === "topics" || pageById.get(right[1].targetId)!.summary.category === "topics";
+      return Number(rightTopic) - Number(leftTopic)
+        || (degree.get(right[1].sourceId) ?? 0) + (degree.get(right[1].targetId) ?? 0)
+          - (degree.get(left[1].sourceId) ?? 0) - (degree.get(left[1].targetId) ?? 0)
+        || left[0].localeCompare(right[0]);
+    });
+  const keptEdges = edgeRows.slice(0, edgeLimit);
+  return {
+    nodes: selectedPages.map((page) => ({
+      id: page.summary.id,
+      locator: page.summary.locator,
+      title: page.summary.title,
+      category: page.summary.category,
+      degree: degree.get(page.summary.id) ?? 0,
+    })),
+    edges: keptEdges.map(([, edge]) => ({
+      id: `ke_${hash(`${edge.sourceId}:${edge.targetId}`).slice(0, 24)}`,
+      sourceId: edge.sourceId,
+      targetId: edge.targetId,
+    })),
+    truncated: selectedPages.length < pages.length || keptEdges.length < edgeRows.length,
+  };
+}
+
+function searchRank(page: FormalPageRecord, query: string): number | null {
+  const title = page.summary.title.toLocaleLowerCase();
+  if (query === "") return CATEGORY_DETAILS[page.summary.category].priority;
+  if (title === query) return 0;
+  if (title.startsWith(query)) return 1;
+  if (title.includes(query)) return 2;
+  if (page.markdown.toLocaleLowerCase().includes(query)) return 3;
+  return null;
+}
+
 export class AtlasReadService {
   readonly atlasRoot: string;
   readonly previewMaxBytes: number;
   readonly searchResultLimit: number;
+  readonly graphNodeLimit: number;
+  readonly graphEdgeLimit: number;
 
   constructor(config: Config) {
     this.atlasRoot = resolve(config.atlasRoot);
     this.previewMaxBytes = config.previewMaxBytes;
     this.searchResultLimit = config.searchResultLimit;
+    this.graphNodeLimit = config.graphNodeLimit;
+    this.graphEdgeLimit = config.graphEdgeLimit;
   }
 
   async status(): Promise<KnowledgeStatus> {
+    return (await this.snapshot()).status;
+  }
+
+  async home(): Promise<KnowledgeHomeResult> {
+    const snapshot = await this.snapshot();
+    const directories = CATEGORIES.map((category) => directoryOf(category, snapshot.pages));
+    const topics = snapshot.pages
+      .filter((page) => page.summary.category === "topics")
+      .map((page) => page.summary)
+      .sort(compareTitles);
+    return { status: snapshot.status, directories, topics };
+  }
+
+  async list(request: KnowledgeListRequest): Promise<KnowledgeListResult> {
+    const snapshot = await this.snapshot();
+    const offset = request.offset ?? 0;
+    const limit = Math.min(request.limit ?? this.searchResultLimit, this.searchResultLimit);
+    const all = snapshot.pages
+      .filter((page) => page.summary.category === request.category)
+      .map((page) => page.summary)
+      .sort(compareTitles);
+    const items = all.slice(offset, offset + limit);
+    const nextOffset = offset + items.length < all.length ? offset + items.length : null;
+    return {
+      status: snapshot.status,
+      directory: directoryOf(request.category, snapshot.pages),
+      total: all.length,
+      offset,
+      nextOffset,
+      items,
+    };
+  }
+
+  async search(request: KnowledgeSearchRequest): Promise<KnowledgeSearchResult> {
+    const snapshot = await this.snapshot();
+    if (snapshot.status.status === "unavailable") return { status: snapshot.status, items: [] };
+    const query = request.query?.trim().toLocaleLowerCase() ?? "";
+    const allowed = request.category === undefined
+      ? new Set<KnowledgeCategory>(query === "" ? DEFAULT_SEARCH_CATEGORIES : CATEGORIES)
+      : new Set<KnowledgeCategory>([request.category]);
+    const max = Math.min(request.limit ?? this.searchResultLimit, this.searchResultLimit);
+    const ranked = snapshot.pages
+      .filter((page) => allowed.has(page.summary.category))
+      .map((page) => ({ page, rank: searchRank(page, query) }))
+      .filter((entry): entry is { page: FormalPageRecord; rank: number } => entry.rank !== null)
+      .sort((left, right) => left.rank - right.rank
+        || CATEGORY_DETAILS[left.page.summary.category].priority - CATEGORY_DETAILS[right.page.summary.category].priority
+        || compareTitles(left.page.summary, right.page.summary));
+    return { status: snapshot.status, items: ranked.slice(0, max).map((entry) => entry.page.summary) };
+  }
+
+  async get(request: KnowledgeGetRequest): Promise<KnowledgePage> {
+    if (!request.locator.startsWith("atlas://wiki/")) throw new Error("only formal Wiki locators are allowed");
+    const snapshot = await this.snapshot();
+    const record = snapshot.pages.find((page) => page.summary.locator === request.locator);
+    if (record === undefined) throw new Error("knowledge page is unavailable or outside the formal Wiki categories");
+    return {
+      ...record.summary,
+      markdown: safeMarkdown(record.markdown),
+      related: relatedPages(record, snapshot.pages, this.searchResultLimit),
+    };
+  }
+
+  async preview(): Promise<KnowledgePreviewResult> {
+    const snapshot = await this.snapshot();
+    const counts = new Map(CATEGORIES.map((category) => [category, directoryOf(category, snapshot.pages).count]));
+    const graph = snapshot.status.status === "ready"
+      ? buildGraph(snapshot.pages, this.graphNodeLimit, this.graphEdgeLimit)
+      : { nodes: [], edges: [], truncated: false };
+    return {
+      status: snapshot.status,
+      stats: {
+        formal: snapshot.pages.length,
+        topics: counts.get("topics") ?? 0,
+        entities: counts.get("entities") ?? 0,
+        sources: counts.get("sources") ?? 0,
+        analyses: (counts.get("synthesis") ?? 0) + (counts.get("comparisons") ?? 0) + (counts.get("queries") ?? 0),
+        pendingMarkdown: snapshot.status.rawMarkdownCount,
+        rawFiles: snapshot.status.rawFileCount,
+      },
+      ...graph,
+    };
+  }
+
+  private async snapshot(): Promise<AtlasSnapshot> {
     try {
       const info = await lstat(this.atlasRoot);
       if (!info.isDirectory() || info.isSymbolicLink()) throw new Error("atlasRoot must be a real directory");
       const schemaText = await readFile(join(this.atlasRoot, ".wiki-schema.md"), "utf8");
       const version = /(?:schema(?:\s+version)?|版本)\s*[:：]?\s*([0-9]+(?:\.[0-9]+)?)/i.exec(schemaText)?.[1] ?? null;
       const language = /(?:language|语言)\s*[:：]\s*([^\r\n]+)/i.exec(schemaText)?.[1]?.trim() ?? null;
-      const rawFiles = await regularFiles(join(this.atlasRoot, "raw"));
-      const formalFiles = await this.formalFiles();
+      const [rawFiles, formalFiles] = await Promise.all([regularFiles(join(this.atlasRoot, "raw")), this.formalFiles()]);
+      const pages = (await Promise.all(formalFiles.map(async (path): Promise<FormalPageRecord | undefined> => {
+        const fileInfo = await stat(path);
+        if (fileInfo.size > this.previewMaxBytes) return undefined;
+        const markdown = await readFile(path, "utf8");
+        const category = categoryOf(path);
+        const locator = locatorOf(this.atlasRoot, path);
+        return {
+          markdown,
+          summary: {
+            id: `kw_${hash(locator).slice(0, 24)}`,
+            locator,
+            title: titleOf(markdown, path),
+            category,
+            sha256: hash(markdown),
+            updatedAt: fileInfo.mtime.toISOString(),
+            excerpt: excerptOf(markdown),
+          },
+        };
+      }))).filter((page): page is FormalPageRecord => page !== undefined);
       const compatible = version === "1.1" || schemaText.includes("1.1");
       return {
-        status: compatible ? "ready" : "incomplete",
-        schemaVersion: version ?? (compatible ? "1.1" : null),
-        language,
-        rawMarkdownCount: rawFiles.filter((path) => path.toLowerCase().endsWith(".md")).length,
-        rawFileCount: rawFiles.length,
-        formalPageCount: formalFiles.length,
-        message: compatible ? null : "仅支持 llm-wiki Schema 1.1",
+        status: {
+          status: compatible ? "ready" : "incomplete",
+          schemaVersion: version ?? (compatible ? "1.1" : null),
+          language,
+          rawMarkdownCount: rawFiles.filter((path) => path.toLowerCase().endsWith(".md")).length,
+          rawFileCount: rawFiles.length,
+          formalPageCount: pages.length,
+          message: compatible ? null : "仅支持 llm-wiki Schema 1.1",
+        },
+        pages,
       };
-    } catch (cause) {
+    } catch {
       return {
-        status: "unavailable",
-        schemaVersion: null,
-        language: null,
-        rawMarkdownCount: 0,
-        rawFileCount: 0,
-        formalPageCount: 0,
-        message: cause instanceof Error ? cause.message : "知识库不可用",
+        status: {
+          status: "unavailable",
+          schemaVersion: null,
+          language: null,
+          rawMarkdownCount: 0,
+          rawFileCount: 0,
+          formalPageCount: 0,
+          message: "知识库不可用",
+        },
+        pages: [],
       };
     }
-  }
-
-  async search(request: KnowledgeSearchRequest): Promise<KnowledgeSearchResult> {
-    const status = await this.status();
-    if (status.status === "unavailable") return { status, items: [] };
-    const query = request.query?.trim().toLocaleLowerCase() ?? "";
-    const category = request.category;
-    const max = Math.min(request.limit ?? this.searchResultLimit, this.searchResultLimit);
-    const items: KnowledgePageSummary[] = [];
-    for (const path of await this.formalFiles()) {
-      const pageCategory = categoryOf(path);
-      if (category !== undefined && category !== pageCategory) continue;
-      const info = await stat(path);
-      if (info.size > this.previewMaxBytes) continue;
-      const markdown = await readFile(path, "utf8");
-      const title = titleOf(markdown, path);
-      if (query !== "" && !`${title}\n${markdown}`.toLocaleLowerCase().includes(query)) continue;
-      const locator = locatorOf(this.atlasRoot, path);
-      items.push({
-        id: `kw_${hash(locator).slice(0, 24)}`,
-        locator,
-        title,
-        category: pageCategory,
-        sha256: hash(markdown),
-        updatedAt: info.mtime.toISOString(),
-        excerpt: excerptOf(markdown),
-      });
-      if (items.length >= max) break;
-    }
-    return { status, items };
-  }
-
-  async get(request: KnowledgeGetRequest): Promise<KnowledgePage> {
-    if (!request.locator.startsWith("atlas://wiki/")) throw new Error("only formal Wiki locators are allowed");
-    const relativePath = request.locator.slice("atlas://".length).replaceAll("/", sep);
-    const path = resolve(this.atlasRoot, relativePath);
-    if (!childOf(this.atlasRoot, path)) throw new Error("knowledge locator escapes atlasRoot");
-    const category = categoryOf(path);
-    const actual = await realpath(path);
-    const actualRoot = await realpath(this.atlasRoot);
-    if (!childOf(actualRoot, actual)) throw new Error("knowledge locator resolves outside atlasRoot");
-    const info = await lstat(actual);
-    if (!info.isFile() || info.isSymbolicLink()) throw new Error("knowledge page must be a regular file");
-    if (info.size > this.previewMaxBytes) throw new Error("knowledge page exceeds previewMaxBytes");
-    const raw = await readFile(actual, "utf8");
-    const markdown = safeMarkdown(raw);
-    return {
-      id: `kw_${hash(request.locator).slice(0, 24)}`,
-      locator: request.locator,
-      title: titleOf(raw, actual),
-      category,
-      sha256: hash(raw),
-      updatedAt: info.mtime.toISOString(),
-      excerpt: excerptOf(raw),
-      markdown,
-    };
   }
 
   private async formalFiles(): Promise<string[]> {

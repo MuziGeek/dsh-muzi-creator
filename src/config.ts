@@ -13,6 +13,8 @@ export interface Config {
   coverSkillDir: string;
   previewMaxBytes: number;
   searchResultLimit: number;
+  graphNodeLimit: number;
+  graphEdgeLimit: number;
   enabledDocuments: string[];
   enabledPublishTargets: string[];
   externalActionsEnabled: boolean;
@@ -81,6 +83,8 @@ export const Config: Schema<Config> = Schema.object({
   coverSkillDir: Schema.string().default(""),
   previewMaxBytes: Schema.number().min(4096).max(1048576).default(262144),
   searchResultLimit: Schema.number().min(1).max(100).default(30),
+  graphNodeLimit: Schema.number().min(10).max(2000).default(500),
+  graphEdgeLimit: Schema.number().min(10).max(20000).default(5000),
   enabledDocuments: Schema.array(String).default(["mother", "video", "wechat", "xiaohongshu", "blog"]),
   enabledPublishTargets: Schema.array(String).default(["bilibili", "douyin", "wechat", "xiaohongshu", "blog"]),
   externalActionsEnabled: Schema.boolean().default(false),

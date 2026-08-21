@@ -28,7 +28,11 @@ import {
 } from "./schemas.ts";
 import {
   knowledgeGetRequestSchema,
+  knowledgeHomeResultSchema,
+  knowledgeListRequestSchema,
+  knowledgeListResultSchema,
   knowledgePageSchema,
+  knowledgePreviewResultSchema,
   knowledgeSearchRequestSchema,
   knowledgeSearchResultSchema,
   knowledgeStatusSchema,
@@ -116,6 +120,9 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("setMuziPublication", muziPublicationSetRequestSchema, muziProjectDetailSchema),
   invocation("archiveMuziProject", muziArchiveRequestSchema, muziProjectDetailSchema),
   invocation("getKnowledgeStatus", emptyObjectSchema, knowledgeStatusSchema),
+  invocation("getKnowledgeHome", emptyObjectSchema, knowledgeHomeResultSchema),
+  invocation("getKnowledgePreview", emptyObjectSchema, knowledgePreviewResultSchema),
+  invocation("listKnowledgeDirectory", knowledgeListRequestSchema, knowledgeListResultSchema),
   invocation("searchKnowledge", knowledgeSearchRequestSchema, knowledgeSearchResultSchema),
   invocation("getKnowledgePage", knowledgeGetRequestSchema, knowledgePageSchema),
 ];

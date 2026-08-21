@@ -32,7 +32,7 @@ creator-studio/10-active/YYYY-MM-DD_可读标题/
 
 Creator Studio 保存创作正文和明确状态；Muzi Atlas 始终只读。Oil 的本地媒体 overlay 独立保存在 `~/.dsh-muzi-creator/overlay.json`，不会写入 Atlas。
 
-左侧将“会话 / 内容 / 知识”纵向排列。三个区域使用一致的目录浏览方式：分区标题、折叠搜索、视图选项和新增目录入口；内容目录可直接新建，知识目录入口会切换到会话并交由标准 llm-wiki 流程写入。
+左侧将“会话 / 内容 / 知识”纵向排列。知识区域只展示 `wiki/topics` 主题页面，搜索也仅覆盖主题。顶部“预览”会在只读浮层中显示实时统计与主题中心知识星图；星图只使用正式 Wiki 中可唯一解析的显式 `[[Wiki 链接]]`，不会运行 llm-wiki 的离线图谱写入流程。内容目录可直接新建，知识新增入口会切换到会话并交由标准 llm-wiki 流程写入。
 
 内容详情中的项目阶段、稿件状态、发布状态和视频制作状态均以中文只读展示；正文仍可显式编辑和保存，状态变更由创作事实源或经过确认的 Agent 工具负责。
 
@@ -139,7 +139,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-oil-creator gith
 - 内容目录可以换成任意已有的绝对路径，每个直接子文件夹代表一条内容。
 - `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与 AI 发布或数据同步；全部关闭时不执行这两项操作。
 - 脚本规则既可以在设置页修改，也可以让 AI 通过 `oil_script_rules` 记录和更新。
-- Cordis 高级配置仍保留 `libraryRoot`、`dataDir`、`subtitleSkillDir` 和 `coverSkillDir`，用于自动发现无法覆盖的特殊环境。
+- Cordis 高级配置仍保留 `libraryRoot`、`creatorRoot`、`atlasRoot`、`dataDir`、`subtitleSkillDir` 和 `coverSkillDir`，用于自动发现无法覆盖的特殊环境。知识预览通过 `graphNodeLimit` 和 `graphEdgeLimit` 控制只读星图上限，默认分别为 500 个节点和 5000 条关系。
 
 ## 数据与权限边界
 

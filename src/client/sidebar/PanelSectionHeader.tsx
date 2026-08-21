@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   IconCloseFill14,
+  IconBrowseOutline16,
   IconPersonalizationOutline16,
   IconProjectAddOutline16,
   IconRefreshOutline16,
@@ -14,11 +15,13 @@ export interface PanelSectionHeaderProps {
   searchLabel: string;
   searchPlaceholder: string;
   addLabel: string;
-  viewLabel: string;
-  viewContent: ReactNode;
+  viewLabel?: string;
+  viewContent?: ReactNode;
+  previewLabel?: string;
   onQueryChange: (query: string) => void;
   onAdd: () => void;
   onRefresh: () => void;
+  onPreview?: () => void;
 }
 
 /** Shared section chrome matching the native DSH workspace browser. */
@@ -30,9 +33,11 @@ export function PanelSectionHeader({
   addLabel,
   viewLabel,
   viewContent,
+  previewLabel,
   onQueryChange,
   onAdd,
   onRefresh,
+  onPreview,
 }: PanelSectionHeaderProps) {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
@@ -87,7 +92,7 @@ export function PanelSectionHeader({
         </div>
       </div>
       <div className={searchExpanded ? "muziHeaderActions hidden" : "muziHeaderActions"}>
-        <div className="muziViewRoot" ref={viewRoot}>
+        {viewLabel !== undefined && viewContent !== undefined && <div className="muziViewRoot" ref={viewRoot}>
           <Tooltip label={viewLabel} side="bottom" delayMs={500}>
             <button type="button" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} onClick={() => { setViewOpen((open) => !open); }}>
               <IconPersonalizationOutline16 size={16} />
@@ -102,7 +107,14 @@ export function PanelSectionHeader({
               </button>
             </div>
           )}
-        </div>
+        </div>}
+        {previewLabel !== undefined && onPreview !== undefined && (
+          <Tooltip label={previewLabel} side="bottom" delayMs={500}>
+            <button type="button" className="muziHeaderIcon" aria-label={previewLabel} onClick={onPreview}>
+              <IconBrowseOutline16 size={16} />
+            </button>
+          </Tooltip>
+        )}
         <Tooltip label={addLabel} side="bottom" delayMs={500}>
           <button type="button" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
             <IconProjectAddOutline16 size={16} />
