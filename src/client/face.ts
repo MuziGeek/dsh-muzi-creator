@@ -14,6 +14,20 @@ import type {
   ArticleMediaResult,
   VideoPlaybackResult,
 } from "../types.ts";
+import type {
+  KnowledgePage,
+  KnowledgeSearchResult,
+  KnowledgeStatus,
+  MuziDocumentKey,
+  MuziDocumentStatus,
+  MuziPrimaryDocument,
+  MuziProjectDetail,
+  MuziProjectListResult,
+  MuziProjectStage,
+  MuziPublicationSource,
+  MuziPublicationStatus,
+  MuziPublishTarget,
+} from "../muziTypes.ts";
 
 export interface CreatorViewFace {
   ready: () => boolean;
@@ -43,4 +57,34 @@ export interface CreatorViewFace {
   startSubtitleGenerate: (id: string) => Promise<ContentDetail>;
   startCoverGenerate: (id: string) => Promise<ContentDetail>;
   setScript: (id: string, text: string) => Promise<ContentDetail>;
+}
+
+export interface MuziViewFace {
+  ready: () => boolean;
+  listProjects: (query?: string, includeArchived?: boolean) => Promise<MuziProjectListResult>;
+  getProject: (id: string) => Promise<MuziProjectDetail>;
+  createProject: (title: string, primaryDocument: MuziPrimaryDocument) => Promise<MuziProjectDetail>;
+  saveDocument: (request: {
+    id: string;
+    document: MuziDocumentKey;
+    text: string;
+    status: MuziDocumentStatus;
+    expectedRevision: number;
+    derivedFrom?: MuziDocumentKey;
+    sourceSha256?: string;
+  }) => Promise<MuziProjectDetail>;
+  setProjectStatus: (id: string, stage: MuziProjectStage, expectedRevision: number) => Promise<MuziProjectDetail>;
+  setPublication: (request: {
+    id: string;
+    target: MuziPublishTarget;
+    status: MuziPublicationStatus;
+    expectedRevision: number;
+    source: MuziPublicationSource;
+    url?: string;
+    publishedAt?: string;
+  }) => Promise<MuziProjectDetail>;
+  archiveProject: (id: string, expectedRevision: number) => Promise<MuziProjectDetail>;
+  getKnowledgeStatus: () => Promise<KnowledgeStatus>;
+  searchKnowledge: (query?: string, category?: string, limit?: number) => Promise<KnowledgeSearchResult>;
+  getKnowledgePage: (locator: string) => Promise<KnowledgePage>;
 }

@@ -1,5 +1,6 @@
 import { formatContentRef } from "../contentRef.ts";
 import type { ContentDetail } from "../types.ts";
+import type { KnowledgePageSummary, MuziProjectDetail } from "../muziTypes.ts";
 import { getSelectedContentId, subscribeSelectedContentId } from "./contentSelection.ts";
 
 interface TriggerCandidate {
@@ -163,4 +164,81 @@ export function registerContentTriggers(
     stopAt();
     stopSlash();
   };
+}
+
+function formatMuziProject(project: MuziProjectDetail): string {
+  const sections = [
+    `# 当前创作：${project.title}`,
+    `稳定 ID：${project.id}`,
+    `修订号：${project.revision}`,
+    `阶段：${project.stage}`,
+    `主稿：${project.primaryDocument}`,
+    "",
+    "## 母内容",
+    project.content.mother || "（空）",
+    "",
+    "## 视频稿",
+    project.content.video || "（空）",
+    "",
+    "## Atlas 引用",
+    ...project.atlasReferences.map((ref) => `- ${ref.title} | ${ref.locator} | sha256:${ref.sha256}`),
+  ];
+  return sections.join("\n");
+}
+
+/** Registers stable Muzi Creator and formal Wiki composer references. */
+export function registerMuziTriggers(
+  inputTriggers: TriggerService | undefined,
+  loadProject: (id: string) => Promise<MuziProjectDetail>,
+  listProjects: () => Promise<ReadonlyArray<{ id: string; title: string }>>,
+  loadKnowledge: (locator: string) => Promise<{ title: string; locator: string; sha256: string; markdown: string }>,
+  listKnowledge: () => Promise<ReadonlyArray<KnowledgePageSummary>>,
+): () => void {
+  if (inputTriggers === undefined) return () => undefined;
+  const source: TriggerSource = {
+    trigger: "@",
+    name: "muzi",
+    order: 25,
+    async candidates(_session, req) {
+      const query = req.query.trim().toLocaleLowerCase();
+      const [projects, pages] = await Promise.all([listProjects(), listKnowledge()]);
+      const rows: TriggerCandidate[] = [];
+      const selected = getSelectedContentId();
+      if (selected !== null && !selected.startsWith("knowledge:") && (query === "" || "当前内容".includes(query))) {
+        rows.push({ name: "当前内容", description: `creator:${selected}` });
+      }
+      for (const project of projects) {
+        if (query === "" || project.title.toLocaleLowerCase().includes(query)) rows.push({ name: project.title, description: `creator:${project.id}` });
+      }
+      for (const page of pages) {
+        if (query === "" || page.title.toLocaleLowerCase().includes(query)) rows.push({ name: `知识 · ${page.title}`, description: `knowledge:${page.locator}` });
+      }
+      return rows.slice(0, 30);
+    },
+    onPick({ candidate }) {
+      const description = candidate.description ?? "";
+      return {
+        insert: {
+          source: "muzi",
+          ref: description,
+          label: chipLabel(candidate.name),
+          clipboardText: `@${candidate.name}`,
+        },
+      };
+    },
+    lexicon: () => ["当前内容", "知识页面"],
+    subscribeLexicon(_session, listener) { return subscribeSelectedContentId(listener); },
+    codec: {
+      clipboardText: (ref) => `@${ref}`,
+      async serialize(ref) {
+        if (ref.startsWith("creator:")) return formatMuziProject(await loadProject(ref.slice("creator:".length)));
+        if (ref.startsWith("knowledge:")) {
+          const page = await loadKnowledge(ref.slice("knowledge:".length));
+          return `# 正式知识：${page.title}\n定位符：${page.locator}\nSHA-256：${page.sha256}\n\n${page.markdown}`;
+        }
+        return "无效的 Muzi 引用。";
+      },
+    },
+  };
+  return inputTriggers.registerSource(source);
 }

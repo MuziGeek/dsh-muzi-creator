@@ -37,6 +37,16 @@ describe("handwritten TYPERT", () => {
       "startSubtitleBurn",
       "startSubtitleGenerate",
       "startCoverGenerate",
+      "listMuziProjects",
+      "getMuziProject",
+      "createMuziProject",
+      "saveMuziDocument",
+      "setMuziProjectStatus",
+      "setMuziPublication",
+      "archiveMuziProject",
+      "getKnowledgeStatus",
+      "searchKnowledge",
+      "getKnowledgePage",
     ]);
     for (const item of OIL_CREATOR_INVOCATIONS) {
       expect(item.service).toBe(REMOTE_NAMESPACE);

@@ -1,8 +1,8 @@
 import type { ContentFilter } from "../types.ts";
 
-export const CREATOR_STORAGE_KEY = "dsh-oil-creator/ui/v1";
+export const CREATOR_STORAGE_KEY = "dsh-muzi-creator/ui/v2";
 
-export type SidebarTab = "sessions" | "content";
+export type SidebarTab = "sessions" | "content" | "knowledge";
 
 export interface CreatorUiState {
   schemaVersion: 1;
@@ -41,12 +41,13 @@ export function loadCreatorUiState(storage: CreatorStorage | undefined): Creator
     if (raw === null) return { ...DEFAULT_UI_STATE };
     const parsed = JSON.parse(raw) as Partial<CreatorUiState>;
     const filter = parsed.filter;
+    const sidebarTab = parsed.sidebarTab === "content" || parsed.sidebarTab === "knowledge" ? parsed.sidebarTab : "sessions";
     return {
       schemaVersion: 1,
-      selectedId: typeof parsed.selectedId === "string" ? parsed.selectedId : null,
+      selectedId: sidebarTab === "knowledge" ? null : typeof parsed.selectedId === "string" ? parsed.selectedId : null,
       filter: filter === "cover" || filter === "subtitle" || filter === "article" ? filter : "all",
       query: typeof parsed.query === "string" ? parsed.query : "",
-      sidebarTab: parsed.sidebarTab === "content" ? "content" : "sessions",
+      sidebarTab,
       ...(typeof parsed.inspectorWidth === "number" && Number.isFinite(parsed.inspectorWidth)
         ? { inspectorWidth: parsed.inspectorWidth }
         : {}),

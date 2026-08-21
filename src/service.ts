@@ -87,6 +87,24 @@ import { collectRegistryPathForDataDir } from "./collectSpaces.ts";
 import { coverThumb } from "./thumbs.ts";
 import { startArticleServer } from "./articleServe.ts";
 import { playbackOf, startVideoServer } from "./videoServe.ts";
+import { AtlasReadService } from "./atlasService.ts";
+import { MuziCreatorService } from "./muziService.ts";
+import type {
+  KnowledgeGetRequest,
+  KnowledgePage,
+  KnowledgeSearchRequest,
+  KnowledgeSearchResult,
+  KnowledgeStatus,
+  MuziArchiveRequest,
+  MuziDocumentSaveRequest,
+  MuziProjectCreateRequest,
+  MuziProjectDetail,
+  MuziProjectGetRequest,
+  MuziProjectListRequest,
+  MuziProjectListResult,
+  MuziProjectStatusRequest,
+  MuziPublicationSetRequest,
+} from "./muziTypes.ts";
 import type {
   BindStudioRequest,
   BurnJob,
@@ -143,6 +161,9 @@ export class OilCreatorService extends TypertRemoteService {
   previews = new Map<string, { url: string; port: number; pid: number }>();
   videos = new Map<string, { url: string; path: string; close: () => void }>();
   articles = new Map<string, { origin: string; root: string; close: () => void }>();
+  readonly muzi: MuziCreatorService;
+  readonly atlas: AtlasReadService;
+  readonly externalActionsEnabled: boolean;
 
   constructor(ctx: Context, config: Config) {
     super(ctx, OIL_CREATOR_SERVICE);
@@ -150,12 +171,65 @@ export class OilCreatorService extends TypertRemoteService {
     this.dataDir = resolveUserPath(resolveDataDir(config));
     this.subtitleSkillDirConfig = config.subtitleSkillDir;
     this.coverSkillDirConfig = config.coverSkillDir;
+    this.muzi = new MuziCreatorService(config);
+    this.atlas = new AtlasReadService(config);
+    this.externalActionsEnabled = config.externalActionsEnabled;
     void loadOverlay(this.dataDir).then((overlay) => { this.rememberOverlay(overlay); });
     ctx.effect(() => async () => {
       this.stopWatch();
       this.stopExportWaiters();
       await this.stopServers();
     }, "oil-creator: library watch");
+  }
+
+  async listMuziProjects(request: MuziProjectListRequest, signal: AbortSignal): Promise<MuziProjectListResult> {
+    signal.throwIfAborted();
+    return this.muzi.listProjects(request);
+  }
+
+  async getMuziProject(request: MuziProjectGetRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
+    signal.throwIfAborted();
+    return this.muzi.getProject(request);
+  }
+
+  async createMuziProject(request: MuziProjectCreateRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
+    signal.throwIfAborted();
+    return this.muzi.createProject(request);
+  }
+
+  async saveMuziDocument(request: MuziDocumentSaveRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
+    signal.throwIfAborted();
+    return this.muzi.saveDocument(request);
+  }
+
+  async setMuziProjectStatus(request: MuziProjectStatusRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
+    signal.throwIfAborted();
+    return this.muzi.setProjectStatus(request);
+  }
+
+  async setMuziPublication(request: MuziPublicationSetRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
+    signal.throwIfAborted();
+    return this.muzi.setPublication(request);
+  }
+
+  async archiveMuziProject(request: MuziArchiveRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
+    signal.throwIfAborted();
+    return this.muzi.archiveProject(request);
+  }
+
+  async getKnowledgeStatus(_request: Record<string, never>, signal: AbortSignal): Promise<KnowledgeStatus> {
+    signal.throwIfAborted();
+    return this.atlas.status();
+  }
+
+  async searchKnowledge(request: KnowledgeSearchRequest, signal: AbortSignal): Promise<KnowledgeSearchResult> {
+    signal.throwIfAborted();
+    return this.atlas.search(request);
+  }
+
+  async getKnowledgePage(request: KnowledgeGetRequest, signal: AbortSignal): Promise<KnowledgePage> {
+    signal.throwIfAborted();
+    return this.atlas.get(request);
   }
 
   subtitleSkillDir(): string {

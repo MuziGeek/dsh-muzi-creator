@@ -76,8 +76,9 @@ describe("DeepSeek Harness bundle packaging", () => {
       .toContain("0.1.0-rc.7");
     expect(manifest.peerDependencies?.["@deepseek-ai/dsh-client-ui-settings-plugins"])
       .toContain("0.1.0-rc.7");
-    expect(patch).toMatch(/^- id: ui-sidebar\n  disabled: true$/m);
-    expect(patch).toMatch(/^- insert:\n    - id: dsh-oil-creator\n      name: dsh-oil-creator$/m);
+    const normalizedPatch = patch.replaceAll("\r\n", "\n");
+    expect(normalizedPatch).toMatch(/^- id: ui-sidebar\n  disabled: true$/m);
+    expect(normalizedPatch).toMatch(/^- insert:\n    - id: dsh-muzi-creator\n      name: dsh-muzi-creator$/m);
     expect(copyInplace).not.toContain(".dsh/profiles");
     expect(copyInplace).toContain("libDirectory");
     expect(releaseCheck).toContain('run(root, "pnpm", ["check"])');
@@ -117,9 +118,16 @@ describe("DeepSeek Harness bundle packaging", () => {
         expect(existsSync(resolve(root, runtimeFile))).toBe(true);
       }
 
+      const npmCommand = process.platform === "win32"
+        ? process.env.ComSpec ?? "cmd.exe"
+        : "npm";
+      const npmPrefix = process.platform === "win32"
+        ? ["/d", "/s", "/c", "npm"]
+        : [];
       const output = execFileSync(
-        "npm",
+        npmCommand,
         [
+          ...npmPrefix,
           "pack",
           "--ignore-scripts",
           "--json",
@@ -140,7 +148,7 @@ describe("DeepSeek Harness bundle packaging", () => {
       })
         .trim()
         .split("\n")
-        .map((entry) => entry.replace(/^package\//, ""));
+        .map((entry) => entry.trimEnd().replace(/^package\//, ""));
       const packedFiles = new Set(entries);
 
       expect([...packedFiles]).toEqual(expect.arrayContaining([

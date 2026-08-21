@@ -6,18 +6,34 @@ import Schema from "@deepseek-ai/schemastery";
 
 export interface Config {
   libraryRoot: string;
+  creatorRoot: string;
+  atlasRoot: string;
   dataDir: string;
   subtitleSkillDir: string;
   coverSkillDir: string;
+  previewMaxBytes: number;
+  searchResultLimit: number;
+  enabledDocuments: string[];
+  enabledPublishTargets: string[];
+  externalActionsEnabled: boolean;
+}
+
+export function defaultCreatorRoot(): string {
+  return "D:\\Muzi\\Workspace\\creator-studio";
+}
+
+export function defaultAtlasRoot(): string {
+  return "D:\\Muzi\\Knowledge\\muzi-atlas";
 }
 
 export function defaultLibraryRoot(platform: NodeJS.Platform = process.platform): string {
+  if (platform === "win32") return join(defaultCreatorRoot(), "10-active");
   const videos = platform === "darwin" ? "Movies" : "Videos";
-  return join(homedir(), videos, "视频项目");
+  return join(homedir(), videos, "Muzi Creator");
 }
 
 export function defaultDataDir(): string {
-  return join(homedir(), ".dsh-oil-creator");
+  return join(homedir(), ".dsh-muzi-creator");
 }
 
 export function defaultSubtitleSkillDir(): string {
@@ -58,12 +74,19 @@ export const DEFAULT_LIBRARY_ROOT = defaultLibraryRoot();
 
 export const Config: Schema<Config> = Schema.object({
   libraryRoot: Schema.string().default(defaultLibraryRoot()),
+  creatorRoot: Schema.string().default(defaultCreatorRoot()),
+  atlasRoot: Schema.string().default(defaultAtlasRoot()),
   dataDir: Schema.string().default(defaultDataDir()),
   subtitleSkillDir: Schema.string().default(""),
   coverSkillDir: Schema.string().default(""),
+  previewMaxBytes: Schema.number().min(4096).max(1048576).default(262144),
+  searchResultLimit: Schema.number().min(1).max(100).default(30),
+  enabledDocuments: Schema.array(String).default(["mother", "video", "wechat", "xiaohongshu", "blog"]),
+  enabledPublishTargets: Schema.array(String).default(["bilibili", "douyin", "wechat", "xiaohongshu", "blog"]),
+  externalActionsEnabled: Schema.boolean().default(false),
 });
 
-export function resolveDataDir(config: Config): string {
+export function resolveDataDir(config: Pick<Config, "dataDir"> & Partial<Config>): string {
   return config.dataDir === "" ? defaultDataDir() : config.dataDir;
 }
 

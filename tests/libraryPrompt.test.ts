@@ -7,20 +7,18 @@ import {
 } from "../src/libraryPrompt.ts";
 
 describe("libraryConventionText", () => {
-  it("names the library and tells the model to use file tools", () => {
+  it("describes the Muzi facts and prevents direct file writes", () => {
     const text = libraryConventionText("/Movies/视频项目", "/.dsh-oil-creator");
-    expect(text).toContain("/Movies/视频项目");
-    expect(text).toContain("YYYY-MM-DD_可读标题");
+    expect(text).toContain("Creator Studio");
+    expect(text).toContain("Muzi Atlas");
+    expect(text).toContain("raw/ 不参与搜索");
+    expect(text).toContain("muzi_creator_*");
+    expect(text).toContain("muzi_knowledge_*");
     expect(text).toContain("script.md");
-    expect(text).toContain("公众号文章/");
-    expect(text).toContain("系统自带的列文件、读文件、写文件工具");
-    expect(text).toContain("oil_creator_setup");
-    expect(text).toContain("oil_creator_guide");
     expect(text).toContain("oil_script_rules");
-    expect(text).toContain("Ego Browser");
-    expect(text).toContain("/.dsh-oil-creator/overlay.json");
-    expect(text).not.toContain("oil_get_content");
-    expect(text).not.toContain("oil_list_contents");
+    expect(text).toContain("逐次通过 DSH 审批");
+    expect(text).not.toContain("/Movies/视频项目");
+    expect(text).not.toContain("/.dsh-oil-creator");
     expect(text).not.toContain("当前启用平台");
   });
 

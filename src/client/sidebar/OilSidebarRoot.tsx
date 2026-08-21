@@ -6,14 +6,16 @@ import {
   Tooltip,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 
-import type { CreatorViewFace } from "../face.ts";
+import type { CreatorViewFace, MuziViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
 import {
   setSidebarChromeWidth,
+  setSelectedContentId,
   setSidebarTab,
   useSidebarTab,
 } from "../contentSelection.ts";
-import { ContentSidebarPanel } from "./ContentSidebarPanel.tsx";
+import { KnowledgePanel } from "./KnowledgePanel.tsx";
+import { MuziContentPanel } from "./MuziContentPanel.tsx";
 import { OilBrand } from "./OilBrand.tsx";
 import type { OilSidebarSlotProps } from "./slots.ts";
 import "./OilSidebarRoot.css";
@@ -28,8 +30,9 @@ function cx(...parts: Array<string | false | undefined>): string {
 export type OilSidebarRootProps =
   & OilSidebarSlotProps
   & {
-    tabLabels: { sessions: string; content: string };
+    tabLabels: { sessions: string; content: string; knowledge: string };
     contentFace: CreatorViewFace;
+    muziFace: MuziViewFace;
     contentT: (key: CreatorKey) => string;
   };
 
@@ -42,6 +45,7 @@ export function OilSidebarRoot({
   renderSlot,
   tabLabels,
   contentFace,
+  muziFace,
   contentT,
 }: OilSidebarRootProps) {
   const [settled, setSettled] = useState(collapsed);
@@ -64,6 +68,7 @@ export function OilSidebarRoot({
   const sidebarTab = useSidebarTab();
 
   const chooseTab = (tab: typeof sidebarTab): void => {
+    if (tab === "knowledge") setSelectedContentId(null);
     setSidebarTab(tab);
   };
 
@@ -104,12 +109,15 @@ export function OilSidebarRoot({
   }, [pointerInside]);
 
   const [contentMounted, setContentMounted] = useState(sidebarTab === "content");
+  const [knowledgeMounted, setKnowledgeMounted] = useState(sidebarTab === "knowledge");
   useEffect(() => {
     if (sidebarTab === "content") setContentMounted(true);
+    if (sidebarTab === "knowledge") setKnowledgeMounted(true);
   }, [sidebarTab]);
 
   const sessionsVisible = !wide || sidebarTab === "sessions";
   const contentVisible = wide && sidebarTab === "content";
+  const knowledgeVisible = wide && sidebarTab === "knowledge";
 
   useEffect(() => {
     setSidebarChromeWidth(!wide ? 56 : collapsed ? lastWideWidth.current : width);
@@ -197,6 +205,16 @@ export function OilSidebarRoot({
               <IconBrowseOutline16 size={14} />
               {tabLabels.content}
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarTab === "knowledge"}
+              className={cx("tabButton", sidebarTab === "knowledge" && "active")}
+              onClick={() => { chooseTab("knowledge"); }}
+            >
+              <IconBrowseOutline16 size={14} />
+              {tabLabels.knowledge}
+            </button>
           </div>
         </div>
       )}
@@ -224,10 +242,12 @@ export function OilSidebarRoot({
         </div>
         {contentMounted && (
           <div className={cx("regionPane", !contentVisible && "hidden")}>
-            <ContentSidebarPanel
-              t={contentT}
-              {...contentFace}
-            />
+            <MuziContentPanel face={muziFace} />
+          </div>
+        )}
+        {knowledgeMounted && (
+          <div className={cx("regionPane", !knowledgeVisible && "hidden")}>
+            <KnowledgePanel face={muziFace} />
           </div>
         )}
       </div>

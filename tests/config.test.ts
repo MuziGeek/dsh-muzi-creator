@@ -16,10 +16,10 @@ import {
 } from "../src/config.ts";
 
 describe("portable config defaults", () => {
-  it("puts the library under Movies on macOS and Videos elsewhere", () => {
-    expect(defaultLibraryRoot("darwin")).toBe(join(homedir(), "Movies", "视频项目"));
-    expect(defaultLibraryRoot("win32")).toBe(join(homedir(), "Videos", "视频项目"));
-    expect(defaultLibraryRoot("linux")).toBe(join(homedir(), "Videos", "视频项目"));
+  it("uses Creator Studio on Windows and a Muzi Creator media root elsewhere", () => {
+    expect(defaultLibraryRoot("darwin")).toBe(join(homedir(), "Movies", "Muzi Creator"));
+    expect(defaultLibraryRoot("win32")).toBe(join("D:\\Muzi\\Workspace\\creator-studio", "10-active"));
+    expect(defaultLibraryRoot("linux")).toBe(join(homedir(), "Videos", "Muzi Creator"));
   });
 
   it("resolves empty dataDir to the home-local store", () => {

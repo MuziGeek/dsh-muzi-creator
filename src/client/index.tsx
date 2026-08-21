@@ -10,7 +10,7 @@ import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
 import { startLibraryLiveSync } from "./catalogSync.ts";
 import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 import { releaseShellChrome } from "./contentSelection.ts";
-import { registerContentTriggers } from "./contentTriggers.ts";
+import { registerMuziTriggers } from "./contentTriggers.ts";
 import type {
   ContentDetail,
   ContentFilter,
@@ -27,7 +27,19 @@ import type {
   ArticleMediaResult,
   VideoPlaybackResult,
 } from "../types.ts";
-import { ContentInspector } from "./ContentInspector.tsx";
+import type {
+  KnowledgePage,
+  KnowledgeSearchResult,
+  KnowledgeStatus,
+  MuziArchiveRequest,
+  MuziDocumentSaveRequest,
+  MuziProjectCreateRequest,
+  MuziProjectDetail,
+  MuziProjectListResult,
+  MuziProjectStatusRequest,
+  MuziPublicationSetRequest,
+} from "../muziTypes.ts";
+import { MuziInspector } from "./MuziInspector.tsx";
 import {
   bumpLibrary,
   bumpProfile,
@@ -37,7 +49,7 @@ import {
 } from "./contentSelection.ts";
 import type { CredentialsClient } from "./credentialsApi.ts";
 import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
-import type { CreatorViewFace } from "./face.ts";
+import type { CreatorViewFace, MuziViewFace } from "./face.ts";
 import { en, NS, type CreatorKey, zh } from "./locales.ts";
 import { OilSidebarRoot } from "./sidebar/OilSidebarRoot.tsx";
 import type { OilSidebarInjected, OilSidebarSlotProps } from "./sidebar/slots.ts";
@@ -88,6 +100,16 @@ interface OilCreatorRemote {
   startSubtitleGenerate: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
   startCoverGenerate: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
   setScript: (request: { id: string; text: string }) => Promise<RemoteAnswer<ContentDetail>>;
+  listMuziProjects: (request: { query?: string; includeArchived?: boolean }) => Promise<RemoteAnswer<MuziProjectListResult>>;
+  getMuziProject: (request: { id: string }) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  createMuziProject: (request: MuziProjectCreateRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  saveMuziDocument: (request: MuziDocumentSaveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  setMuziProjectStatus: (request: MuziProjectStatusRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  setMuziPublication: (request: MuziPublicationSetRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  archiveMuziProject: (request: MuziArchiveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  getKnowledgeStatus: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgeStatus>>;
+  searchKnowledge: (request: { query?: string; category?: string; limit?: number }) => Promise<RemoteAnswer<KnowledgeSearchResult>>;
+  getKnowledgePage: (request: { locator: string }) => Promise<RemoteAnswer<KnowledgePage>>;
 }
 
 function credentialsOf(ctx: ClientContext): CredentialsClient | undefined {
@@ -280,18 +302,90 @@ export function apply(ctx: ClientContext): void {
   });
 
   const contentFace = face();
+  const muziFace: MuziViewFace = {
+    ready: () => remoteOf() !== undefined,
+    listProjects: async (query, includeArchived) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.listMuziProjects({
+        ...(query === undefined ? {} : { query }),
+        ...(includeArchived === undefined ? {} : { includeArchived }),
+      }), "creator list failed");
+    },
+    getProject: async (id) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getMuziProject({ id }), "creator project failed");
+    },
+    createProject: async (title, primaryDocument) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const created = unwrap(await remote.createMuziProject({ title, primaryDocument, confirmed: true }), "create failed");
+      bumpLibrary();
+      return created;
+    },
+    saveDocument: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const saved = unwrap(await remote.saveMuziDocument({ ...request, confirmed: true }), "save failed");
+      bumpLibrary();
+      return saved;
+    },
+    setProjectStatus: async (id, stage, expectedRevision) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.setMuziProjectStatus({ id, stage, expectedRevision }), "status failed");
+      bumpLibrary();
+      return next;
+    },
+    setPublication: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.setMuziPublication(request), "publication failed");
+      bumpLibrary();
+      return next;
+    },
+    archiveProject: async (id, expectedRevision) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.archiveMuziProject({ id, expectedRevision, confirmed: true }), "archive failed");
+      bumpLibrary();
+      return next;
+    },
+    getKnowledgeStatus: async () => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getKnowledgeStatus({}), "knowledge status failed");
+    },
+    searchKnowledge: async (query, category, limit) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.searchKnowledge({
+        ...(query === undefined ? {} : { query }),
+        ...(category === undefined ? {} : { category }),
+        ...(limit === undefined ? {} : { limit }),
+      }), "knowledge search failed");
+    },
+    getKnowledgePage: async (locator) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getKnowledgePage({ locator }), "knowledge page failed");
+    },
+  };
 
   ctx.effect(() => {
     const triggers = ctx.get("inputTriggers") as
-      | Parameters<typeof registerContentTriggers>[0]
+      | Parameters<typeof registerMuziTriggers>[0]
       | undefined;
-    return registerContentTriggers(
+    return registerMuziTriggers(
       triggers,
-      (id) => contentFace.getContent(id),
+      (id) => muziFace.getProject(id),
       async () => {
-        const listed = await contentFace.listContents("", "all");
+        const listed = await muziFace.listProjects();
         return listed.items.map((item) => ({ id: item.id, title: item.title }));
       },
+      (locator) => muziFace.getKnowledgePage(locator),
+      async () => (await muziFace.searchKnowledge()).items,
     );
   }, "dsh-oil-creator: content triggers");
 
@@ -312,8 +406,10 @@ export function apply(ctx: ClientContext): void {
         tabLabels={{
           sessions: contentT("tab.sessions"),
           content: contentT("tab"),
+          knowledge: "知识",
         }}
         contentFace={contentFace}
+        muziFace={muziFace}
         contentT={contentT}
       />
     );
@@ -358,16 +454,17 @@ export function apply(ctx: ClientContext): void {
         if (disposeOccupant !== undefined) return;
         disposeOccupant = ctx.slots.register({
           name: "shell.overlay",
-          id: "oil-creator-inspector",
+          id: "muzi-creator-inspector",
           order: 20,
           locale: NS,
           inject: () => ({
-            ...face(),
+            muziFace,
+            oilFace: contentFace,
             closeDetails: () => {
               setSelectedContentId(null);
             },
           }),
-        }, ContentInspector);
+        }, MuziInspector);
       };
       const stop = subscribeSelectedContentId(sync);
       sync();

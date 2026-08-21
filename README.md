@@ -1,35 +1,36 @@
+> Muzi Creator 是基于 [Oil Creator](https://github.com/oil-oil/dsh-oil-creator) 的私有改造版，继续保留原项目的 MIT License。它把 Oil 的本地视频工作流扩展为 llm-wiki 正式知识 → 母内容/视频稿 → 多渠道稿件的创作工作台。
+
 <p align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="dsh-oil-creator：让 AI 和本地内容目录一起工作">
 </p>
 
 <p align="center">
-  <strong>DeepSeek Harness 上的本地内容工作台。</strong><br>
-  从选题、脚本、录屏工程到字幕、封面和发布状态，一条片子始终对应一个本地文件夹。
+  <strong>DeepSeek Harness 上的知识驱动创作工作台。</strong><br>
+  从正式知识、母内容和多渠道稿件，到录屏工程、字幕、封面与发布事实，一个主题始终对应一个本地项目。
 </p>
 
 > [!NOTE]
 > 当前兼容 Node.js 22.19+、DeepSeek Harness `0.1.0-rc.6` / `0.1.0-rc.7`。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
 
-## 一条片子，就是一个文件夹
+## 一个主题，就是一个项目目录
 
 插件不建立封闭的内容数据库。正文和产物仍是普通文件，任何编辑器和 AI 文件工具都能读取：
 
 ```text
-~/Movies/视频项目/
-└── 2026-08-19_DeepSeek Harness 上手/
-    ├── topic.md
-    ├── script.md
-    ├── DeepSeek Harness 上手.mp4
-    ├── DeepSeek Harness 上手.srt
-    ├── DeepSeek Harness 上手_subtitled.mp4
-    ├── DeepSeek Harness 上手_3x4.png
-    ├── DeepSeek Harness 上手_4x3.png
-    ├── DeepSeek Harness 上手_16x9.png
-    ├── publish-package.json
-    └── 公众号文章/
+creator-studio/10-active/YYYY-MM-DD_可读标题/
+├── project.yml
+├── brief.md
+├── evidence.md
+├── mother-content.md
+├── channels/video/script.md
+├── channels/wechat/draft.md
+├── channels/xiaohongshu/draft.md
+├── channels/blog/draft.md
+├── assets/refs.yml
+└── review.md
 ```
 
-插件只把工程绑定、手写发布标记、同步到的播放数据和生成任务等工作台状态存进 `~/.dsh-oil-creator/overlay.json`，不会把正文复制一份藏起来。
+Creator Studio 保存创作正文和明确状态；Muzi Atlas 始终只读。Oil 的本地媒体 overlay 独立保存在 `~/.dsh-muzi-creator/overlay.json`，不会写入 Atlas。
 
 ## 一条片子如何向前推进
 

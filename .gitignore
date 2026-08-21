@@ -3,3 +3,4 @@ lib
 .DS_Store
 assets/readme/hero.png
 assets/readme/source/
+.dsh-pack*/

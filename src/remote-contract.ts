@@ -26,8 +26,24 @@ import {
   videoPlaybackResultSchema,
   articleMediaResultSchema,
 } from "./schemas.ts";
+import {
+  knowledgeGetRequestSchema,
+  knowledgePageSchema,
+  knowledgeSearchRequestSchema,
+  knowledgeSearchResultSchema,
+  knowledgeStatusSchema,
+  muziArchiveRequestSchema,
+  muziDocumentSaveRequestSchema,
+  muziProjectCreateRequestSchema,
+  muziProjectDetailSchema,
+  muziProjectGetRequestSchema,
+  muziProjectListRequestSchema,
+  muziProjectListResultSchema,
+  muziProjectStatusRequestSchema,
+  muziPublicationSetRequestSchema,
+} from "./muziSchemas.ts";
 
-export const PACKAGE_NAME = "dsh-oil-creator";
+export const PACKAGE_NAME = "dsh-muzi-creator";
 export const REMOTE_NAMESPACE = "oilCreator";
 
 const emptyObjectSchema = z.object({});
@@ -92,4 +108,14 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("startSubtitleBurn", idRequestSchema, contentDetailSchema),
   invocation("startSubtitleGenerate", idRequestSchema, contentDetailSchema),
   invocation("startCoverGenerate", idRequestSchema, contentDetailSchema),
+  invocation("listMuziProjects", muziProjectListRequestSchema, muziProjectListResultSchema),
+  invocation("getMuziProject", muziProjectGetRequestSchema, muziProjectDetailSchema),
+  invocation("createMuziProject", muziProjectCreateRequestSchema, muziProjectDetailSchema),
+  invocation("saveMuziDocument", muziDocumentSaveRequestSchema, muziProjectDetailSchema),
+  invocation("setMuziProjectStatus", muziProjectStatusRequestSchema, muziProjectDetailSchema),
+  invocation("setMuziPublication", muziPublicationSetRequestSchema, muziProjectDetailSchema),
+  invocation("archiveMuziProject", muziArchiveRequestSchema, muziProjectDetailSchema),
+  invocation("getKnowledgeStatus", emptyObjectSchema, knowledgeStatusSchema),
+  invocation("searchKnowledge", knowledgeSearchRequestSchema, knowledgeSearchResultSchema),
+  invocation("getKnowledgePage", knowledgeGetRequestSchema, knowledgePageSchema),
 ];

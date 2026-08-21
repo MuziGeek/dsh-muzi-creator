@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "tsdown";
 
-const PLUGIN_ID = "dsh-oil-creator";
-const CSS_PREFIX = "\0dsh-oil-creator-css:";
+const PLUGIN_ID = "dsh-muzi-creator";
+const CSS_PREFIX = "\0dsh-muzi-creator-css:";
 const CSS_SUFFIX = ".mjs";
 const CLIENT_EXTERNALS = [
   "react",
@@ -23,7 +23,7 @@ const CLIENT_EXTERNALS = [
 
 function inlineCssPlugin() {
   return {
-    name: "dsh-oil-creator-inline-css",
+    name: "dsh-muzi-creator-inline-css",
     resolveId(source: string, importer?: string) {
       if (!source.endsWith(".css")) return null;
       const file =
