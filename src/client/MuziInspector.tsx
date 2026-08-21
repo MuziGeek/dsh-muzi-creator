@@ -11,6 +11,7 @@ import type {
   MuziPublicationStatus,
   MuziPublishTarget,
 } from "../muziTypes.ts";
+import type { BurnStatus, WorkflowStage } from "../types.ts";
 import type { CreatorViewFace, MuziViewFace } from "./face.ts";
 import {
   applyConversationInset,
@@ -37,10 +38,63 @@ const TARGETS: Array<{ key: MuziPublishTarget; label: string }> = [
   { key: "xiaohongshu", label: "小红书" },
   { key: "blog", label: "博客" },
 ];
-const STAGES: MuziProjectStage[] = ["idea", "research", "mother_draft", "adaptation", "review", "ready"];
-const DOC_STATUSES: MuziDocumentStatus[] = ["not_started", "draft", "review", "ready"];
-const PUB_STATUSES: MuziPublicationStatus[] = ["unpublished", "platform_draft", "published"];
+const STAGE_LABELS: Record<MuziProjectStage, string> = {
+  idea: "灵感",
+  research: "研究中",
+  mother_draft: "母内容草稿",
+  adaptation: "渠道改编",
+  review: "审阅中",
+  ready: "已就绪",
+  archived: "已归档",
+};
+const DOCUMENT_STATUS_LABELS: Record<MuziDocumentStatus, string> = {
+  not_started: "未开始",
+  draft: "草稿",
+  review: "审阅中",
+  ready: "已就绪",
+};
+const PUBLICATION_STATUS_LABELS: Record<MuziPublicationStatus, string> = {
+  unpublished: "未发布",
+  platform_draft: "平台草稿",
+  published: "已发布",
+};
+const WORKFLOW_LABELS: Record<WorkflowStage, string> = {
+  idle: "未开始",
+  record: "录制中",
+  cut: "剪辑中",
+  finish: "制作完成",
+  publish: "待发布",
+  live: "已上线",
+};
+const JOB_STATUS_LABELS: Record<BurnStatus, string> = {
+  idle: "未开始",
+  running: "处理中",
+  done: "已完成",
+  error: "处理失败",
+};
+const KNOWLEDGE_CATEGORY_LABELS: Record<string, string> = {
+  entities: "实体",
+  topics: "主题",
+  sources: "来源",
+  comparisons: "比较",
+  synthesis: "综合",
+  queries: "问题",
+};
 type Tab = "overview" | MuziDocumentKey | "evidence" | "production";
+
+type StatusTone = "neutral" | "working" | "warning" | "success" | "error";
+
+function statusTone(status: string): StatusTone {
+  if (status === "error") return "error";
+  if (status === "review") return "warning";
+  if (["ready", "published", "done", "finish", "live"].includes(status)) return "success";
+  if (["research", "mother_draft", "adaptation", "draft", "platform_draft", "record", "cut", "running"].includes(status)) return "working";
+  return "neutral";
+}
+
+function StatusBadge({ status, label }: { status: string; label: string }) {
+  return <span className={`muziStatusBadge ${statusTone(status)}`}>{label}</span>;
+}
 
 export type MuziInspectorProps = PropsRuntime<"shell.overlay"> & {
   muziFace: MuziViewFace;
@@ -58,9 +112,9 @@ function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: 
       <div className="muziInspectorHeader">
         <div>
           <h2>{page.title}</h2>
-          <p>{page.category} · SHA-256 {page.sha256.slice(0, 12)}…</p>
+          <p>{KNOWLEDGE_CATEGORY_LABELS[page.category] ?? "知识"} · 内容指纹 {page.sha256.slice(0, 12)}…</p>
         </div>
-        <button type="button" className="primary" onClick={onDiscuss}>与 AI 讨论</button>
+        <button type="button" className="primary" onClick={onDiscuss}>与智能助手讨论</button>
       </div>
       <div className="muziMarkdown"><MarkdownText text={page.markdown} /></div>
     </>
@@ -187,22 +241,34 @@ export function MuziInspector({ muziFace, oilFace, closeDetails }: MuziInspector
           <div className="muziInspectorBody">
             {tab === "overview" && (
               <div className="muziOverview">
-                <section>
-                  <div className="sectionHeading"><h3>创作进度</h3><select value={project.stage} onChange={(event) => {
-                    void muziFace.setProjectStatus(project.id, event.target.value as MuziProjectStage, project.revision).then(setProject, (cause: unknown) => { setNotice(cause instanceof Error ? cause.message : "更新失败"); });
-                  }}>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+                <div className="muziProjectSummary" aria-label="项目概况">
+                  <div><span>当前阶段</span><StatusBadge status={project.stage} label={STAGE_LABELS[project.stage]} /></div>
+                  <div><span>主稿</span><strong>{project.primaryDocument === "mother" ? "母内容" : "视频稿"}</strong></div>
+                  <div><span>当前修订</span><strong>第 {project.revision} 版</strong></div>
+                </div>
+                <section className="muziStatusSection">
+                  <div className="sectionHeading">
+                    <div><h3>稿件状态</h3><p>状态依据创作目录中的记录只读显示</p></div>
+                  </div>
                   <div className="statusGrid">{DOCUMENTS.map((item) => {
                     const state = project.documents[item.key];
-                    return <button key={item.key} type="button" onClick={() => { setTab(item.key); }}><strong>{item.label}</strong><span>{state.status}</span>{state.stale && <em>来源已更新，待重新加工</em>}</button>;
+                    return <button key={item.key} type="button" onClick={() => { setTab(item.key); }}>
+                      <span className="statusRow"><strong>{item.label}</strong><StatusBadge status={state.status} label={DOCUMENT_STATUS_LABELS[state.status]} /></span>
+                      {state.stale ? <em>来源已更新，待重新加工</em> : <small>打开查看内容</small>}
+                    </button>;
                   })}</div>
                 </section>
-                <section>
-                  <h3>发布目标</h3>
+                <section className="muziStatusSection">
+                  <div className="sectionHeading"><div><h3>发布状态</h3><p>仅展示已记录的平台事实</p></div></div>
                   <div className="publicationList">{TARGETS.map((item) => {
                     const state = project.publications[item.key];
-                    return <label key={item.key}><span>{item.label}</span><select value={state.status} onChange={(event) => {
-                      void muziFace.setPublication({ id: project.id, target: item.key, status: event.target.value as MuziPublicationStatus, expectedRevision: project.revision, source: "manual", ...(state.url === null ? {} : { url: state.url }), ...(state.publishedAt === null ? {} : { publishedAt: state.publishedAt }) }).then(setProject, (cause: unknown) => { setNotice(cause instanceof Error ? cause.message : "更新失败"); });
-                    }}>{PUB_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>;
+                    return <div className="publicationRow" key={item.key}>
+                      <span>{item.label}</span>
+                      <div>
+                        <StatusBadge status={state.status} label={PUBLICATION_STATUS_LABELS[state.status]} />
+                        {state.source !== null && <small>{state.source === "manual" ? "人工记录" : "同步记录"}</small>}
+                      </div>
+                    </div>;
                   })}</div>
                 </section>
               </div>
@@ -210,18 +276,20 @@ export function MuziInspector({ muziFace, oilFace, closeDetails }: MuziInspector
             {DOCUMENTS.some((item) => item.key === tab) && (
               <div className="muziEditor">
                 <div className="editorBar">
-                  <select value={project.documents[tab as MuziDocumentKey].status} onChange={(event) => {
-                    const document = tab as MuziDocumentKey;
-                    setProject({ ...project, documents: { ...project.documents, [document]: { ...project.documents[document], status: event.target.value as MuziDocumentStatus } } });
-                    setDirty(true);
-                  }}>{DOC_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select>
+                  <div className="editorStatus">
+                    <span>当前状态</span>
+                    <StatusBadge
+                      status={project.documents[tab as MuziDocumentKey].status}
+                      label={DOCUMENT_STATUS_LABELS[project.documents[tab as MuziDocumentKey].status]}
+                    />
+                  </div>
                   {project.documents[tab as MuziDocumentKey].stale && <span className="stale">来源已更新，待重新加工</span>}
                   <button type="button" className="primary" disabled={!dirty || saving} onClick={() => { void save(); }}>{saving ? "保存中…" : "保存"}</button>
                 </div>
                 <textarea value={draft} placeholder={`在这里编辑${DOCUMENTS.find((item) => item.key === tab)?.label ?? "内容"}`} onChange={(event) => { setDraft(event.target.value); setDirty(true); }} />
               </div>
             )}
-            {tab === "evidence" && <div className="evidenceView"><MarkdownText text={`${project.brief}\n\n${project.evidence}`} /><h3>Atlas 引用</h3>{project.atlasReferences.length === 0 ? <p>尚未引用正式 Wiki。</p> : <ul>{project.atlasReferences.map((ref) => <li key={ref.locator}><strong>{ref.title}</strong><code>{ref.locator}</code><small>{ref.sha256.slice(0, 12)}…</small></li>)}</ul>}</div>}
+            {tab === "evidence" && <div className="evidenceView"><MarkdownText text={`${project.brief}\n\n${project.evidence}`} /><h3>知识引用</h3>{project.atlasReferences.length === 0 ? <p>尚未引用正式知识页面。</p> : <ul>{project.atlasReferences.map((ref) => <li key={ref.locator}><strong>{ref.title}</strong><code>{ref.locator}</code><small>内容指纹 {ref.sha256.slice(0, 12)}…</small></li>)}</ul>}</div>}
             {tab === "production" && <ProductionView folderName={project.folderName} oilFace={oilFace} />}
           </div>
         </>
@@ -240,5 +308,5 @@ function ProductionView({ folderName, oilFace }: { folderName: string; oilFace: 
   }, [folderName]);
   if (error !== null) return <div className="muziInspectorEmpty">{error}</div>;
   if (detail === null) return <div className="muziInspectorEmpty">正在读取视频制作信息…</div>;
-  return <div className="productionView"><h3>Oil 本地视频制作</h3><dl><dt>阶段</dt><dd>{detail.workflow}</dd><dt>原片</dt><dd>{detail.videoRaw === undefined ? "不可用" : "已存在"}</dd><dt>字幕成片</dt><dd>{detail.videoSubtitled === undefined ? "不可用" : "已存在"}</dd><dt>字幕</dt><dd>{detail.subtitleJob.status}</dd><dt>封面</dt><dd>{detail.coverJob.status}</dd><dt>Screen Studio</dt><dd>{detail.studioPath === undefined ? "未绑定" : "已绑定"}</dd></dl></div>;
+  return <div className="productionView"><h3>本地视频制作</h3><dl><dt>制作阶段</dt><dd>{WORKFLOW_LABELS[detail.workflow]}</dd><dt>原始视频</dt><dd>{detail.videoRaw === undefined ? "不可用" : "已存在"}</dd><dt>字幕成片</dt><dd>{detail.videoSubtitled === undefined ? "不可用" : "已存在"}</dd><dt>字幕任务</dt><dd>{JOB_STATUS_LABELS[detail.subtitleJob.status]}</dd><dt>封面任务</dt><dd>{JOB_STATUS_LABELS[detail.coverJob.status]}</dd><dt>录屏工程</dt><dd>{detail.studioPath === undefined ? "未绑定" : "已绑定"}</dd></dl></div>;
 }

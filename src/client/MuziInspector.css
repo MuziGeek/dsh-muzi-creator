@@ -12,44 +12,63 @@
   box-sizing: border-box;
 }
 
-[data-plugin="dsh-oil-creator"][data-surface="muzi-inspector"].open { transition: width var(--ds-transition-duration-slow) var(--ds-ease-in-out); }
 [data-plugin="dsh-oil-creator"] .muziInspectorTop { display: flex; height: 52px; flex: none; align-items: center; justify-content: space-between; padding: 0 16px; }
-[data-plugin="dsh-oil-creator"] .muziInspectorTitle { overflow: hidden; font-size: 14px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .muziInspectorTitle { overflow: hidden; font-size: 15px; font-weight: 600; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
 [data-plugin="dsh-oil-creator"] .muziInspectorTop button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
 [data-plugin="dsh-oil-creator"] .muziInspectorTop button:hover { background: var(--dsw-alias-interactive-bg-hover); }
 [data-plugin="dsh-oil-creator"] .muziTabs { display: flex; flex: none; gap: 16px; overflow-x: auto; padding: 0 16px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 [data-plugin="dsh-oil-creator"] .muziTabs button { flex: none; padding: 0 0 10px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--dsw-alias-label-tertiary); font-size: 12px; cursor: pointer; }
 [data-plugin="dsh-oil-creator"] .muziTabs button.active { border-bottom-color: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-state-business-primary); }
-[data-plugin="dsh-oil-creator"] .muziInspectorBody { flex: 1; min-height: 0; overflow: auto; padding: 18px; }
+[data-plugin="dsh-oil-creator"] .muziInspectorBody { flex: 1; min-height: 0; overflow: auto; padding: 20px; }
 [data-plugin="dsh-oil-creator"] .muziInspectorHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 4px 20px 16px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 [data-plugin="dsh-oil-creator"] .muziInspectorHeader h2 { margin: 0 0 4px; font-size: 18px; }
 [data-plugin="dsh-oil-creator"] .muziInspectorHeader p { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; }
 [data-plugin="dsh-oil-creator"] .muziMarkdown { flex: 1; min-height: 0; overflow: auto; padding: 22px; }
 [data-plugin="dsh-oil-creator"] button.primary { padding: 7px 12px; border: 0; border-radius: 8px; background: var(--dsw-alias-state-business-primary); color: var(--dsw-specific-button-label-primary); cursor: pointer; }
 [data-plugin="dsh-oil-creator"] button.primary:disabled { opacity: .45; cursor: default; }
-[data-plugin="dsh-oil-creator"] .muziOverview { display: grid; gap: 22px; }
-[data-plugin="dsh-oil-creator"] .muziOverview h3, [data-plugin="dsh-oil-creator"] .evidenceView h3, [data-plugin="dsh-oil-creator"] .productionView h3 { margin: 0 0 10px; font-size: 13px; }
-[data-plugin="dsh-oil-creator"] .sectionHeading { display: flex; justify-content: space-between; align-items: center; }
-[data-plugin="dsh-oil-creator"] select { border: 1px solid var(--dsw-alias-border-l1); border-radius: 7px; background: var(--dsw-alias-bg-base); color: inherit; padding: 5px 7px; }
-[data-plugin="dsh-oil-creator"] .statusGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-[data-plugin="dsh-oil-creator"] .statusGrid button { display: grid; gap: 5px; min-height: 72px; padding: 12px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 10px; background: var(--dsw-alias-bg-base); color: inherit; text-align: left; cursor: pointer; }
-[data-plugin="dsh-oil-creator"] .statusGrid span { color: var(--dsw-alias-label-secondary); font-size: 11px; }
-[data-plugin="dsh-oil-creator"] .statusGrid em, [data-plugin="dsh-oil-creator"] .stale { color: var(--dsw-alias-state-warning); font-size: 11px; font-style: normal; }
+[data-plugin="dsh-oil-creator"] .muziOverview { display: grid; gap: 28px; max-width: 720px; margin: 0 auto; }
+[data-plugin="dsh-oil-creator"] .muziOverview h3, [data-plugin="dsh-oil-creator"] .evidenceView h3, [data-plugin="dsh-oil-creator"] .productionView h3 { margin: 0; font-size: 14px; font-weight: 600; }
+[data-plugin="dsh-oil-creator"] .muziProjectSummary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-border-l1); }
+[data-plugin="dsh-oil-creator"] .muziProjectSummary > div { display: grid; align-content: center; gap: 8px; min-height: 76px; padding: 12px 14px; background: var(--dsw-alias-bg-base); }
+[data-plugin="dsh-oil-creator"] .muziProjectSummary > div > span:first-child { color: var(--dsw-alias-label-tertiary); font-size: 11px; }
+[data-plugin="dsh-oil-creator"] .muziProjectSummary strong { font-size: 13px; font-weight: 550; }
+[data-plugin="dsh-oil-creator"] .muziStatusSection { display: grid; gap: 12px; }
+[data-plugin="dsh-oil-creator"] .sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; }
+[data-plugin="dsh-oil-creator"] .sectionHeading p { margin: 5px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; }
+[data-plugin="dsh-oil-creator"] .statusGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--dsw-alias-border-l1); }
+[data-plugin="dsh-oil-creator"] .statusGrid button { display: grid; gap: 7px; min-height: 72px; padding: 13px 10px; border: 0; border-bottom: 1px solid var(--dsw-alias-border-l1); background: transparent; color: inherit; text-align: left; cursor: pointer; }
+[data-plugin="dsh-oil-creator"] .statusGrid button:nth-child(odd) { padding-right: 16px; }
+[data-plugin="dsh-oil-creator"] .statusGrid button:nth-child(even) { padding-left: 16px; border-left: 1px solid var(--dsw-alias-border-l1); }
+[data-plugin="dsh-oil-creator"] .statusGrid button:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .statusGrid button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
+[data-plugin="dsh-oil-creator"] .statusRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+[data-plugin="dsh-oil-creator"] .statusGrid strong { font-size: 12px; font-weight: 550; }
+[data-plugin="dsh-oil-creator"] .statusGrid small { color: var(--dsw-alias-label-tertiary); font-size: 10px; }
+[data-plugin="dsh-oil-creator"] .statusGrid em, [data-plugin="dsh-oil-creator"] .stale { color: var(--dsw-alias-state-warn-label); font-size: 11px; font-style: normal; }
+[data-plugin="dsh-oil-creator"] .muziStatusBadge { display: inline-flex; align-items: center; width: fit-content; min-height: 22px; padding: 0 8px; border-radius: 999px; background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); font-size: 10px; font-weight: 550; line-height: 1; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .muziStatusBadge.working { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent); color: var(--dsw-alias-state-business-primary); }
+[data-plugin="dsh-oil-creator"] .muziStatusBadge.warning { background: var(--dsw-alias-state-warn-tertiary); color: var(--dsw-alias-state-warn-label); }
+[data-plugin="dsh-oil-creator"] .muziStatusBadge.success { background: var(--dsw-alias-state-success-tertiary); color: var(--dsw-alias-state-success-primary); }
+[data-plugin="dsh-oil-creator"] .muziStatusBadge.error { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, transparent); color: var(--dsw-alias-state-error-primary); }
 [data-plugin="dsh-oil-creator"] .publicationList { border-top: 1px solid var(--dsw-alias-border-l1); }
-[data-plugin="dsh-oil-creator"] .publicationList label { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--dsw-alias-border-l1); font-size: 12px; }
+[data-plugin="dsh-oil-creator"] .publicationRow { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 7px 2px; border-bottom: 1px solid var(--dsw-alias-border-l1); font-size: 12px; }
+[data-plugin="dsh-oil-creator"] .publicationRow > div { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+[data-plugin="dsh-oil-creator"] .publicationRow small { color: var(--dsw-alias-label-tertiary); font-size: 10px; }
 [data-plugin="dsh-oil-creator"] .muziEditor { display: flex; height: 100%; min-height: 360px; flex-direction: column; gap: 10px; }
-[data-plugin="dsh-oil-creator"] .editorBar { display: flex; align-items: center; gap: 10px; }
+[data-plugin="dsh-oil-creator"] .editorBar { display: flex; min-height: 34px; align-items: center; gap: 10px; }
+[data-plugin="dsh-oil-creator"] .editorStatus { display: flex; align-items: center; gap: 8px; color: var(--dsw-alias-label-tertiary); font-size: 11px; }
 [data-plugin="dsh-oil-creator"] .editorBar .primary { margin-left: auto; }
 [data-plugin="dsh-oil-creator"] .muziEditor textarea { flex: 1; min-height: 320px; resize: none; padding: 16px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 10px; background: var(--dsw-alias-bg-base); color: inherit; font: var(--dsw-font-markdown-base); line-height: 1.7; outline: none; }
 [data-plugin="dsh-oil-creator"] .muziEditor textarea:focus { border-color: var(--dsw-alias-state-business-primary); }
 [data-plugin="dsh-oil-creator"] .evidenceView li { display: grid; gap: 3px; margin: 10px 0; }
 [data-plugin="dsh-oil-creator"] .evidenceView code, [data-plugin="dsh-oil-creator"] .evidenceView small { color: var(--dsw-alias-label-tertiary); font-size: 10px; word-break: break-all; }
-[data-plugin="dsh-oil-creator"] .productionView dl { display: grid; grid-template-columns: 110px 1fr; gap: 1px; overflow: hidden; border: 1px solid var(--dsw-alias-border-l1); border-radius: 10px; background: var(--dsw-alias-border-l1); }
+[data-plugin="dsh-oil-creator"] .productionView { max-width: 680px; margin: 0 auto; }
+[data-plugin="dsh-oil-creator"] .productionView dl { display: grid; grid-template-columns: 110px 1fr; gap: 1px; overflow: hidden; margin-top: 12px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-border-l1); }
 [data-plugin="dsh-oil-creator"] .productionView dt, [data-plugin="dsh-oil-creator"] .productionView dd { margin: 0; padding: 9px 11px; background: var(--dsw-alias-bg-base); font-size: 12px; }
 [data-plugin="dsh-oil-creator"] .muziNotice { position: absolute; right: 16px; bottom: 16px; left: 16px; display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 9px; background: var(--dsw-alias-bg-base); box-shadow: var(--dsw-shadow-l2); font-size: 11px; }
 [data-plugin="dsh-oil-creator"] .muziNotice button { border: 0; background: transparent; color: inherit; }
 [data-plugin="dsh-oil-creator"] .muziInspectorEmpty { padding: 40px 18px; color: var(--dsw-alias-label-tertiary); text-align: center; }
-[data-plugin="dsh-oil-creator"] .muziInspectorEmpty.error { color: var(--dsw-alias-state-error); }
+[data-plugin="dsh-oil-creator"] .muziInspectorEmpty.error { color: var(--dsw-alias-state-error-primary); }
 [data-plugin="dsh-oil-creator"] .muziResize { position: absolute; top: 0; right: -4px; bottom: 0; width: 8px; cursor: col-resize; }
 
 @media (max-width: 880px) {
@@ -57,6 +76,10 @@
   [data-plugin="dsh-oil-creator"] .muziResize { display: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  [data-plugin="dsh-oil-creator"][data-surface="muzi-inspector"].open { transition: none; }
+@media (max-width: 560px) {
+  [data-plugin="dsh-oil-creator"] .muziInspectorBody { padding: 16px; }
+  [data-plugin="dsh-oil-creator"] .muziProjectSummary { grid-template-columns: 1fr; }
+  [data-plugin="dsh-oil-creator"] .statusGrid { grid-template-columns: 1fr; }
+  [data-plugin="dsh-oil-creator"] .statusGrid button:nth-child(even) { padding-left: 10px; border-left: 0; }
+  [data-plugin="dsh-oil-creator"] .statusGrid button:nth-child(odd) { padding-right: 10px; }
 }

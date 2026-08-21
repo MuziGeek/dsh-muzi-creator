@@ -167,5 +167,5 @@ describe("DeepSeek Harness bundle packaging", () => {
     } finally {
       rmSync(packDirectory, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });

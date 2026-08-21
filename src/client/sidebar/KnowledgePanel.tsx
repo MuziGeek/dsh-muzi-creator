@@ -12,6 +12,14 @@ function knowledgeSelection(locator: string): string {
 }
 
 const KNOWLEDGE_CATEGORIES = ["entities", "topics", "sources", "comparisons", "synthesis", "queries"] as const;
+const KNOWLEDGE_CATEGORY_LABELS: Record<(typeof KNOWLEDGE_CATEGORIES)[number], string> = {
+  entities: "实体",
+  topics: "主题",
+  sources: "来源",
+  comparisons: "比较",
+  synthesis: "综合",
+  queries: "问题",
+};
 
 export function KnowledgePanel({ face, onAddDirectory }: { face: MuziViewFace; onAddDirectory: () => void }) {
   const [query, setQuery] = useState("");
@@ -53,7 +61,7 @@ export function KnowledgePanel({ face, onAddDirectory }: { face: MuziViewFace; o
             <span>展示目录</span>
             <select value={category} onChange={(event) => { setCategory(event.target.value); }}>
               <option value="">全部目录</option>
-              {KNOWLEDGE_CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}
+              {KNOWLEDGE_CATEGORIES.map((item) => <option key={item} value={item}>{KNOWLEDGE_CATEGORY_LABELS[item]}</option>)}
             </select>
           </label>
         )}
@@ -74,7 +82,7 @@ export function KnowledgePanel({ face, onAddDirectory }: { face: MuziViewFace; o
             <span className="muziListIcon knowledge"><IconFolderOpenOutline16 size={18} /></span>
             <span className="muziListBody">
               <span className="muziListTitle">{item.title}</span>
-              <span className="muziListMeta">{item.category}</span>
+              <span className="muziListMeta">{KNOWLEDGE_CATEGORY_LABELS[item.category as keyof typeof KNOWLEDGE_CATEGORY_LABELS] ?? "知识"}</span>
               <span className="muziListSummary">{item.excerpt}</span>
             </span>
           </button>

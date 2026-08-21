@@ -8,6 +8,7 @@ import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
 import "./MuziPanels.css";
 
 const DOC_LABELS = { mother: "母内容", video: "视频稿", wechat: "公众号", xiaohongshu: "小红书", blog: "博客" } as const;
+const STAGE_LABELS = { idea: "灵感", research: "研究中", mother_draft: "母内容草稿", adaptation: "渠道改编", review: "审阅中", ready: "已就绪", archived: "已归档" } as const;
 
 function statusCount(project: Awaited<ReturnType<MuziViewFace["listProjects"]>>["items"][number]): string {
   const ready = Object.values(project.documents).filter((item) => item.status === "ready").length;
@@ -90,7 +91,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
               <span className="muziListMeta">
                 <span>{DOC_LABELS[item.primaryDocument]}</span>
                 <span>·</span>
-                <span>{item.stage}</span>
+                <span>{STAGE_LABELS[item.stage]}</span>
               </span>
               <span className="muziListSummary">{statusCount(item)}</span>
             </span>
