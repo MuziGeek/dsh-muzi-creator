@@ -6,40 +6,180 @@
   color: var(--dsw-alias-label-primary);
 }
 
-[data-plugin="dsh-oil-creator"] .muziPanelToolbar {
+[data-plugin="dsh-oil-creator"] .muziSectionHeader {
+  position: relative;
+  flex: none;
   display: flex;
-  gap: 6px;
-  padding: 6px 8px 10px 2px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 36px;
+  margin: 2px 4px 4px 0;
+  padding-left: 4px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  color: var(--dsw-alias-label-tertiary);
 }
 
-[data-plugin="dsh-oil-creator"] .muziPanelToolbar input {
-  flex: 1;
+[data-plugin="dsh-oil-creator"] .muziSectionLabel {
+  flex: none;
+  max-width: 45%;
   min-width: 0;
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-base);
-  color: inherit;
-  outline: none;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 20px;
+  transition: opacity 120ms var(--ds-ease-in-out), transform 180ms var(--ds-ease-in-out);
 }
 
-[data-plugin="dsh-oil-creator"] .muziPanelToolbar input:focus {
-  border-color: var(--dsw-alias-state-business-primary);
+[data-plugin="dsh-oil-creator"] .muziSectionLabel.hidden {
+  max-width: 0;
+  display: none;
+  opacity: 0;
+  transform: translateX(-4px);
 }
 
-[data-plugin="dsh-oil-creator"] .muziPanelToolbar button {
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
+[data-plugin="dsh-oil-creator"] .muziSearchSlot {
+  flex: 1;
+  max-width: 28px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+[data-plugin="dsh-oil-creator"] .muziSearchSlot.expanded { max-width: 100%; }
+
+[data-plugin="dsh-oil-creator"] .muziSearch {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: text;
   color: var(--dsw-alias-label-secondary);
+  transition: border-color 180ms var(--ds-ease-in-out), border-radius 180ms var(--ds-ease-in-out);
+}
+
+[data-plugin="dsh-oil-creator"] .muziSearch.expanded {
+  height: 30px;
+  border-color: var(--dsw-alias-border-l2);
+  border-radius: 10px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziSearchButton,
+[data-plugin="dsh-oil-creator"] .muziHeaderIcon,
+[data-plugin="dsh-oil-creator"] .muziClearButton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
 }
 
-[data-plugin="dsh-oil-creator"] .muziPanelToolbar button:hover {
+[data-plugin="dsh-oil-creator"] .muziSearchButton:hover,
+[data-plugin="dsh-oil-creator"] .muziHeaderIcon:hover,
+[data-plugin="dsh-oil-creator"] .muziClearButton:hover {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+[data-plugin="dsh-oil-creator"] .muziSearchInput {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  height: 30px;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  opacity: 0;
+  pointer-events: none;
+  font-size: 13px;
+}
+
+[data-plugin="dsh-oil-creator"] .muziSearch.expanded .muziSearchInput { opacity: 1; pointer-events: auto; }
+[data-plugin="dsh-oil-creator"] .muziSearchInput::placeholder { color: var(--dsw-alias-label-tertiary); }
+[data-plugin="dsh-oil-creator"] .muziClearButton { width: 24px; height: 24px; }
+
+[data-plugin="dsh-oil-creator"] .muziHeaderActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 64px;
+  opacity: 1;
+  overflow: visible;
+  transition: opacity 120ms var(--ds-ease-in-out), transform 180ms var(--ds-ease-in-out);
+}
+
+[data-plugin="dsh-oil-creator"] .muziHeaderActions.hidden {
+  max-width: 0;
+  display: none;
+  opacity: 0;
+  transform: translateX(4px);
+  pointer-events: none;
+}
+
+[data-plugin="dsh-oil-creator"] .muziViewRoot { position: relative; }
+
+[data-plugin="dsh-oil-creator"] .muziViewMenu {
+  position: absolute;
+  z-index: 20;
+  top: 32px;
+  right: 0;
+  display: grid;
+  min-width: 184px;
+  padding: 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-base));
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+[data-plugin="dsh-oil-creator"] .muziViewMenuItem,
+[data-plugin="dsh-oil-creator"] .muziViewToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+[data-plugin="dsh-oil-creator"] .muziViewMenuItem:hover,
+[data-plugin="dsh-oil-creator"] .muziViewToggle:hover { background: var(--dsw-alias-interactive-bg-hover); }
+
+[data-plugin="dsh-oil-creator"] .muziViewSelect {
+  display: grid;
+  gap: 6px;
+  padding: 6px 8px 8px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+[data-plugin="dsh-oil-creator"] .muziViewSelect select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
 }
 
 [data-plugin="dsh-oil-creator"] .knowledgeBaseline {
@@ -67,8 +207,8 @@
 [data-plugin="dsh-oil-creator"] .muziListRow {
   display: flex;
   width: 100%;
-  gap: 10px;
-  padding: 10px 8px;
+  gap: 8px;
+  padding: 9px 8px;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -78,28 +218,40 @@
 }
 
 [data-plugin="dsh-oil-creator"] .muziListRow:hover,
-[data-plugin="dsh-oil-creator"] .muziListRow.selected {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
+[data-plugin="dsh-oil-creator"] .muziListRow.selected { background: var(--dsw-alias-interactive-bg-hover); }
 
 [data-plugin="dsh-oil-creator"] .muziListIcon {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 42px;
+  width: 28px;
+  height: 34px;
   flex: none;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 0;
   border-radius: 7px;
-  background: var(--dsw-alias-bg-base);
+  background: transparent;
   color: var(--dsw-alias-state-business-primary);
-  font-size: 12px;
-  font-weight: 650;
 }
 
-[data-plugin="dsh-oil-creator"] .muziListIcon.knowledge { border-radius: 50%; height: 34px; }
+[data-plugin="dsh-oil-creator"] .muziListIcon.knowledge { height: 34px; }
 [data-plugin="dsh-oil-creator"] .muziListBody { display: grid; min-width: 0; gap: 3px; }
 [data-plugin="dsh-oil-creator"] .muziListTitle { overflow: hidden; font-size: 13px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
 [data-plugin="dsh-oil-creator"] .muziListMeta { display: flex; gap: 4px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 [data-plugin="dsh-oil-creator"] .muziListSummary { overflow: hidden; font-size: 11px; color: var(--dsw-alias-label-tertiary); text-overflow: ellipsis; white-space: nowrap; }
 [data-plugin="dsh-oil-creator"] .muziEmpty { padding: 28px 12px; color: var(--dsw-alias-label-tertiary); text-align: center; font-size: 12px; }
 [data-plugin="dsh-oil-creator"] .muziEmpty.error { color: var(--dsw-alias-state-error); }
+
+[data-plugin="dsh-oil-creator"] .muziHeaderIcon:focus-visible,
+[data-plugin="dsh-oil-creator"] .muziSearchButton:focus-visible,
+[data-plugin="dsh-oil-creator"] .muziClearButton:focus-visible,
+[data-plugin="dsh-oil-creator"] .muziViewMenuItem:focus-visible,
+[data-plugin="dsh-oil-creator"] .muziListRow:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-plugin="dsh-oil-creator"] .muziSectionLabel,
+  [data-plugin="dsh-oil-creator"] .muziSearchSlot,
+  [data-plugin="dsh-oil-creator"] .muziSearch,
+  [data-plugin="dsh-oil-creator"] .muziHeaderActions { transition: none; }
+}

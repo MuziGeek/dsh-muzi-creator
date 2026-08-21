@@ -186,23 +186,26 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 0 2px 8px;
+  margin: 0 2px 12px;
 }
 
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] .tabList {
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] .tabButton {
-  flex: 1;
+  flex: none;
+  width: 100%;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  height: 28px;
+  justify-content: flex-start;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
   border: none;
   border-radius: 8px;
   background: transparent;

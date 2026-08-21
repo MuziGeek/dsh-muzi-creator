@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   IconBrowseOutline16,
+  IconFolderClose16,
   IconNewChatOutline16,
   IconPanelLeftOutline16,
   Tooltip,
@@ -184,7 +185,7 @@ export function OilSidebarRoot({
 
       {wide && (
         <div className="tabRow">
-          <div className="tabList" role="tablist" aria-label={tabLabels.sessions}>
+          <div className="tabList" role="tablist" aria-orientation="vertical" aria-label="Muzi Creator 导航">
             <button
               type="button"
               role="tab"
@@ -212,7 +213,7 @@ export function OilSidebarRoot({
               className={cx("tabButton", sidebarTab === "knowledge" && "active")}
               onClick={() => { chooseTab("knowledge"); }}
             >
-              <IconBrowseOutline16 size={14} />
+              <IconFolderClose16 size={14} />
               {tabLabels.knowledge}
             </button>
           </div>
@@ -247,7 +248,13 @@ export function OilSidebarRoot({
         )}
         {knowledgeMounted && (
           <div className={cx("regionPane", !knowledgeVisible && "hidden")}>
-            <KnowledgePanel face={muziFace} />
+            <KnowledgePanel
+              face={muziFace}
+              onAddDirectory={() => {
+                chooseTab("sessions");
+                startSession();
+              }}
+            />
           </div>
         )}
       </div>

@@ -32,6 +32,8 @@ creator-studio/10-active/YYYY-MM-DD_可读标题/
 
 Creator Studio 保存创作正文和明确状态；Muzi Atlas 始终只读。Oil 的本地媒体 overlay 独立保存在 `~/.dsh-muzi-creator/overlay.json`，不会写入 Atlas。
 
+左侧将“会话 / 内容 / 知识”纵向排列。三个区域使用一致的目录浏览方式：分区标题、折叠搜索、视图选项和新增目录入口；内容目录可直接新建，知识目录入口会切换到会话并交由标准 llm-wiki 流程写入。
+
 ## 一条片子如何向前推进
 
 | 阶段 | AI 与插件可以做什么 | 仍由人确认什么 |

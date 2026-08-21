@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { IconFolderClose16 } from "@deepseek-ai/dsh-client-ui-primitives";
 
 import type { MuziPrimaryDocument } from "../../muziTypes.ts";
 import type { MuziViewFace } from "../face.ts";
 import { bumpLibrary, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
+import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
 import "./MuziPanels.css";
 
 const DOC_LABELS = { mother: "母内容", video: "视频稿", wechat: "公众号", xiaohongshu: "小红书", blog: "博客" } as const;
@@ -14,6 +16,7 @@ function statusCount(project: Awaited<ReturnType<MuziViewFace["listProjects"]>>[
 }
 export function MuziContentPanel({ face }: { face: MuziViewFace }) {
   const [query, setQuery] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [items, setItems] = useState<Awaited<ReturnType<MuziViewFace["listProjects"]>>["items"]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +27,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await face.listProjects(query);
+      const result = await face.listProjects(query, includeArchived);
       setItems(result.items);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "内容读取失败");
@@ -36,7 +39,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 180);
     return () => { window.clearTimeout(timer); };
-  }, [query, epoch]);
+  }, [query, includeArchived, epoch]);
 
   const create = async (): Promise<void> => {
     const title = window.prompt("新内容主题");
@@ -53,15 +56,27 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
 
   return (
     <div className="muziPanel">
-      <div className="muziPanelToolbar">
-        <input aria-label="搜索内容" value={query} placeholder="搜索主题" onChange={(event) => { setQuery(event.target.value); }} />
-        <button type="button" aria-label="刷新内容" onClick={() => { void load(); }}>↻</button>
-        <button type="button" aria-label="新建内容" onClick={() => { void create(); }}>＋</button>
-      </div>
+      <PanelSectionHeader
+        label="内容目录"
+        query={query}
+        searchLabel="搜索内容"
+        searchPlaceholder="搜索内容…"
+        addLabel="新增内容目录"
+        viewLabel="内容视图选项"
+        onQueryChange={setQuery}
+        onAdd={() => { void create(); }}
+        onRefresh={() => { void load(); }}
+        viewContent={(
+          <label className="muziViewToggle">
+            <input type="checkbox" checked={includeArchived} onChange={(event) => { setIncludeArchived(event.target.checked); }} />
+            显示归档目录
+          </label>
+        )}
+      />
       <div className="muziPanelList">
         {loading && items.length === 0 && <div className="muziEmpty">正在读取…</div>}
         {error !== null && <div className="muziEmpty error">{error}</div>}
-        {!loading && error === null && items.length === 0 && <div className="muziEmpty">还没有创作项目，点右上角新建。</div>}
+        {!loading && error === null && items.length === 0 && <div className="muziEmpty">还没有创作目录，使用右上角按钮新建。</div>}
         {items.map((item) => (
           <button
             type="button"
@@ -69,7 +84,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
             className={selectedId === item.id ? "muziListRow selected" : "muziListRow"}
             onClick={() => { setSelectedId(selectedId === item.id ? null : item.id); }}
           >
-            <span className="muziListIcon">文</span>
+            <span className="muziListIcon"><IconFolderClose16 size={18} /></span>
             <span className="muziListBody">
               <span className="muziListTitle">{item.title}</span>
               <span className="muziListMeta">

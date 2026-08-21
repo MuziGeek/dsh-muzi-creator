@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
+import { IconFolderOpenOutline16 } from "@deepseek-ai/dsh-client-ui-primitives";
 
 import type { KnowledgePageSummary, KnowledgeStatus } from "../../muziTypes.ts";
 import type { MuziViewFace } from "../face.ts";
 import { setSelectedContentId } from "../contentSelection.ts";
+import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
 import "./MuziPanels.css";
 
 function knowledgeSelection(locator: string): string {
   return `knowledge:${locator}`;
 }
-export function KnowledgePanel({ face }: { face: MuziViewFace }) {
+
+const KNOWLEDGE_CATEGORIES = ["entities", "topics", "sources", "comparisons", "synthesis", "queries"] as const;
+
+export function KnowledgePanel({ face, onAddDirectory }: { face: MuziViewFace; onAddDirectory: () => void }) {
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string>("");
   const [status, setStatus] = useState<KnowledgeStatus | null>(null);
   const [items, setItems] = useState<KnowledgePageSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +23,7 @@ export function KnowledgePanel({ face }: { face: MuziViewFace }) {
   const load = async (): Promise<void> => {
     setError(null);
     try {
-      const result = await face.searchKnowledge(query);
+      const result = await face.searchKnowledge(query, category === "" ? undefined : category);
       setStatus(result.status);
       setItems(result.items);
     } catch (cause) {
@@ -28,14 +34,30 @@ export function KnowledgePanel({ face }: { face: MuziViewFace }) {
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 180);
     return () => { window.clearTimeout(timer); };
-  }, [query]);
+  }, [query, category]);
 
   return (
     <div className="muziPanel">
-      <div className="muziPanelToolbar">
-        <input aria-label="搜索知识" value={query} placeholder="搜索正式 Wiki" onChange={(event) => { setQuery(event.target.value); }} />
-        <button type="button" aria-label="刷新知识" onClick={() => { void load(); }}>↻</button>
-      </div>
+      <PanelSectionHeader
+        label="知识目录"
+        query={query}
+        searchLabel="搜索知识"
+        searchPlaceholder="搜索正式 Wiki…"
+        addLabel="通过会话新增知识目录"
+        viewLabel="知识视图选项"
+        onQueryChange={setQuery}
+        onAdd={onAddDirectory}
+        onRefresh={() => { void load(); }}
+        viewContent={(
+          <label className="muziViewSelect">
+            <span>展示目录</span>
+            <select value={category} onChange={(event) => { setCategory(event.target.value); }}>
+              <option value="">全部目录</option>
+              {KNOWLEDGE_CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+        )}
+      />
       {status !== null && (
         <div className="knowledgeBaseline">
           <strong>{status.formalPageCount} 篇正式知识</strong>
@@ -49,7 +71,7 @@ export function KnowledgePanel({ face }: { face: MuziViewFace }) {
         {error === null && status?.formalPageCount === 0 && <div className="muziEmpty">当前没有正式 Wiki 页面。</div>}
         {items.map((item) => (
           <button type="button" key={item.id} className="muziListRow" onClick={() => { setSelectedContentId(knowledgeSelection(item.locator)); }}>
-            <span className="muziListIcon knowledge">知</span>
+            <span className="muziListIcon knowledge"><IconFolderOpenOutline16 size={18} /></span>
             <span className="muziListBody">
               <span className="muziListTitle">{item.title}</span>
               <span className="muziListMeta">{item.category}</span>
