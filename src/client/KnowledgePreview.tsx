@@ -95,10 +95,10 @@ function createTopicLabel(node: KnowledgeGraphVisualNode): SpriteText {
   const label = new SpriteText(node.category === "topics" ? node.title : "");
   label.visible = node.category === "topics";
   label.color = "#403b35";
-  label.backgroundColor = "rgba(251, 250, 247, 0.9)";
-  label.padding = [2.5, 1.5];
+  label.backgroundColor = "rgba(251, 250, 247, 0.88)";
+  label.padding = [2.2, 1.35];
   label.borderRadius = 3;
-  label.textHeight = 6.5;
+  label.textHeight = 5.4;
   label.fontWeight = "600";
   label.center.y = -0.8;
   return label;
@@ -137,13 +137,11 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
     return ids;
   }, [selectedId, view.edges]);
   const selected = selectedId === null ? null : nodeById.get(selectedId) ?? null;
-  const stats = [
-    ["正式知识", result.stats.formal.toString()],
+  const breakdown = [
     ["主题", result.stats.topics.toString()],
     ["实体", result.stats.entities.toString()],
     ["来源", result.stats.sources.toString()],
     ["专题分析", result.stats.analyses.toString()],
-    ["待消化素材", result.stats.pendingMarkdown.toString()],
   ] as const;
 
   useEffect(() => {
@@ -211,23 +209,55 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
 
   return (
     <div className="knowledgePreview">
-      <section className="knowledgeMetrics" aria-label="知识库统计">
-        {stats.map(([label, value]) => (
-          <div key={label}><strong>{value}</strong><span>{label}</span>{label === "待消化素材" && <small>原始文件 {result.stats.rawFiles}</small>}</div>
-        ))}
-      </section>
-      <section className="knowledgeGraphSection">
-        <div className="knowledgeGraphHeading">
-          <div><h3>知识星图</h3><p>滚轮缩放 · 拖动画布旋转 · 拖动节点整理</p></div>
-          <div className="knowledgeGraphControls" aria-label="星图控制">
-            <button type="button" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</button>
-            <button type="button" aria-label="刷新星图" disabled={refreshing} onClick={() => { void refresh(); }}><IconRefreshOutline16 size={15} /></button>
+      <section className="knowledgeSummary" aria-labelledby="knowledge-summary-title">
+        <header className="knowledgeSummaryHeader">
+          <div>
+            <h2 id="knowledge-summary-title">知识库概况</h2>
+            <p>来自当前 Atlas 快照，整个预览保持只读</p>
+          </div>
+          <span className={`knowledgeHealth ${result.status.status}`}>
+            <i aria-hidden="true" />
+            {result.status.status === "ready" ? "数据就绪" : result.status.status === "incomplete" ? "数据不完整" : "当前不可用"}
+          </span>
+        </header>
+        <div className="knowledgeSummaryBody">
+          <div className="knowledgePrimaryMetric">
+            <strong>{result.stats.formal}</strong>
+            <span>正式知识</span>
+            <small>可检索的结构化页面</small>
+          </div>
+          <div className="knowledgeSummaryDetails">
+            <dl className="knowledgeBreakdown">
+              {breakdown.map(([label, value]) => (
+                <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+              ))}
+            </dl>
+            <div className="knowledgeIngestMetric">
+              <span>待消化素材</span>
+              <strong>{result.stats.pendingMarkdown}</strong>
+              <small>原始文件 {result.stats.rawFiles}</small>
+            </div>
           </div>
         </div>
-        <div className="knowledgeGraphLegend" aria-label="星图图例">
-          {(["topics", "entities", "sources", "synthesis", "comparisons", "queries"] as KnowledgeCategory[]).map((category) => (
-            <span key={category}><i className={category} />{CATEGORY_LABELS[category]}</span>
-          ))}
+      </section>
+      <section className={`knowledgeGraphSection${refreshing ? " refreshing" : ""}`} aria-busy={refreshing}>
+        <div className="knowledgeGraphHeading">
+          <div>
+            <h3>知识星图</h3>
+            <p>当前呈现 {view.nodes.length} 个节点 · {view.edges.length} 条关系</p>
+          </div>
+          <div className="knowledgeGraphControls" aria-label="星图控制">
+            <button type="button" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</button>
+            <button type="button" className="knowledgeRefresh" aria-label={refreshing ? "正在刷新星图" : "刷新星图"} disabled={refreshing} onClick={() => { void refresh(); }}><IconRefreshOutline16 size={15} /></button>
+          </div>
+        </div>
+        <div className="knowledgeGraphGuide">
+          <div className="knowledgeGraphLegend" aria-label="星图图例">
+            {(["topics", "entities", "sources", "synthesis", "comparisons", "queries"] as KnowledgeCategory[]).map((category) => (
+              <span key={category}><i className={category} />{CATEGORY_LABELS[category]}</span>
+            ))}
+          </div>
+          <p>滚轮缩放 · 拖动画布旋转 · 拖动节点整理</p>
         </div>
         {result.truncated && <div className="knowledgeGraphNotice">星图已按连接度精简，统计仍来自完整快照。</div>}
         {result.status.status !== "ready" ? (
@@ -274,7 +304,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
                 enablePointerInteraction
                 enableNodeDrag
                 nodeVal="val"
-                nodeRelSize={3.4}
+                nodeRelSize={3.1}
                 nodeResolution={16}
                 nodeOpacity={.92}
                 nodeColor={(node) => selectedId === null || adjacent.has(String(node.id)) ? CATEGORY_COLORS[node.category] : "#d8d3ca"}
@@ -289,7 +319,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
                   const [sourceId, targetId] = visibleEndpointIds(link);
                   return selectedId === null || (sourceId !== null && targetId !== null && adjacent.has(sourceId) && adjacent.has(targetId)) ? .7 : .18;
                 }}
-                linkOpacity={.48}
+                linkOpacity={.4}
                 warmupTicks={motion.warmupTicks}
                 cooldownTicks={motion.cooldownTicks}
                 cooldownTime={motion.cooldownTime}
@@ -305,16 +335,17 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
                 }}
               />
             )}
+            {refreshing && <div className="knowledgeGraphLoading" role="status"><IconRefreshOutline16 size={16} /><span>正在刷新知识快照…</span></div>}
             <span className="knowledgeGraphAnnouncement" aria-live="polite">
               {selected === null ? "" : `${CATEGORY_LABELS[selected.category]}，${selected.title}，${selected.degree} 条关联`}
             </span>
-          </div>
-        )}
-        {selected !== null && (
-          <div className="knowledgeNodeDetail">
-            <div><strong>{selected.title}</strong><span>{CATEGORY_LABELS[selected.category]} · {selected.degree} 条关联</span></div>
-            {selected.category === "topics" && <small>{expandedTopicId === selected.id ? "已展开全部直接关联，再次点击主题可收起。" : "点击主题可展开全部直接关联。"}</small>}
-            <button type="button" onClick={() => { setSelectedContentId(`knowledge:${selected.locator}`); }}>打开知识</button>
+            {selected !== null && (
+              <div className="knowledgeNodeDetail">
+                <div><strong>{selected.title}</strong><span>{CATEGORY_LABELS[selected.category]} · {selected.degree} 条关联</span></div>
+                {selected.category === "topics" && <small>{expandedTopicId === selected.id ? "已展开全部直接关联，再次点击主题可收起。" : "点击主题可展开全部直接关联。"}</small>}
+                <button type="button" onClick={() => { setSelectedContentId(`knowledge:${selected.locator}`); }}>打开知识</button>
+              </div>
+            )}
           </div>
         )}
       </section>
