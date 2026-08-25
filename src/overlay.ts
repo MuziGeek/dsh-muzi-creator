@@ -70,6 +70,12 @@ export function decodeOverlay(value: unknown): OverlayStore {
   if (typeof raw.scriptRules === "string" && raw.scriptRules.trim() !== "") {
     store.scriptRules = raw.scriptRules.trim();
   }
+  if (typeof raw.trellisProjectsRoot === "string" && raw.trellisProjectsRoot.trim() !== "") {
+    store.trellisProjectsRoot = raw.trellisProjectsRoot.trim();
+  }
+  if (typeof raw.obsidianExecutable === "string" && raw.obsidianExecutable.trim() !== "") {
+    store.obsidianExecutable = raw.obsidianExecutable.trim();
+  }
   if (typeof raw.profile === "object" && raw.profile !== null) {
     store.profile = decodeProfile(raw.profile);
   }

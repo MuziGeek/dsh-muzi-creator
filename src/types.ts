@@ -112,6 +112,8 @@ export interface LibrarySettings {
   profile: CreatorProfile;
   secrets: CreatorSecrets;
   scriptRules?: string;
+  trellisProjectsRoot: string;
+  obsidianExecutable?: string;
 }
 
 export type CreatorCapabilityState = "ready" | "missing" | "unsupported";
@@ -213,6 +215,14 @@ export interface SetLibraryRootRequest {
   path: string;
 }
 
+export interface SetTrellisProjectsRootRequest {
+  path: string;
+}
+
+export interface SetObsidianExecutableRequest {
+  path: string;
+}
+
 export interface CreateContentRequest {
   title: string;
 }
@@ -283,6 +293,8 @@ export interface OverlayStore {
   libraryRoot?: string;
   profile?: CreatorProfile;
   scriptRules?: string;
+  trellisProjectsRoot?: string;
+  obsidianExecutable?: string;
   items: Record<string, OverlayItem>;
 }
 

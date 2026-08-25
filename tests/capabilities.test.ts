@@ -15,6 +15,7 @@ function settings(libraryRoot: string, configured = true): LibrarySettings {
       subtitle: { kind: "subtitle", ref: "subtitle", configured, writable: true },
       cover: { kind: "cover", ref: "cover", configured, writable: true },
     },
+    trellisProjectsRoot: "/projects",
   };
 }
 

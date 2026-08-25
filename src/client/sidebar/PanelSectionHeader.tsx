@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Tag } from "animal-island-ui";
 import {
   IconCloseFill14,
   IconBrowseOutline16,
@@ -11,15 +12,18 @@ import {
 
 export interface PanelSectionHeaderProps {
   label: string;
+  count?: number;
   query: string;
   searchLabel: string;
+  searchName: string;
   searchPlaceholder: string;
-  addLabel: string;
+  addLabel?: string;
+  refreshLabel?: string;
   viewLabel?: string;
   viewContent?: ReactNode;
   previewLabel?: string;
   onQueryChange: (query: string) => void;
-  onAdd: () => void;
+  onAdd?: () => void;
   onRefresh: () => void;
   onPreview?: () => void;
 }
@@ -27,10 +31,13 @@ export interface PanelSectionHeaderProps {
 /** Shared section chrome matching the native DSH workspace browser. */
 export function PanelSectionHeader({
   label,
+  count,
   query,
   searchLabel,
+  searchName,
   searchPlaceholder,
   addLabel,
+  refreshLabel,
   viewLabel,
   viewContent,
   previewLabel,
@@ -42,15 +49,28 @@ export function PanelSectionHeader({
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
+  const searchButton = useRef<HTMLButtonElement>(null);
   const viewRoot = useRef<HTMLDivElement>(null);
+  const viewButton = useRef<HTMLButtonElement>(null);
+  const viewId = useId();
 
   useEffect(() => {
     if (!viewOpen) return;
     const close = (event: PointerEvent): void => {
       if (event.target instanceof Node && !viewRoot.current?.contains(event.target)) setViewOpen(false);
     };
+    const closeWithKeyboard = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setViewOpen(false);
+      viewButton.current?.focus();
+    };
     document.addEventListener("pointerdown", close);
-    return () => { document.removeEventListener("pointerdown", close); };
+    document.addEventListener("keydown", closeWithKeyboard);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", closeWithKeyboard);
+    };
   }, [viewOpen]);
 
   const expandSearch = (): void => {
@@ -62,15 +82,19 @@ export function PanelSectionHeader({
   const closeSearch = (): void => {
     onQueryChange("");
     setSearchExpanded(false);
+    window.requestAnimationFrame(() => { searchButton.current?.focus(); });
   };
 
   return (
     <div className="muziSectionHeader">
-      <span className={searchExpanded ? "muziSectionLabel hidden" : "muziSectionLabel"}>{label}</span>
+      <span className={searchExpanded ? "muziSectionLabel hidden" : "muziSectionLabel"}>
+        <span>{label}</span>
+        {count !== undefined && <Tag className="muziSectionCount" size="small" color="default">{count}</Tag>}
+      </span>
       <div className={searchExpanded ? "muziSearchSlot expanded" : "muziSearchSlot"}>
-        <div className={searchExpanded ? "muziSearch expanded" : "muziSearch"} onClick={expandSearch}>
+        <div className={searchExpanded ? "muziSearch expanded" : "muziSearch"}>
           <Tooltip label={searchLabel} side="bottom" delayMs={500} disabled={searchExpanded}>
-            <button type="button" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
+            <button ref={searchButton} type="button" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
               <IconSearchOutline16 size={searchExpanded ? 11 : 14} />
             </button>
           </Tooltip>
@@ -78,6 +102,10 @@ export function PanelSectionHeader({
             ref={searchInput}
             className="muziSearchInput"
             type="text"
+            name={searchName}
+            aria-label={searchLabel}
+            autoComplete="off"
+            spellCheck={false}
             placeholder={searchPlaceholder}
             value={query}
             tabIndex={searchExpanded ? 0 : -1}
@@ -92,16 +120,23 @@ export function PanelSectionHeader({
         </div>
       </div>
       <div className={searchExpanded ? "muziHeaderActions hidden" : "muziHeaderActions"}>
+        {refreshLabel !== undefined && (
+          <Tooltip label={refreshLabel} side="bottom" delayMs={500}>
+            <button type="button" className="muziHeaderIcon" aria-label={refreshLabel} onClick={onRefresh}>
+              <IconRefreshOutline16 size={16} />
+            </button>
+          </Tooltip>
+        )}
         {viewLabel !== undefined && viewContent !== undefined && <div className="muziViewRoot" ref={viewRoot}>
           <Tooltip label={viewLabel} side="bottom" delayMs={500}>
-            <button type="button" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} onClick={() => { setViewOpen((open) => !open); }}>
+            <button ref={viewButton} type="button" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} aria-controls={viewId} onClick={() => { setViewOpen((open) => !open); }}>
               <IconPersonalizationOutline16 size={16} />
             </button>
           </Tooltip>
           {viewOpen && (
-            <div className="muziViewMenu" role="menu">
+            <div id={viewId} className="muziViewMenu" role="group" aria-label={viewLabel}>
               {viewContent}
-              <button type="button" role="menuitem" className="muziViewMenuItem" onClick={() => { setViewOpen(false); onRefresh(); }}>
+              <button type="button" className="muziViewMenuItem" onClick={() => { setViewOpen(false); onRefresh(); }}>
                 <IconRefreshOutline16 size={16} />
                 刷新
               </button>
@@ -115,11 +150,13 @@ export function PanelSectionHeader({
             </button>
           </Tooltip>
         )}
-        <Tooltip label={addLabel} side="bottom" delayMs={500}>
-          <button type="button" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
-            <IconProjectAddOutline16 size={16} />
-          </button>
-        </Tooltip>
+        {addLabel !== undefined && onAdd !== undefined && (
+          <Tooltip label={addLabel} side="bottom" delayMs={500}>
+            <button type="button" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
+              <IconProjectAddOutline16 size={16} />
+            </button>
+          </Tooltip>
+        )}
       </div>
     </div>
   );

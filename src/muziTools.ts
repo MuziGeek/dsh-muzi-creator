@@ -1,6 +1,6 @@
 import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
 
-import type { MuziDocumentKey, MuziDocumentStatus, MuziProjectStage } from "./muziTypes.ts";
+import type { AtlasReference, MuziDocumentKey, MuziDocumentStatus, MuziProjectStage } from "./muziTypes.ts";
 import type { OilCreatorService } from "./service.ts";
 
 interface ToolsContext {
@@ -31,6 +31,30 @@ function render(title: string, detail: string) {
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], name: string): T {
   if (typeof value !== "string" || !allowed.includes(value as T)) throw new Error(`${name} is invalid`);
   return value as T;
+}
+
+function atlasReferences(value: unknown): AtlasReference[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error("atlasReferences must be an array");
+  return value.map((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) throw new Error("atlasReferences item is invalid");
+    const reference = item as Record<string, unknown>;
+    if (typeof reference.locator !== "string" || typeof reference.title !== "string"
+      || typeof reference.sha256 !== "string" || typeof reference.attachedAt !== "string") {
+      throw new Error("atlasReferences requires locator, title, sha256 and attachedAt");
+    }
+    if (!/^atlas:\/\/wiki\/(entities|topics|sources|comparisons|synthesis|queries)\/.+\.md$/.test(reference.locator)
+      || reference.title.trim() === "" || !/^[a-f0-9]{64}$/.test(reference.sha256)
+      || Number.isNaN(Date.parse(reference.attachedAt))) {
+      throw new Error("atlasReferences item is invalid");
+    }
+    return {
+      locator: reference.locator,
+      title: reference.title,
+      sha256: reference.sha256,
+      attachedAt: reference.attachedAt,
+    };
+  });
 }
 
 /** Registers Muzi knowledge and creator tools with explicit preview-confirm-save semantics. */
@@ -67,12 +91,17 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
   ctx.tools.register(defineTool({
     name: "muzi_creator_status",
     description: "List Muzi Creator projects, document states, stale derivatives, references, and publication states without absolute paths.",
-    parameters: { query: { type: "string" }, includeArchived: { type: "boolean" } },
+    parameters: {
+      query: { type: "string" },
+      includeArchived: { type: "boolean" },
+      atlasLocator: { type: "string", description: "Exact formal Atlas locator used to find the uniquely associated project." },
+    },
     output: { schema: JSON_VALUE, render: (_args, value) => render("Creator", `${(value as { items?: unknown[] }).items?.length ?? 0} projects`) },
     presentCall: (args) => card("Read creator status", args),
     execute: (args, exec) => service.listMuziProjects({
       ...(typeof args.query === "string" ? { query: args.query } : {}),
       ...(typeof args.includeArchived === "boolean" ? { includeArchived: args.includeArchived } : {}),
+      ...(typeof args.atlasLocator === "string" ? { atlasLocator: args.atlasLocator } : {}),
     }, signalOf(exec)).then(asJson),
   }));
 
@@ -90,25 +119,27 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
 
   ctx.tools.register(defineTool({
     name: "muzi_creator_create",
-    description: "Preview or create a Creator Studio project. First call with confirmed=false and show the preview. Only call again with confirmed=true after the user explicitly confirms the exact title, primary document, and references.",
+    description: "Preview or create a Creator Studio project. Call confirmed=false to validate the exact title, primary document, and references. An explicit '总结成为母内容' or '整理为脚本' instruction authorizes confirmed=true in the same turn for a new project.",
     parameters: {
       title: { type: "string", required: true },
       primaryDocument: { type: "string", required: true, enum: ["mother", "video"] },
       confirmed: { type: "boolean", required: true },
+      atlasReferences: { type: "json", description: "Formal Atlas reference array with locator, title, current sha256 and attachedAt." },
     },
     output: { schema: JSON_VALUE, render: (_args, value) => render("Creator project", (value as { title?: string; preview?: boolean }).preview === true ? "preview only" : ((value as { title?: string }).title ?? "created")) },
     presentCall: (args) => card("Create creator project", args),
     execute: (args, exec) => {
       if (typeof args.title !== "string") throw new Error("title is required");
       const primaryDocument = oneOf(args.primaryDocument, ["mother", "video"] as const, "primaryDocument");
-      if (args.confirmed !== true) return asJson({ preview: true, title: args.title.trim(), primaryDocument, writes: ["project.yml", "brief.md", "evidence.md", "mother-content.md", "channels/*", "review.md"] });
-      return service.createMuziProject({ title: args.title, primaryDocument, confirmed: true }, signalOf(exec)).then(asJson);
+      const references = atlasReferences(args.atlasReferences);
+      if (args.confirmed !== true) return asJson({ preview: true, title: args.title.trim(), primaryDocument, atlasReferences: references, writes: ["project.yml", "brief.md", "evidence.md", "mother-content.md", "channels/*", "review.md"] });
+      return service.createMuziProject({ title: args.title, primaryDocument, confirmed: true, atlasReferences: references }, signalOf(exec)).then(asJson);
     },
   }));
 
   ctx.tools.register(defineTool({
     name: "muzi_creator_save",
-    description: "Preview or save one creator document. Always call with confirmed=false first and show the complete text or an exact summary. Save only after the user explicitly says to save that document, then call with confirmed=true and the unchanged text and expectedRevision.",
+    description: "Preview or save one creator document. Read the latest project first, then call confirmed=false with the complete text. An explicit generation instruction authorizes confirmed=true in the same turn only when the target is empty; a non-empty target requires separate overwrite confirmation and overwriteConfirmed=true.",
     parameters: {
       id: { type: "string", required: true },
       document: { type: "string", required: true, enum: DOCUMENTS },
@@ -116,6 +147,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       status: { type: "string", required: true, enum: DOCUMENT_STATUSES },
       expectedRevision: { type: "number", required: true },
       confirmed: { type: "boolean", required: true },
+      overwriteConfirmed: { type: "boolean", description: "Required only when replacing a non-empty target after separate user confirmation." },
       derivedFrom: { type: "string", enum: DOCUMENTS },
       sourceSha256: { type: "string" },
     },
@@ -127,16 +159,21 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       const status = oneOf<MuziDocumentStatus>(args.status, DOCUMENT_STATUSES, "status");
       const derivedFrom = args.derivedFrom === undefined ? undefined : oneOf<MuziDocumentKey>(args.derivedFrom, DOCUMENTS, "derivedFrom");
       if (args.confirmed !== true) return asJson({ preview: true, id: args.id, document, status, expectedRevision: args.expectedRevision, bytes: Buffer.byteLength(args.text, "utf8"), derivedFrom: derivedFrom ?? null, sourceSha256: typeof args.sourceSha256 === "string" ? args.sourceSha256 : null });
-      return service.saveMuziDocument({
-        id: args.id,
-        document,
-        text: args.text,
-        status,
-        expectedRevision: args.expectedRevision,
-        confirmed: true,
-        ...(derivedFrom === undefined ? {} : { derivedFrom }),
-        ...(typeof args.sourceSha256 === "string" ? { sourceSha256: args.sourceSha256 } : {}),
-      }, signalOf(exec)).then(asJson);
+      return service.getMuziProject({ id: args.id }, signalOf(exec)).then((project) => {
+        if (project.content[document].trim() !== "" && args.overwriteConfirmed !== true) {
+          throw new Error("target document is non-empty: show the change and obtain separate overwrite confirmation");
+        }
+        return service.saveMuziDocument({
+          id: args.id,
+          document,
+          text: args.text,
+          status,
+          expectedRevision: args.expectedRevision,
+          confirmed: true,
+          ...(derivedFrom === undefined ? {} : { derivedFrom }),
+          ...(typeof args.sourceSha256 === "string" ? { sourceSha256: args.sourceSha256 } : {}),
+        }, signalOf(exec));
+      }).then(asJson);
     },
   }));
 

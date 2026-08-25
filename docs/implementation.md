@@ -1,10 +1,10 @@
 # 内容工作台：现阶段实现
 
-`dsh-oil-creator` 是挂在 DeepSeek Harness web 配置上的一个插件。它把 oil 从选题到发布的本地工作收进同一块界面：左侧内容列表、中间一条片子的检查器、右边继续对话。
+`dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的一个插件。它把 oil 从选题到发布的本地工作收进同一块界面：左侧内容列表、中间一条片子的检查器、右边继续对话。
 
-安装：`npx @deepseek-ai/dsh plugin --profile web add github:oil-oil/dsh-oil-creator`（本地开发用目录路径）
+安装：`npx @deepseek-ai/dsh plugin --profile web add github:MuziGeek/dsh-muzi-creator`（本地开发用目录路径）
 
-卸载：`npx @deepseek-ai/dsh plugin --profile web remove dsh-oil-creator`
+卸载：`npx @deepseek-ai/dsh plugin --profile web remove dsh-muzi-creator`
 
 插件对官方侧栏的替换只写在项目自己的 `cordis.patch.yml`，通过 `package.json` 的 `dsh.bundle.patch` 随包安装。不要把这段配置写进用户的 `~/.dsh/profiles/web/cordis.patch.yml`；用户层不会跟随插件卸载，残留后会把官方侧栏继续关掉。
 
@@ -95,7 +95,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 
 | 数据 | 位置 |
 | --- | --- |
-| 影片目录、`enabledPlatforms`、脚本规则（人设）、工程绑定、待录制、等导出、手写发布状态、同步到的播放/赞/评、烧录/生成任务 | `~/.dsh-oil-creator/overlay.json` |
+| 影片目录、项目目录（`trellisProjectsRoot`）、Obsidian 定位路径（`obsidianExecutable`）、`enabledPlatforms`、脚本规则（人设）、工程绑定、待录制、等导出、手写发布状态、同步到的播放/赞/评、烧录/生成任务 | `~/.dsh-oil-creator/overlay.json` |
 | 成片、字幕、封面、发布包、公众号文章 | `~/Movies/视频项目/<日期_标题>/` |
 | 字幕和封面 Key | Harness 官方凭据（字幕用 `DASHSCOPE_API_KEY`、封面用 `ZENMUX_API_KEY`），与 `dsh-vision` 共用 |
 | 列表选中项、侧栏宽度 | 浏览器本地 UI 状态 |

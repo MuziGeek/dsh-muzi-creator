@@ -42,8 +42,8 @@ const RUNTIME_FILES = [
   "lib/collect-publish.mjs",
 ];
 
-const GITHUB_REPOSITORY = "https://github.com/oil-oil/dsh-oil-creator";
-const GITHUB_REPOSITORY_GIT = "git+https://github.com/oil-oil/dsh-oil-creator.git";
+const GITHUB_REPOSITORY = "https://github.com/MuziGeek/dsh-muzi-creator";
+const GITHUB_REPOSITORY_GIT = "git+https://github.com/MuziGeek/dsh-muzi-creator.git";
 
 function git(root, args) {
   return execFileSync("git", args, {
@@ -53,8 +53,19 @@ function git(root, args) {
   }).trim();
 }
 
+function execCommand(command, args, options) {
+  if (process.platform !== "win32") {
+    return execFileSync(command, args, options);
+  }
+  return execFileSync(
+    process.env.ComSpec ?? "cmd.exe",
+    ["/d", "/s", "/c", command, ...args],
+    options,
+  );
+}
+
 function run(root, command, args) {
-  execFileSync(command, args, {
+  execCommand(command, args, {
     cwd: root,
     stdio: "inherit",
   });
@@ -185,7 +196,7 @@ function runReleasePipeline(root) {
 
   let output;
   try {
-    output = execFileSync(
+    output = execCommand(
       "npm",
       ["pack", "--dry-run", "--ignore-scripts", "--json"],
       { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },

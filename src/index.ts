@@ -1,5 +1,6 @@
 import type { Context } from "@deepseek-ai/cordis";
 import type { PreToolDecision, ToolExecution } from "@deepseek-ai/dsh-tools";
+import type {} from "@deepseek-ai/dsh-subprocess";
 
 import { Config } from "./config.ts";
 import { registerCreatorWorkbenchSkill } from "./creatorSkill.ts";
@@ -10,14 +11,13 @@ import { registerCreatorTools } from "./tools.ts";
 import { registerMuziTools } from "./muziTools.ts";
 
 export const name = "dsh-muzi-creator";
+export const inject = ["settings", "subprocess"];
 export { Config };
 export type { Config as ConfigType } from "./config.ts";
 
 export function apply(ctx: Context, config: Config): void {
+  registerCreatorSettingsNamespace(ctx.settings);
   const service = new OilCreatorService(ctx, config);
-  ctx.inject(["settings"], (settingsCtx) => {
-    registerCreatorSettingsNamespace(settingsCtx.settings);
-  });
   ctx.inject(["tools"], (toolsCtx) => {
     registerCreatorTools(toolsCtx as never, service);
     registerMuziTools(toolsCtx as never, service);

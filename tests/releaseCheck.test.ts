@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const releaseCheck = resolve(root, "scripts/check-release.mjs");
 const buildScript = "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs";
+const releaseCheckTimeout = process.platform === "win32" ? 30_000 : 10_000;
 const REQUIRED_CHAIN_FILES = [
   "src/creatorSkill.ts",
   "src/capabilities.ts",
@@ -42,14 +43,14 @@ function createRepository() {
   const repository = mkdtempSync(join(tmpdir(), "dsh-oil-creator-release-"));
   const files = new Map<string, string>([
     ["package.json", JSON.stringify({
-      name: "dsh-oil-creator",
+      name: "dsh-muzi-creator",
       version: "0.1.0",
       repository: {
         type: "git",
-        url: "git+https://github.com/oil-oil/dsh-oil-creator.git",
+        url: "git+https://github.com/MuziGeek/dsh-muzi-creator.git",
       },
-      bugs: { url: "https://github.com/oil-oil/dsh-oil-creator/issues" },
-      homepage: "https://github.com/oil-oil/dsh-oil-creator#readme",
+      bugs: { url: "https://github.com/MuziGeek/dsh-muzi-creator/issues" },
+      homepage: "https://github.com/MuziGeek/dsh-muzi-creator#readme",
       packageManager: "pnpm@10.16.1",
       main: "./lib/index.js",
       exports: { ".": "./lib/index.js" },
@@ -98,9 +99,17 @@ function createRepository() {
     writeFileSync(path, contents);
   }
   for (const command of ["tsc", "vitest", "tsdown"]) {
-    const path = join(repository, "node_modules/.bin", command);
+    const path = join(
+      repository,
+      "node_modules/.bin",
+      process.platform === "win32" ? `${command}.cmd` : command,
+    );
     mkdirSync(join(path, ".."), { recursive: true });
-    writeFileSync(path, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    writeFileSync(
+      path,
+      process.platform === "win32" ? "@echo off\r\nexit /b 0\r\n" : "#!/bin/sh\nexit 0\n",
+      { mode: 0o755 },
+    );
   }
 
   git(repository, "init", "-q");
@@ -139,7 +148,7 @@ describe("release:check", () => {
     } finally {
       rmSync(repository, { recursive: true, force: true });
     }
-  });
+  }, releaseCheckTimeout);
 
   it("rejects dirty and untracked work trees with explicit reasons", () => {
     const dirty = createRepository();
@@ -159,7 +168,7 @@ describe("release:check", () => {
       rmSync(dirty, { recursive: true, force: true });
       rmSync(untracked, { recursive: true, force: true });
     }
-  });
+  }, releaseCheckTimeout);
 
   it("rejects missing origin and missing files", () => {
     const noOrigin = createRepository();
@@ -177,7 +186,7 @@ describe("release:check", () => {
       rmSync(noOrigin, { recursive: true, force: true });
       rmSync(missing, { recursive: true, force: true });
     }
-  });
+  }, releaseCheckTimeout);
 
   it.each(REQUIRED_CHAIN_FILES)("rejects an untracked critical chain file: %s", (file) => {
     const repository = createRepository();
@@ -189,5 +198,5 @@ describe("release:check", () => {
     } finally {
       rmSync(repository, { recursive: true, force: true });
     }
-  });
+  }, releaseCheckTimeout);
 });

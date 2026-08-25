@@ -13,11 +13,23 @@ export function pidAlive(pid: number): boolean {
 export function pidCommand(pid: number): string | undefined {
   if (!Number.isInteger(pid) || pid <= 0) return undefined;
   try {
-    const command = execFileSync("ps", ["-p", String(pid), "-o", "command="], {
-      encoding: "utf8",
-      timeout: 500,
-    }).trim();
-    return command === "" ? undefined : command;
+    const command = process.platform === "win32"
+      ? execFileSync("powershell.exe", [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        `$process = Get-CimInstance Win32_Process -Filter \"ProcessId = ${pid}\"; if ($process) { $process.CommandLine }`,
+      ], {
+        encoding: "utf8",
+        timeout: 5_000,
+        windowsHide: true,
+      })
+      : execFileSync("ps", ["-p", String(pid), "-o", "command="], {
+        encoding: "utf8",
+        timeout: 500,
+      });
+    const normalized = command.trim();
+    return normalized === "" ? undefined : normalized;
   } catch {
     return undefined;
   }

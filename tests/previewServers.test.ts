@@ -15,7 +15,7 @@ import {
 describe("previewServers", () => {
   it("keeps the preview registry inside the configured data directory", () => {
     expect(previewRegistryPathForDataDir("/tmp/oil-data")).toBe(
-      "/tmp/oil-data/preview-servers.json",
+      join("/tmp/oil-data", "preview-servers.json"),
     );
   });
 

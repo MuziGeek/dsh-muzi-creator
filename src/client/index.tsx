@@ -1,4 +1,6 @@
-import type { ClientContext, WorkspaceId } from "@deepseek-ai/dsh-client-runtime/client";
+import type { ClientContext, SessionId, WorkspaceId } from "@deepseek-ai/dsh-client-runtime/client";
+import type { IConversation } from "@deepseek-ai/dsh-client-ui-conversation/client";
+import "animal-island-ui/style";
 import type {} from "@deepseek-ai/dsh-client-locale/client";
 import type {} from "@deepseek-ai/dsh-client-ui-layout/client";
 import type {} from "@deepseek-ai/dsh-api-remotes/client";
@@ -11,6 +13,7 @@ import { startLibraryLiveSync } from "./catalogSync.ts";
 import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 import { releaseShellChrome } from "./contentSelection.ts";
 import { registerMuziTriggers } from "./contentTriggers.ts";
+import { stageSessionHandoff } from "./sessionHandoff.ts";
 import type {
   ContentDetail,
   ContentFilter,
@@ -42,18 +45,34 @@ import type {
   MuziProjectListResult,
   MuziProjectStatusRequest,
   MuziPublicationSetRequest,
+  MuziWorkspaceRevision,
+  PendingKnowledgeFile,
+  PendingKnowledgeListResult,
+  PendingKnowledgeReference,
 } from "../muziTypes.ts";
+import type {
+  ArchiveTrellisTaskRequest,
+  GetTrellisProjectRequest,
+  PrepareTrellisTaskArchiveRequest,
+  TrellisArchivePreview,
+  TrellisArchiveResult,
+  TrellisProjectDetail,
+  TrellisProjectListResult,
+} from "../trellisTypes.ts";
 import { MuziInspector } from "./MuziInspector.tsx";
+import { TrellisProjectInspector } from "./TrellisProjectInspector.tsx";
+import "./CalmWorkbench.css";
 import {
   bumpLibrary,
   bumpProfile,
   getSelectedContentId,
   setSelectedContentId,
+  setSidebarTab,
   subscribeSelectedContentId,
 } from "./contentSelection.ts";
 import type { CredentialsClient } from "./credentialsApi.ts";
 import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
-import type { CreatorViewFace, MuziViewFace } from "./face.ts";
+import type { CreatorViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
 import { en, NS, type CreatorKey, zh } from "./locales.ts";
 import { OilSidebarRoot } from "./sidebar/OilSidebarRoot.tsx";
 import type { OilSidebarInjected, OilSidebarSlotProps } from "./sidebar/slots.ts";
@@ -61,6 +80,12 @@ import {
   registerCreatorSettingsCard,
   type CompatibleSettingsSlots,
 } from "./settingsSlot.ts";
+import {
+  bumpTrellis,
+  getSelectedTrellisProjectId,
+  selectTrellisProject,
+  subscribeTrellisSelection,
+} from "./trellisSelection.ts";
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
@@ -85,6 +110,8 @@ interface OilCreatorRemote {
   getCapabilities: (request: Record<string, never>) => Promise<RemoteAnswer<{ capabilities: CreatorCapabilities }>>;
   getRevision: (request: Record<string, never>) => Promise<RemoteAnswer<{ revision: number }>>;
   setLibraryRoot: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
+  setTrellisProjectsRoot: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
+  setObsidianExecutable: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
   setProfile: (request: { profile: CreatorProfile }) => Promise<RemoteAnswer<LibrarySettings>>;
   setScriptRules: (request: { text: string }) => Promise<RemoteAnswer<LibrarySettings>>;
   refreshCatalog: (request: Record<string, never>) => Promise<RemoteAnswer<ListContentsResult>>;
@@ -104,8 +131,9 @@ interface OilCreatorRemote {
   startSubtitleGenerate: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
   startCoverGenerate: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
   setScript: (request: { id: string; text: string }) => Promise<RemoteAnswer<ContentDetail>>;
-  listMuziProjects: (request: { query?: string; includeArchived?: boolean }) => Promise<RemoteAnswer<MuziProjectListResult>>;
+  listMuziProjects: (request: { query?: string; includeArchived?: boolean; atlasLocator?: string }) => Promise<RemoteAnswer<MuziProjectListResult>>;
   getMuziProject: (request: { id: string }) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  getMuziProjectCover: (request: { id: string }) => Promise<RemoteAnswer<CoverThumbResult>>;
   createMuziProject: (request: MuziProjectCreateRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   saveMuziDocument: (request: MuziDocumentSaveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   setMuziProjectStatus: (request: MuziProjectStatusRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
@@ -117,6 +145,34 @@ interface OilCreatorRemote {
   listKnowledgeDirectory: (request: { category: KnowledgeCategory; offset?: number; limit?: number }) => Promise<RemoteAnswer<KnowledgeListResult>>;
   searchKnowledge: (request: { query?: string; category?: KnowledgeCategory; limit?: number }) => Promise<RemoteAnswer<KnowledgeSearchResult>>;
   getKnowledgePage: (request: { locator: string }) => Promise<RemoteAnswer<KnowledgePage>>;
+  listPendingKnowledge: (request: { query?: string; offset?: number; limit?: number }) => Promise<RemoteAnswer<PendingKnowledgeListResult>>;
+  getPendingKnowledgeFile: (request: { id: string }) => Promise<RemoteAnswer<PendingKnowledgeFile>>;
+  serializePendingKnowledgeReference: (request: { id: string; expectedSha256?: string }) => Promise<RemoteAnswer<PendingKnowledgeReference>>;
+  getMuziWorkspaceRevision: (request: Record<string, never>) => Promise<RemoteAnswer<MuziWorkspaceRevision>>;
+  openMuziDocumentInObsidian: (request: { id: string; document: MuziDocumentSaveRequest["document"] }) => Promise<RemoteAnswer<{ opened: true }>>;
+  listTrellisProjects: (request: Record<string, never>) => Promise<RemoteAnswer<TrellisProjectListResult>>;
+  getTrellisProject: (request: GetTrellisProjectRequest) => Promise<RemoteAnswer<TrellisProjectDetail>>;
+  prepareTrellisTaskArchive: (request: PrepareTrellisTaskArchiveRequest) => Promise<RemoteAnswer<TrellisArchivePreview>>;
+  archiveTrellisTask: (request: ArchiveTrellisTaskRequest) => Promise<RemoteAnswer<TrellisArchiveResult>>;
+}
+
+interface SkillCatalogApi {
+  list: (
+    request: { sessionId: SessionId },
+    signal: AbortSignal,
+  ) => Promise<{ result: RemoteAnswer<{ skills: Array<{ name: string }> }> }>;
+}
+
+interface FreshSessionsClient {
+  list: {
+    getSnapshot: () => {
+      current: SessionId | undefined;
+      byId: Record<string, { id: SessionId; cwd?: string }>;
+    };
+  };
+  create: (options: { workspaceId: WorkspaceId }) => Promise<SessionId>;
+  scope: (id: SessionId) => ClientContext | undefined;
+  open: (id: SessionId) => void;
 }
 
 function credentialsOf(ctx: ClientContext): CredentialsClient | undefined {
@@ -131,7 +187,7 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
   return answer.value;
 }
 
-export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection"];
+export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection", "conversation"];
 
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-oil-creator: dictionaries");
@@ -144,6 +200,16 @@ export function apply(ctx: ClientContext): void {
   }, "dsh-oil-creator: chrome");
   const remoteOf = (): OilCreatorRemote | undefined =>
     ctx.get("remote.oilCreator") as OilCreatorRemote | undefined;
+  const trellisRemoteOf = (): OilCreatorRemote | undefined => {
+    const remote = remoteOf();
+    return remote !== undefined
+      && typeof remote.listTrellisProjects === "function"
+      && typeof remote.getTrellisProject === "function"
+      && typeof remote.prepareTrellisTaskArchive === "function"
+      && typeof remote.archiveTrellisTask === "function"
+      ? remote
+      : undefined;
+  };
 
   const face = (): CreatorViewFace => ({
     ready: () => remoteOf() !== undefined,
@@ -209,6 +275,17 @@ export function apply(ctx: ClientContext): void {
       if (remote === undefined) throw new Error("remote unavailable");
       unwrap(await remote.setLibraryRoot({ path }), "set root failed");
       bumpLibrary();
+    },
+    setTrellisProjectsRoot: async (path) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      unwrap(await remote.setTrellisProjectsRoot({ path }), "set projects root failed");
+      bumpTrellis();
+    },
+    setObsidianExecutable: async (path) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      unwrap(await remote.setObsidianExecutable({ path }), "set obsidian executable failed");
     },
     setProfile: async (profile) => {
       const remote = remoteOf();
@@ -311,18 +388,25 @@ export function apply(ctx: ClientContext): void {
   const contentFace = face();
   const muziFace: MuziViewFace = {
     ready: () => remoteOf() !== undefined,
-    listProjects: async (query, includeArchived) => {
+    listProjects: async (query, includeArchived, atlasLocator) => {
       const remote = remoteOf();
       if (remote === undefined) throw new Error("remote unavailable");
       return unwrap(await remote.listMuziProjects({
         ...(query === undefined ? {} : { query }),
         ...(includeArchived === undefined ? {} : { includeArchived }),
+        ...(atlasLocator === undefined ? {} : { atlasLocator }),
       }), "creator list failed");
     },
     getProject: async (id) => {
       const remote = remoteOf();
       if (remote === undefined) throw new Error("remote unavailable");
       return unwrap(await remote.getMuziProject({ id }), "creator project failed");
+    },
+    getProjectCover: async (id) => {
+      const remote = remoteOf();
+      if (remote === undefined) return { found: false, mime: "", base64: "" };
+      const answer = await remote.getMuziProjectCover({ id });
+      return answer.ok && answer.value !== undefined ? answer.value : { found: false, mime: "", base64: "" };
     },
     createProject: async (title, primaryDocument) => {
       const remote = remoteOf();
@@ -397,6 +481,106 @@ export function apply(ctx: ClientContext): void {
       if (remote === undefined) throw new Error("remote unavailable");
       return unwrap(await remote.getKnowledgePage({ locator }), "knowledge page failed");
     },
+    listPendingKnowledge: async (query, offset, limit) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.listPendingKnowledge({
+        ...(query === undefined ? {} : { query }),
+        ...(offset === undefined ? {} : { offset }),
+        ...(limit === undefined ? {} : { limit }),
+      }), "pending knowledge list failed");
+    },
+    getPendingKnowledgeFile: async (id) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getPendingKnowledgeFile({ id }), "pending knowledge file failed");
+    },
+    getWorkspaceRevision: async () => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getMuziWorkspaceRevision({}), "workspace revision failed");
+    },
+    openDocumentInObsidian: async (id, document) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      unwrap(await remote.openMuziDocumentInObsidian({ id, document }), "open in Obsidian failed");
+    },
+  };
+
+  const trellisFace: TrellisViewFace = {
+    ready: () => trellisRemoteOf() !== undefined,
+    listProjects: async () => {
+      const remote = trellisRemoteOf();
+      if (remote === undefined) throw new Error("项目接口正在连接，请稍候后重试");
+      return unwrap(await remote.listTrellisProjects({}), "project list failed");
+    },
+    getProject: async (projectId) => {
+      const remote = trellisRemoteOf();
+      if (remote === undefined) throw new Error("项目接口正在连接，请稍候后重试");
+      return unwrap(await remote.getTrellisProject({
+        projectId,
+      }), "project detail failed");
+    },
+    prepareArchive: async (projectId, taskKey) => {
+      const remote = trellisRemoteOf();
+      if (remote === undefined) throw new Error("项目接口正在连接，请稍候后重试");
+      return unwrap(await remote.prepareTrellisTaskArchive({
+        projectId,
+        taskKey,
+      }), "archive preview failed");
+    },
+    archiveTask: async (token) => {
+      const remote = trellisRemoteOf();
+      if (remote === undefined) throw new Error("项目接口正在连接，请稍候后重试");
+      const result = unwrap(await remote.archiveTrellisTask({ token }), "archive failed");
+      bumpTrellis();
+      return result;
+    },
+    openPath: (path) => ctx.workspaces.openPath(path),
+  };
+
+  const handoffWorkspace = (): WorkspaceId => {
+    const workspaces = ctx.workspaces.list.getSnapshot();
+    const sessions = (ctx.get("sessions") as unknown as FreshSessionsClient).list.getSnapshot();
+    const current = sessions.current === undefined ? undefined : sessions.byId[sessions.current];
+    const currentWorkspace = current?.cwd === undefined
+      ? undefined
+      : workspaces.items.find((workspace) => workspace.path === current.cwd && workspace.sessionIds.includes(current.id));
+    const workspaceId = currentWorkspace?.workspaceId ?? workspaces.recentWorkspaceId ?? workspaces.items[0]?.workspaceId;
+    if (workspaceId === undefined) throw new Error("请先创建或打开一个工作区，再开始 Agent 会话");
+    return workspaceId;
+  };
+
+  const revealHandoff = (sessionId: SessionId): void => {
+    (ctx.get("sessions") as unknown as FreshSessionsClient).open(sessionId);
+    setSelectedContentId(null);
+    setSidebarTab("sessions");
+  };
+
+  const createHandoff = async (options: {
+    prompt: string;
+    label: string;
+    ref: string;
+    requireLlmWiki?: boolean;
+  }): Promise<void> => {
+    const sessions = ctx.get("sessions") as unknown as FreshSessionsClient;
+    await stageSessionHandoff({
+      create: () => sessions.create({ workspaceId: handoffWorkspace() }),
+      inputFor: (sessionId) => {
+        const scope = sessions.scope(sessionId);
+        if (scope === undefined) throw new Error("新会话尚未就绪，请重试");
+        return (ctx.get("conversation") as IConversation).input.for(scope);
+      },
+      reveal: revealHandoff,
+      hasLlmWiki: async (sessionId) => {
+        const connection = ctx.get("connection") as { api?: { skills?: SkillCatalogApi } } | undefined;
+        const skills = connection?.api?.skills;
+        if (skills === undefined) throw new Error("当前 Agent 无法读取 Skill 列表");
+        const { result } = await skills.list({ sessionId }, new AbortController().signal);
+        if (!result.ok || result.value === undefined) throw new Error(result.error?.message ?? "未知错误");
+        return result.value.skills.some((skill) => skill.name === "llm-wiki");
+      },
+    }, options);
   };
 
   ctx.effect(() => {
@@ -412,6 +596,14 @@ export function apply(ctx: ClientContext): void {
       },
       (locator) => muziFace.getKnowledgePage(locator),
       async (query) => (await muziFace.searchKnowledge(query)).items,
+      async (id, expectedSha256) => {
+        const remote = remoteOf();
+        if (remote === undefined) throw new Error("remote unavailable");
+        return unwrap(await remote.serializePendingKnowledgeReference({
+          id,
+          ...(expectedSha256 === undefined ? {} : { expectedSha256 }),
+        }), "pending knowledge reference failed");
+      },
     );
   }, "dsh-oil-creator: content triggers");
 
@@ -432,10 +624,12 @@ export function apply(ctx: ClientContext): void {
         tabLabels={{
           sessions: contentT("tab.sessions"),
           content: contentT("tab"),
-          knowledge: "知识",
+          knowledge: contentT("tab.knowledge"),
+          projects: contentT("tab.projects"),
         }}
         contentFace={contentFace}
         muziFace={muziFace}
+        trellisFace={trellisFace}
         contentT={contentT}
       />
     );
@@ -465,37 +659,73 @@ export function apply(ctx: ClientContext): void {
       return () => {};
     }
     bumpProfile();
+    bumpTrellis();
 
     const stopOverlay = ctx.slots.inject("shell.overlay", () => {
       let disposeOccupant: (() => void) | undefined;
+      let occupant: "content" | "project" | null = null;
       const release = (): void => {
         disposeOccupant?.();
         disposeOccupant = undefined;
+        occupant = null;
       };
       const sync = (): void => {
-        if (getSelectedContentId() === null) {
+        const contentSelected = getSelectedContentId() !== null;
+        const projectSelected = getSelectedTrellisProjectId() !== null;
+        const next = contentSelected ? "content" : projectSelected ? "project" : null;
+        if (next === null) {
           release();
           return;
         }
-        if (disposeOccupant !== undefined) return;
+        if (disposeOccupant !== undefined && occupant === next) return;
+        release();
+        if (next === "project") {
+          disposeOccupant = ctx.slots.register({
+            name: "shell.overlay",
+            id: "muzi-trellis-project-inspector",
+            order: 20,
+            locale: NS,
+            inject: () => ({
+              face: trellisFace,
+              t: ctx.locale.bind(NS),
+              closeDetails: () => { selectTrellisProject(null); },
+            }),
+          }, TrellisProjectInspector);
+          occupant = "project";
+          return;
+        }
         disposeOccupant = ctx.slots.register({
-          name: "shell.overlay",
-          id: "muzi-creator-inspector",
-          order: 20,
-          locale: NS,
-          inject: () => ({
-            muziFace,
-            oilFace: contentFace,
-            closeDetails: () => {
-              setSelectedContentId(null);
-            },
-          }),
-        }, MuziInspector);
+            name: "shell.overlay",
+            id: "muzi-creator-inspector",
+            order: 20,
+            locale: NS,
+            inject: () => ({
+              muziFace,
+              oilFace: contentFace,
+              startPendingProcessing: (file: PendingKnowledgeFile) => createHandoff({
+                prompt: "/llm-wiki 请消化所引用的待处理文件。先执行隐私自查与缓存检查；确认可处理后，按 llm-wiki 标准写入正式知识并更新索引。完成后报告新增或更新的正式知识定位符。",
+                label: "待消化文件",
+                ref: `pending:${file.id}:${file.sha256}`,
+                requireLlmWiki: true,
+              }),
+              startKnowledgeDiscussion: (page: KnowledgePage) => createHandoff({
+                prompt: "请基于所引用的正式知识，先讨论核心观点、证据边界与可行的创作方向。除非我明确输入“总结成为母内容”或“整理为脚本”，否则不要写入 Creator Studio。",
+                label: page.title,
+                ref: `knowledge:${page.locator}`,
+              }),
+              closeDetails: () => {
+                setSelectedContentId(null);
+              },
+            }),
+          }, MuziInspector);
+        occupant = "content";
       };
-      const stop = subscribeSelectedContentId(sync);
+      const stopContent = subscribeSelectedContentId(sync);
+      const stopProject = subscribeTrellisSelection(sync);
       sync();
       return () => {
-        stop();
+        stopContent();
+        stopProject();
         release();
       };
     });
@@ -515,9 +745,19 @@ export function apply(ctx: ClientContext): void {
         },
       ));
     const stopLive = startLibraryLiveSync(() => contentFace.getRevision());
+    const stopMuziLive = startLibraryLiveSync(async () => {
+      const revision = await muziFace.getWorkspaceRevision();
+      return `${revision.creator}:${revision.knowledge}`;
+    });
+    const stopTrellisLive = startLibraryLiveSync(async () => {
+      const revision = await muziFace.getWorkspaceRevision();
+      return revision.trellis;
+    }, undefined, bumpTrellis);
 
     return async () => {
       stopLive();
+      stopMuziLive();
+      stopTrellisLive();
       stopOverlay();
       stopSettings();
       await disposeRemote();

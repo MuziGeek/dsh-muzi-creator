@@ -11,11 +11,15 @@ export function CoverThumb({
   load,
   fallback = null,
   revision = 0,
+  width,
+  height,
 }: {
   id: string;
   load: (id: string) => Promise<CoverThumbResult>;
   fallback?: ReactNode;
   revision?: number | string;
+  width?: number;
+  height?: number;
 }) {
   const [src, setSrc] = useState<string | undefined>(undefined);
   useEffect(() => {
@@ -32,5 +36,5 @@ export function CoverThumb({
     };
   }, [id, load, revision]);
   if (src === undefined) return fallback;
-  return <img src={src} alt="" />;
+  return <img src={src} alt="" width={width} height={height} />;
 }

@@ -18,6 +18,54 @@ export interface Config {
   enabledDocuments: string[];
   enabledPublishTargets: string[];
   externalActionsEnabled: boolean;
+  obsidianExecutable?: string;
+  trellisProjectsRoot?: string;
+  trellisGitExecutable?: string;
+  trellisPythonExecutable?: string;
+  trellisPythonArgs?: string[];
+  trellisMaxTaskBytes?: number;
+  trellisMaxTasks?: number;
+  trellisWatchDebounceMs?: number;
+  trellisFallbackPollMs?: number;
+  trellisArchivePreviewTtlMs?: number;
+  trellisCommandTimeoutMs?: number;
+  trellisProcessGraceMs?: number;
+  trellisOutputMaxBytes?: number;
+}
+
+export type TrellisConfig = Required<Pick<Config,
+  | "trellisProjectsRoot"
+  | "trellisGitExecutable"
+  | "trellisPythonExecutable"
+  | "trellisPythonArgs"
+  | "trellisMaxTaskBytes"
+  | "trellisMaxTasks"
+  | "trellisWatchDebounceMs"
+  | "trellisFallbackPollMs"
+  | "trellisArchivePreviewTtlMs"
+  | "trellisCommandTimeoutMs"
+  | "trellisProcessGraceMs"
+  | "trellisOutputMaxBytes"
+>>;
+
+export function resolveTrellisConfig(config: Config): TrellisConfig {
+  const configuredProjectsRoot = config.trellisProjectsRoot?.trim();
+  return {
+    trellisProjectsRoot: expandHomePath(configuredProjectsRoot === undefined || configuredProjectsRoot === ""
+      ? defaultTrellisProjectsRoot()
+      : configuredProjectsRoot),
+    trellisGitExecutable: config.trellisGitExecutable ?? "git",
+    trellisPythonExecutable: config.trellisPythonExecutable ?? (process.platform === "win32" ? "python" : "python3"),
+    trellisPythonArgs: config.trellisPythonArgs ?? [],
+    trellisMaxTaskBytes: config.trellisMaxTaskBytes ?? 262144,
+    trellisMaxTasks: config.trellisMaxTasks ?? 2000,
+    trellisWatchDebounceMs: config.trellisWatchDebounceMs ?? 350,
+    trellisFallbackPollMs: config.trellisFallbackPollMs ?? 15000,
+    trellisArchivePreviewTtlMs: config.trellisArchivePreviewTtlMs ?? 120000,
+    trellisCommandTimeoutMs: config.trellisCommandTimeoutMs ?? 30000,
+    trellisProcessGraceMs: config.trellisProcessGraceMs ?? 2000,
+    trellisOutputMaxBytes: config.trellisOutputMaxBytes ?? 65536,
+  };
 }
 
 export function defaultCreatorRoot(): string {
@@ -28,6 +76,10 @@ export function defaultAtlasRoot(): string {
   return "D:\\Muzi\\Knowledge\\muzi-atlas";
 }
 
+export function defaultTrellisProjectsRoot(platform: NodeJS.Platform = process.platform): string {
+  return platform === "win32" ? "D:\\GitProject" : join(homedir(), "Projects");
+}
+
 export function defaultLibraryRoot(platform: NodeJS.Platform = process.platform): string {
   if (platform === "win32") return join(defaultCreatorRoot(), "10-active");
   const videos = platform === "darwin" ? "Movies" : "Videos";
@@ -35,7 +87,7 @@ export function defaultLibraryRoot(platform: NodeJS.Platform = process.platform)
 }
 
 export function defaultDataDir(): string {
-  return join(homedir(), ".dsh-muzi-creator");
+  return join(homedir(), ".dsh-oil-creator");
 }
 
 export function defaultSubtitleSkillDir(): string {
@@ -88,6 +140,19 @@ export const Config: Schema<Config> = Schema.object({
   enabledDocuments: Schema.array(String).default(["mother", "video", "wechat", "xiaohongshu", "blog"]),
   enabledPublishTargets: Schema.array(String).default(["bilibili", "douyin", "wechat", "xiaohongshu", "blog"]),
   externalActionsEnabled: Schema.boolean().default(false),
+  obsidianExecutable: Schema.string().default(""),
+  trellisProjectsRoot: Schema.string().default(defaultTrellisProjectsRoot()),
+  trellisGitExecutable: Schema.string().default("git"),
+  trellisPythonExecutable: Schema.string().default(process.platform === "win32" ? "python" : "python3"),
+  trellisPythonArgs: Schema.array(String).default([]),
+  trellisMaxTaskBytes: Schema.number().min(4096).max(1048576).default(262144),
+  trellisMaxTasks: Schema.number().min(1).max(10000).default(2000),
+  trellisWatchDebounceMs: Schema.number().min(50).max(10000).default(350),
+  trellisFallbackPollMs: Schema.number().min(1000).max(300000).default(15000),
+  trellisArchivePreviewTtlMs: Schema.number().min(5000).max(600000).default(120000),
+  trellisCommandTimeoutMs: Schema.number().min(1000).max(600000).default(30000),
+  trellisProcessGraceMs: Schema.number().min(100).max(30000).default(2000),
+  trellisOutputMaxBytes: Schema.number().min(4096).max(1048576).default(65536),
 });
 
 export function resolveDataDir(config: Pick<Config, "dataDir"> & Partial<Config>): string {

@@ -1,3 +1,20 @@
+[data-plugin="dsh-oil-creator"][data-surface="sidebar"],
+[data-plugin="dsh-oil-creator"][data-surface="muzi-inspector"],
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] {
+  --muzi-surface: var(--dsw-alias-bg-base);
+  --muzi-surface-soft: var(--dsw-alias-bg-layer-1);
+  --muzi-surface-muted: var(--dsw-alias-bg-layer-2);
+  --muzi-border: var(--dsw-alias-border-l1);
+  --muzi-border-strong: var(--dsw-alias-border-l2);
+  --muzi-radius-sm: 8px;
+  --muzi-radius-md: 12px;
+  --muzi-radius-lg: 14px;
+  --muzi-control-size: 32px;
+  --muzi-motion-fast: 140ms;
+  --muzi-motion-enter: 180ms;
+  --muzi-ease: var(--ds-ease-in-out);
+}
+
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] {
   --dsh-sidebar-inline-padding: 12px;
   display: flex;
@@ -5,7 +22,7 @@
   height: 100%;
   padding: 6px var(--dsh-sidebar-inline-padding);
   box-sizing: border-box;
-  background: var(--dsw-alias-bg-base);
+  background: var(--muzi-surface);
   color: var(--dsw-alias-label-primary);
   font-size: 14px;
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
@@ -204,10 +221,10 @@
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
-  height: 32px;
+  height: 34px;
   padding: 0 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--muzi-radius-sm);
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   font-size: 13px;
@@ -221,7 +238,7 @@
 }
 
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] .tabButton.active {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover));
   color: var(--dsw-alias-label-primary);
   font-weight: 500;
 }

@@ -27,13 +27,33 @@ const CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
   queries: "问题",
 };
 
-const CATEGORY_COLORS: Record<KnowledgeCategory, string> = {
+const FALLBACK_CATEGORY_COLORS: Record<KnowledgeCategory, string> = {
   topics: "#81967d",
   entities: "#c49a78",
   sources: "#9c9a91",
   synthesis: "#a58aab",
   comparisons: "#b48772",
   queries: "#7f9ca2",
+};
+
+interface GraphPalette {
+  background: string;
+  label: string;
+  labelBackground: string;
+  mutedNode: string;
+  link: string;
+  linkMuted: string;
+  categories: Record<KnowledgeCategory, string>;
+}
+
+const FALLBACK_PALETTE: GraphPalette = {
+  background: "#fbfaf7",
+  label: "#403b35",
+  labelBackground: "#fbfaf7",
+  mutedNode: "#d8d3ca",
+  link: "#aca99f",
+  linkMuted: "#e1ddd5",
+  categories: FALLBACK_CATEGORY_COLORS,
 };
 
 interface GraphSize {
@@ -67,6 +87,33 @@ function useGraphSize(containerRef: React.RefObject<HTMLDivElement>): GraphSize 
   return size;
 }
 
+function useGraphPalette(containerRef: React.RefObject<HTMLDivElement>): GraphPalette {
+  const [palette, setPalette] = useState(FALLBACK_PALETTE);
+  useLayoutEffect(() => {
+    const element = containerRef.current;
+    if (element === null) return;
+    const style = window.getComputedStyle(element);
+    const value = (name: string, fallback: string): string => style.getPropertyValue(name).trim() || fallback;
+    setPalette({
+      background: style.backgroundColor || FALLBACK_PALETTE.background,
+      label: style.color || FALLBACK_PALETTE.label,
+      labelBackground: style.backgroundColor || FALLBACK_PALETTE.labelBackground,
+      mutedNode: value("--muzi-surface-muted", FALLBACK_PALETTE.mutedNode),
+      link: value("--muzi-graph-link", FALLBACK_PALETTE.link),
+      linkMuted: value("--muzi-graph-link-muted", FALLBACK_PALETTE.linkMuted),
+      categories: {
+        topics: value("--muzi-graph-topic", FALLBACK_CATEGORY_COLORS.topics),
+        entities: value("--muzi-graph-entity", FALLBACK_CATEGORY_COLORS.entities),
+        sources: value("--muzi-graph-source", FALLBACK_CATEGORY_COLORS.sources),
+        synthesis: value("--muzi-graph-synthesis", FALLBACK_CATEGORY_COLORS.synthesis),
+        comparisons: value("--muzi-graph-comparison", FALLBACK_CATEGORY_COLORS.comparisons),
+        queries: value("--muzi-graph-query", FALLBACK_CATEGORY_COLORS.queries),
+      },
+    });
+  }, [containerRef]);
+  return palette;
+}
+
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -91,11 +138,11 @@ export function supportsKnowledgeGraphWebGL(): boolean {
   }
 }
 
-function createTopicLabel(node: KnowledgeGraphVisualNode): SpriteText {
+function createTopicLabel(node: KnowledgeGraphVisualNode, palette: GraphPalette): SpriteText {
   const label = new SpriteText(node.category === "topics" ? node.title : "");
   label.visible = node.category === "topics";
-  label.color = "#403b35";
-  label.backgroundColor = "rgba(251, 250, 247, 0.88)";
+  label.color = palette.label;
+  label.backgroundColor = palette.labelBackground;
   label.padding = [2.2, 1.35];
   label.borderRadius = 3;
   label.textHeight = 5.4;
@@ -120,6 +167,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
   const reducedMotion = useReducedMotion();
   const motion = resolveKnowledgeGraphMotion(reducedMotion);
   const size = useGraphSize(graphContainerRef);
+  const palette = useGraphPalette(graphContainerRef);
   const view = useMemo(
     () => selectKnowledgeGraph(result.nodes, result.edges, expandedTopicId),
     [result, expandedTopicId],
@@ -297,7 +345,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
                 graphData={graphData}
                 width={size.width}
                 height={size.height}
-                backgroundColor="#fbfaf7"
+                backgroundColor={palette.background}
                 controlType="trackball"
                 showNavInfo={false}
                 enableNavigationControls
@@ -307,13 +355,13 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
                 nodeRelSize={3.1}
                 nodeResolution={16}
                 nodeOpacity={.92}
-                nodeColor={(node) => selectedId === null || adjacent.has(String(node.id)) ? CATEGORY_COLORS[node.category] : "#d8d3ca"}
+                nodeColor={(node) => selectedId === null || adjacent.has(String(node.id)) ? palette.categories[node.category] : palette.mutedNode}
                 nodeLabel={(node) => `${CATEGORY_LABELS[node.category]}：${node.title}（${node.degree} 条关联）`}
-                nodeThreeObject={createTopicLabel}
+                nodeThreeObject={(node) => createTopicLabel(node, palette)}
                 nodeThreeObjectExtend
                 linkColor={(link) => {
                   const [sourceId, targetId] = visibleEndpointIds(link);
-                  return selectedId === null || (sourceId !== null && targetId !== null && adjacent.has(sourceId) && adjacent.has(targetId)) ? "#aca99f" : "#e1ddd5";
+                  return selectedId === null || (sourceId !== null && targetId !== null && adjacent.has(sourceId) && adjacent.has(targetId)) ? palette.link : palette.linkMuted;
                 }}
                 linkWidth={(link) => {
                   const [sourceId, targetId] = visibleEndpointIds(link);

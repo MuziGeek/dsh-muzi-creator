@@ -31,7 +31,19 @@ import type {
   MuziPublicationSource,
   MuziPublicationStatus,
   MuziPublishTarget,
+  MuziWorkspaceRevision,
+  PendingKnowledgeFile,
+  PendingKnowledgeListResult,
 } from "../muziTypes.ts";
+import type {
+  TrellisArchivePreview,
+  TrellisArchiveResult,
+  TrellisArchiveToken,
+  TrellisProjectDetail,
+  TrellisProjectId,
+  TrellisProjectListResult,
+  TrellisTaskKey,
+} from "../trellisTypes.ts";
 
 export interface CreatorViewFace {
   ready: () => boolean;
@@ -47,6 +59,8 @@ export interface CreatorViewFace {
   getSettings: () => Promise<LibrarySettings>;
   getCapabilities: () => Promise<CreatorCapabilities>;
   setLibraryRoot: (path: string) => Promise<void>;
+  setTrellisProjectsRoot: (path: string) => Promise<void>;
+  setObsidianExecutable: (path: string) => Promise<void>;
   setProfile: (profile: CreatorProfile) => Promise<void>;
   setScriptRules: (text: string) => Promise<void>;
   refreshCatalog: () => Promise<ListContentsResult>;
@@ -65,8 +79,9 @@ export interface CreatorViewFace {
 
 export interface MuziViewFace {
   ready: () => boolean;
-  listProjects: (query?: string, includeArchived?: boolean) => Promise<MuziProjectListResult>;
+  listProjects: (query?: string, includeArchived?: boolean, atlasLocator?: string) => Promise<MuziProjectListResult>;
   getProject: (id: string) => Promise<MuziProjectDetail>;
+  getProjectCover: (id: string) => Promise<CoverThumbResult>;
   createProject: (title: string, primaryDocument: MuziPrimaryDocument) => Promise<MuziProjectDetail>;
   saveDocument: (request: {
     id: string;
@@ -94,4 +109,17 @@ export interface MuziViewFace {
   listKnowledgeDirectory: (category: KnowledgeCategory, offset?: number, limit?: number) => Promise<KnowledgeListResult>;
   searchKnowledge: (query?: string, category?: KnowledgeCategory, limit?: number) => Promise<KnowledgeSearchResult>;
   getKnowledgePage: (locator: string) => Promise<KnowledgePage>;
+  listPendingKnowledge: (query?: string, offset?: number, limit?: number) => Promise<PendingKnowledgeListResult>;
+  getPendingKnowledgeFile: (id: string) => Promise<PendingKnowledgeFile>;
+  getWorkspaceRevision: () => Promise<MuziWorkspaceRevision>;
+  openDocumentInObsidian: (id: string, document: MuziDocumentKey) => Promise<void>;
+}
+
+export interface TrellisViewFace {
+  ready: () => boolean;
+  listProjects: () => Promise<TrellisProjectListResult>;
+  getProject: (projectId: TrellisProjectId) => Promise<TrellisProjectDetail>;
+  prepareArchive: (projectId: TrellisProjectId, taskKey: TrellisTaskKey) => Promise<TrellisArchivePreview>;
+  archiveTask: (token: TrellisArchiveToken) => Promise<TrellisArchiveResult>;
+  openPath: (path: string) => Promise<void>;
 }

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { constants } from "node:fs";
 import { access, lstat, mkdir, readFile, readdir, realpath, rename, stat, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
 import { parse, stringify } from "yaml";
@@ -10,6 +11,8 @@ import type {
   AtlasReference,
   MuziArchiveRequest,
   MuziDocumentKey,
+  MuziDocumentLocation,
+  MuziDocumentLocationRequest,
   MuziDocumentSaveRequest,
   MuziDocumentState,
   MuziProjectCreateRequest,
@@ -23,6 +26,7 @@ import type {
   MuziPublicationState,
   MuziPublishTarget,
 } from "./muziTypes.ts";
+import type { CoverThumbResult } from "./types.ts";
 
 const DOCUMENTS: readonly MuziDocumentKey[] = ["mother", "video", "wechat", "xiaohongshu", "blog"];
 const TARGETS: readonly MuziPublishTarget[] = ["bilibili", "douyin", "wechat", "xiaohongshu", "blog"];
@@ -33,6 +37,7 @@ const DOCUMENT_PATHS: Record<MuziDocumentKey, string> = {
   xiaohongshu: "channels/xiaohongshu/draft.md",
   blog: "channels/blog/draft.md",
 };
+const COVER_SUFFIXES = ["_3x4.png", "_4x3.png", "_16x9.png"] as const;
 
 interface StoredDocument {
   status?: unknown;
@@ -67,6 +72,23 @@ interface LocatedProject {
   root: string;
   archive: boolean;
   manifest: ProjectManifest;
+}
+
+interface ProjectCover {
+  path: string;
+  revision: string;
+}
+
+function isPng(bytes: Buffer): boolean {
+  return bytes.byteLength >= 8
+    && bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+    && bytes[4] === 0x0d
+    && bytes[5] === 0x0a
+    && bytes[6] === 0x1a
+    && bytes[7] === 0x0a;
 }
 
 function sha256(text: string): string {
@@ -113,6 +135,14 @@ function folderSlug(title: string): string {
 
 function datePrefix(now = new Date()): string {
   return now.toISOString().slice(0, 10);
+}
+
+function obsidianRegistryPath(): string {
+  if (process.platform === "win32") {
+    return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "obsidian", "obsidian.json");
+  }
+  if (process.platform === "darwin") return join(homedir(), "Library", "Application Support", "obsidian", "obsidian.json");
+  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "obsidian", "obsidian.json");
 }
 
 function assertRelativeChild(root: string, target: string): void {
@@ -230,6 +260,29 @@ export class MuziCreatorService {
     return matches[0]!;
   }
 
+  private async projectCover(root: string): Promise<ProjectCover | undefined> {
+    const entries = await readdir(root, { withFileTypes: true });
+    for (const suffix of COVER_SUFFIXES) {
+      const entry = entries
+        .filter((candidate) => candidate.isFile() && !candidate.isSymbolicLink() && candidate.name.endsWith(suffix))
+        .sort((left, right) => left.name.localeCompare(right.name))[0];
+      if (entry === undefined) continue;
+      const path = join(root, entry.name);
+      assertRelativeChild(root, path);
+      const info = await lstat(path);
+      if (!info.isFile() || info.isSymbolicLink() || info.size > this.previewMaxBytes) continue;
+      const actual = await realpath(path);
+      assertRelativeChild(await realpath(root), actual);
+      const bytes = await readFile(path);
+      if (!isPng(bytes)) continue;
+      return {
+        path,
+        revision: sha256(`${entry.name}\0${info.size}\0${Math.trunc(info.mtimeMs)}`).slice(0, 16),
+      };
+    }
+    return undefined;
+  }
+
   private async detail(located: LocatedProject): Promise<MuziProjectDetail> {
     const { manifest, root, archive } = located;
     const id = asString(manifest.id);
@@ -275,6 +328,7 @@ export class MuziCreatorService {
     }
     const references = atlasReferences(manifest.atlasReferences);
     const updatedAt = asString(manifest.updated);
+    const cover = await this.projectCover(root);
     return {
       id,
       locator: `creator://${archive ? "archive" : "active"}/${basename(root)}`,
@@ -284,6 +338,7 @@ export class MuziCreatorService {
       stage: archive ? "archived" : stage(manifest.stage),
       primaryDocument,
       updatedAt: Number.isNaN(Date.parse(updatedAt)) ? new Date(0).toISOString() : updatedAt,
+      coverRevision: cover?.revision ?? null,
       documents,
       publications,
       referenceCount: references.length,
@@ -301,6 +356,8 @@ export class MuziCreatorService {
     return {
       items: details
         .filter((item) => query === "" || item.title.toLocaleLowerCase().includes(query))
+        .filter((item) => request.atlasLocator === undefined
+          || item.atlasReferences.some((reference) => reference.locator === request.atlasLocator))
         .map(({ brief: _brief, evidence: _evidence, review: _review, content: _content, atlasReferences: _refs, ...summary }) => summary)
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     };
@@ -308,6 +365,68 @@ export class MuziCreatorService {
 
   async getProject(request: MuziProjectGetRequest): Promise<MuziProjectDetail> {
     return this.detail(await this.locate(request.id));
+  }
+
+  async getProjectCover(request: MuziProjectGetRequest): Promise<CoverThumbResult> {
+    const located = await this.locate(request.id);
+    const cover = await this.projectCover(located.root);
+    if (cover === undefined) return { found: false, mime: "", base64: "" };
+    const bytes = await readFile(cover.path);
+    if (bytes.byteLength > this.previewMaxBytes || !isPng(bytes)) return { found: false, mime: "", base64: "" };
+    return { found: true, mime: "image/png", base64: bytes.toString("base64") };
+  }
+
+  async revision(): Promise<string> {
+    const records: string[] = [];
+    for (const project of await this.locateAll(true)) {
+      for (const relativePath of ["project.yml", ...Object.values(DOCUMENT_PATHS)]) {
+        const path = join(project.root, relativePath);
+        const info = await lstat(path).catch(() => undefined);
+        if (info === undefined || !info.isFile() || info.isSymbolicLink()) continue;
+        records.push(`${basename(project.root)}/${relativePath}\0${info.size}\0${Math.trunc(info.mtimeMs)}`);
+      }
+    }
+    return sha256(records.sort().join("\n")).slice(0, 16);
+  }
+
+  async documentLocation(request: MuziDocumentLocationRequest): Promise<MuziDocumentLocation> {
+    const located = await this.locate(request.id);
+    const target = join(located.root, DOCUMENT_PATHS[request.document]);
+    assertRelativeChild(located.root, target);
+    const info = await lstat(target);
+    if (!info.isFile() || info.isSymbolicLink()) throw new Error("creator document is not a regular file");
+    const actualTarget = await realpath(target);
+    assertRelativeChild(await realpath(located.root), actualTarget);
+
+    const registryText = await readFile(obsidianRegistryPath(), "utf8").catch(() => undefined);
+    let obsidianReady = false;
+    if (registryText !== undefined) {
+      try {
+        const registry = JSON.parse(registryText) as unknown;
+        if (isRecord(registry) && isRecord(registry.vaults)) {
+          const creatorActual = await realpath(this.creatorRoot);
+          for (const value of Object.values(registry.vaults)) {
+            if (!isRecord(value) || typeof value.path !== "string") continue;
+            const vaultActual = await realpath(resolve(value.path)).catch(() => undefined);
+            if (vaultActual === creatorActual) {
+              obsidianReady = true;
+              break;
+            }
+          }
+        }
+      } catch {
+        // A malformed Obsidian registry is treated as an unregistered vault; the file remains readable here.
+      }
+    }
+
+    return {
+      path: actualTarget,
+      obsidianReady,
+      obsidianUri: obsidianReady ? `obsidian://open?path=${encodeURIComponent(actualTarget)}` : null,
+      message: obsidianReady
+        ? null
+        : `请先在 Obsidian 中将 ${this.creatorRoot} 打开为独立仓库，然后重试。`,
+    };
   }
 
   async createProject(request: MuziProjectCreateRequest): Promise<MuziProjectDetail> {

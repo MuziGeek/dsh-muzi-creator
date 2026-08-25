@@ -25,6 +25,7 @@ function statusOf(overrides: {
         cover: { kind: "cover", ref: "cover", configured: true, writable: true },
       },
       ...(overrides.scriptRules === undefined ? {} : { scriptRules: overrides.scriptRules }),
+      trellisProjectsRoot: "/projects",
     },
     capabilities: {
       library: capability("ready"),

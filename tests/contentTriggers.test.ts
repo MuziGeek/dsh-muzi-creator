@@ -120,6 +120,7 @@ describe("registerMuziTriggers", () => {
         queries.push(query);
         return [topic];
       },
+      async () => ({ text: "unused" }),
     );
     const source = sources.find((candidate) => candidate.name === "muzi");
     const signal = new AbortController().signal;
@@ -128,5 +129,26 @@ describe("registerMuziTriggers", () => {
     ]);
     await source?.candidates(undefined, { query: "Agent", signal });
     expect(queries).toEqual(["", "Agent"]);
+  });
+
+  it("serializes a pending reference with its expected content hash", async () => {
+    const sources: Array<{ codec?: { serialize: (ref: string, signal: AbortSignal) => Promise<string> } }> = [];
+    const calls: Array<{ id: string; expectedSha256?: string }> = [];
+    registerMuziTriggers(
+      { registerSource(source) { sources.push(source); return () => undefined; } },
+      async () => { throw new Error("unused"); },
+      async () => [],
+      async () => { throw new Error("unused"); },
+      async () => [],
+      async (id, expectedSha256) => {
+        calls.push({ id, ...(expectedSha256 === undefined ? {} : { expectedSha256 }) });
+        return { text: "pending source" };
+      },
+    );
+    expect(await sources[0]?.codec?.serialize(
+      `pending:pk_${"1".repeat(24)}:${"a".repeat(64)}`,
+      new AbortController().signal,
+    )).toBe("pending source");
+    expect(calls).toEqual([{ id: `pk_${"1".repeat(24)}`, expectedSha256: "a".repeat(64) }]);
   });
 });

@@ -1,3 +1,4 @@
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { rewriteArticleImages } from "../src/articleMarkdown.ts";
@@ -17,10 +18,10 @@ describe("rewriteArticleImages", () => {
 });
 
 describe("resolveArticleFile", () => {
-  const root = "/tmp/article";
+  const root = resolve("/tmp/article");
 
   it("resolves a file under the article directory", () => {
-    expect(resolveArticleFile(root, "/images/01.jpg")).toBe("/tmp/article/images/01.jpg");
+    expect(resolveArticleFile(root, "/images/01.jpg")).toBe(join(root, "images", "01.jpg"));
   });
 
   it("rejects path escape", () => {

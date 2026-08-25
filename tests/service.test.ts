@@ -298,6 +298,7 @@ describe("OilCreatorService subtitle job reconcile", () => {
       watchClose: () => void;
       catalogRevision: number;
       exportWaiters: Map<string, AbortController>;
+      trellis: { projectsRoot: string; applyProjectsRoot: (configured: string | undefined) => void };
     };
     probe.dataDir = dataDir;
     probe.libraryRoot = libraryRoot;
@@ -306,6 +307,7 @@ describe("OilCreatorService subtitle job reconcile", () => {
     probe.watchClose = () => undefined;
     probe.catalogRevision = 0;
     probe.exportWaiters = new Map();
+    probe.trellis = { projectsRoot: "D:\\GitProject", applyProjectsRoot: () => undefined };
     return { dataDir, service };
   }
 
@@ -365,5 +367,84 @@ describe("OilCreatorService subtitle job reconcile", () => {
     } finally {
       if (child.pid !== undefined) process.kill(child.pid);
     }
+  });
+});
+
+describe("OilCreatorService settings paths", () => {
+  async function settingsService() {
+    const dataDir = await mkdtemp(join(tmpdir(), "oil-service-settings-"));
+    await saveOverlay(dataDir, emptyOverlay());
+    const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
+    const probe = service as unknown as {
+      dataDir: string;
+      libraryRoot: string;
+      obsidianExecutableConfig: string | undefined;
+      cachedScriptRules: string | undefined;
+      cachedEnabledPlatforms: string[] | undefined;
+      trellis: { projectsRoot: string; applyProjectsRoot: (configured: string | undefined) => void };
+      ctx: { get: (name: string) => unknown };
+    };
+    probe.dataDir = dataDir;
+    probe.libraryRoot = "/library";
+    probe.obsidianExecutableConfig = undefined;
+    probe.trellis = {
+      projectsRoot: "D:\\GitProject",
+      applyProjectsRoot: (configured) => {
+        probe.trellis.projectsRoot = configured ?? "D:\\GitProject";
+      },
+    };
+    probe.ctx = { get: () => undefined };
+    return { dataDir, service, probe };
+  }
+
+  it("persists a validated projects root and applies it to the trellis service", async () => {
+    const { dataDir, service } = await settingsService();
+    const root = await mkdtemp(join(tmpdir(), "oil-settings-projects-"));
+
+    const settings = await service.setTrellisProjectsRoot({ path: root }, new AbortController().signal);
+
+    expect(settings.trellisProjectsRoot).toBe(root);
+    const overlay = await loadOverlay(dataDir);
+    expect(overlay.trellisProjectsRoot).toBe(root);
+  });
+
+  it("rejects a projects root that is not a directory", async () => {
+    const { service } = await settingsService();
+    const missing = join(tmpdir(), "oil-settings-missing-");
+
+    await expect(service.setTrellisProjectsRoot({ path: missing }, new AbortController().signal))
+      .rejects.toThrow("项目目录不是文件夹");
+  });
+
+  it("clears the projects root override when the path is empty", async () => {
+    const { dataDir, service } = await settingsService();
+
+    const settings = await service.setTrellisProjectsRoot({ path: "" }, new AbortController().signal);
+
+    expect(settings.trellisProjectsRoot).toBe("D:\\GitProject");
+    expect((await loadOverlay(dataDir)).trellisProjectsRoot).toBeUndefined();
+  });
+
+  it("persists a validated obsidian executable", async () => {
+    const { dataDir, service } = await settingsService();
+    const folder = await mkdtemp(join(tmpdir(), "oil-settings-obsidian-"));
+    const executable = join(folder, "Obsidian.exe");
+    await writeFile(executable, "");
+
+    const settings = await service.setObsidianExecutable({ path: executable }, new AbortController().signal);
+
+    expect(settings.obsidianExecutable).toBe(executable);
+    expect((await loadOverlay(dataDir)).obsidianExecutable).toBe(executable);
+  });
+
+  it("rejects an obsidian path that is not a file and clears with an empty path", async () => {
+    const { dataDir, service } = await settingsService();
+    const folder = await mkdtemp(join(tmpdir(), "oil-settings-obsidian-dir-"));
+
+    await expect(service.setObsidianExecutable({ path: folder }, new AbortController().signal))
+      .rejects.toThrow("Obsidian 可执行文件不是普通文件");
+
+    await service.setObsidianExecutable({ path: "" }, new AbortController().signal);
+    expect((await loadOverlay(dataDir)).obsidianExecutable).toBeUndefined();
   });
 });

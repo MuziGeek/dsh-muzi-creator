@@ -57,6 +57,7 @@ import {
   withOverlayLock,
 } from "./overlay.ts";
 import { patchOverlayPublish } from "./publishStatus.ts";
+import { openConfiguredObsidian } from "./obsidian.ts";
 import { missingSecretMessage } from "./secrets.ts";
 import { describeCreatorSecrets, resolveCreatorSecret, secretEnv } from "./secretsHost.ts";
 import {
@@ -89,6 +90,16 @@ import { startArticleServer } from "./articleServe.ts";
 import { playbackOf, startVideoServer } from "./videoServe.ts";
 import { AtlasReadService } from "./atlasService.ts";
 import { MuziCreatorService } from "./muziService.ts";
+import { TrellisProjectService } from "./trellisService.ts";
+import type {
+  ArchiveTrellisTaskRequest,
+  GetTrellisProjectRequest,
+  PrepareTrellisTaskArchiveRequest,
+  TrellisArchivePreview,
+  TrellisArchiveResult,
+  TrellisProjectDetail,
+  TrellisProjectListResult,
+} from "./trellisTypes.ts";
 import type {
   KnowledgeGetRequest,
   KnowledgeHomeResult,
@@ -99,6 +110,9 @@ import type {
   KnowledgeSearchRequest,
   KnowledgeSearchResult,
   KnowledgeStatus,
+  MuziDocumentLocation,
+  MuziDocumentLocationRequest,
+  MuziWorkspaceRevision,
   MuziArchiveRequest,
   MuziDocumentSaveRequest,
   MuziProjectCreateRequest,
@@ -108,6 +122,11 @@ import type {
   MuziProjectListResult,
   MuziProjectStatusRequest,
   MuziPublicationSetRequest,
+  PendingKnowledgeFile,
+  PendingKnowledgeGetRequest,
+  PendingKnowledgeListRequest,
+  PendingKnowledgeListResult,
+  PendingKnowledgeReference,
 } from "./muziTypes.ts";
 import type {
   BindStudioRequest,
@@ -131,10 +150,12 @@ import type {
   OrganizePreview,
   OrganizeRequest,
   SetLibraryRootRequest,
+  SetObsidianExecutableRequest,
   SetProfileRequest,
   SetPublishRequest,
   SetScriptRequest,
   SetScriptRulesRequest,
+  SetTrellisProjectsRootRequest,
   SetTopicNoteRequest,
   SubtitlePreviewResult,
   SubtitleTextResult,
@@ -167,9 +188,15 @@ export class OilCreatorService extends TypertRemoteService {
   articles = new Map<string, { origin: string; root: string; close: () => void }>();
   readonly muzi: MuziCreatorService;
   readonly atlas: AtlasReadService;
+  readonly trellis: TrellisProjectService;
   readonly externalActionsEnabled: boolean;
+  readonly obsidianExecutableConfig: string | undefined;
+  obsidianExecutable: string | undefined;
 
-  constructor(ctx: Context, config: Config) {
+  constructor(
+    ctx: Context,
+    config: Config,
+  ) {
     super(ctx, OIL_CREATOR_SERVICE);
     this.libraryRoot = resolveUserPath(config.libraryRoot);
     this.dataDir = resolveUserPath(resolveDataDir(config));
@@ -177,7 +204,10 @@ export class OilCreatorService extends TypertRemoteService {
     this.coverSkillDirConfig = config.coverSkillDir;
     this.muzi = new MuziCreatorService(config);
     this.atlas = new AtlasReadService(config);
+    this.trellis = new TrellisProjectService(ctx, config);
     this.externalActionsEnabled = config.externalActionsEnabled;
+    this.obsidianExecutableConfig = config.obsidianExecutable;
+    this.obsidianExecutable = config.obsidianExecutable;
     void loadOverlay(this.dataDir).then((overlay) => { this.rememberOverlay(overlay); });
     ctx.effect(() => async () => {
       this.stopWatch();
@@ -194,6 +224,11 @@ export class OilCreatorService extends TypertRemoteService {
   async getMuziProject(request: MuziProjectGetRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
     signal.throwIfAborted();
     return this.muzi.getProject(request);
+  }
+
+  async getMuziProjectCover(request: MuziProjectGetRequest, signal: AbortSignal): Promise<CoverThumbResult> {
+    signal.throwIfAborted();
+    return this.muzi.getProjectCover(request);
   }
 
   async createMuziProject(request: MuziProjectCreateRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
@@ -219,6 +254,49 @@ export class OilCreatorService extends TypertRemoteService {
   async archiveMuziProject(request: MuziArchiveRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
     signal.throwIfAborted();
     return this.muzi.archiveProject(request);
+  }
+
+  async getMuziWorkspaceRevision(_request: Record<string, never>, signal: AbortSignal): Promise<MuziWorkspaceRevision> {
+    signal.throwIfAborted();
+    const [creator, knowledge] = await Promise.all([this.muzi.revision(), this.atlas.revision()]);
+    return { creator, knowledge, trellis: this.trellis.trellisRevision };
+  }
+
+  async listTrellisProjects(_request: Record<string, never>, signal: AbortSignal): Promise<TrellisProjectListResult> {
+    return this.trellis.list(signal);
+  }
+
+  async getTrellisProject(request: GetTrellisProjectRequest, signal: AbortSignal): Promise<TrellisProjectDetail> {
+    return this.trellis.get(request, signal);
+  }
+
+  async prepareTrellisTaskArchive(
+    request: PrepareTrellisTaskArchiveRequest,
+    signal: AbortSignal,
+  ): Promise<TrellisArchivePreview> {
+    return this.trellis.prepareArchive(request, signal);
+  }
+
+  async archiveTrellisTask(request: ArchiveTrellisTaskRequest, signal: AbortSignal): Promise<TrellisArchiveResult> {
+    return this.trellis.archive(request, signal);
+  }
+
+  async getMuziDocumentLocation(request: MuziDocumentLocationRequest, signal: AbortSignal): Promise<MuziDocumentLocation> {
+    signal.throwIfAborted();
+    return this.muzi.documentLocation(request);
+  }
+
+  async openMuziDocumentInObsidian(
+    request: MuziDocumentLocationRequest,
+    signal: AbortSignal,
+  ): Promise<{ opened: true }> {
+    signal.throwIfAborted();
+    const location = await this.muzi.documentLocation(request);
+    if (!location.obsidianReady || location.obsidianUri === null) {
+      throw new Error(location.message ?? "Creator Studio 尚未注册为 Obsidian 仓库");
+    }
+    await openConfiguredObsidian(this.obsidianExecutable, location.obsidianUri, signal);
+    return { opened: true };
   }
 
   async getKnowledgeStatus(_request: Record<string, never>, signal: AbortSignal): Promise<KnowledgeStatus> {
@@ -249,6 +327,24 @@ export class OilCreatorService extends TypertRemoteService {
   async getKnowledgePage(request: KnowledgeGetRequest, signal: AbortSignal): Promise<KnowledgePage> {
     signal.throwIfAborted();
     return this.atlas.get(request);
+  }
+
+  async listPendingKnowledge(request: PendingKnowledgeListRequest, signal: AbortSignal): Promise<PendingKnowledgeListResult> {
+    signal.throwIfAborted();
+    return this.atlas.listPending(request);
+  }
+
+  async getPendingKnowledgeFile(request: PendingKnowledgeGetRequest, signal: AbortSignal): Promise<PendingKnowledgeFile> {
+    signal.throwIfAborted();
+    return this.atlas.getPending(request);
+  }
+
+  async serializePendingKnowledgeReference(
+    request: PendingKnowledgeGetRequest,
+    signal: AbortSignal,
+  ): Promise<PendingKnowledgeReference> {
+    signal.throwIfAborted();
+    return this.atlas.pendingReference(request);
   }
 
   subtitleSkillDir(): string {
@@ -504,6 +600,53 @@ export class OilCreatorService extends TypertRemoteService {
       return this.settingsOf(overlay.libraryRoot ?? this.libraryRoot, overlay);
     });
   }
+
+  async setTrellisProjectsRoot(
+    request: SetTrellisProjectsRootRequest,
+    signal: AbortSignal,
+  ): Promise<LibrarySettings> {
+    signal.throwIfAborted();
+    const trimmed = request.path.trim();
+    const path = trimmed === "" ? "" : resolveUserPath(trimmed);
+    if (path !== "") {
+      const info = await stat(path).catch(() => undefined);
+      if (info === undefined || !info.isDirectory()) {
+        throw new Error(`项目目录不是文件夹：${path}`);
+      }
+    }
+    return withOverlayLock(this.dataDir, async () => {
+      const overlay = await loadOverlay(this.dataDir);
+      if (path === "") delete overlay.trellisProjectsRoot;
+      else overlay.trellisProjectsRoot = path;
+      await saveOverlay(this.dataDir, overlay);
+      this.rememberOverlay(overlay);
+      return this.settingsOf(overlay.libraryRoot ?? this.libraryRoot, overlay);
+    });
+  }
+
+  async setObsidianExecutable(
+    request: SetObsidianExecutableRequest,
+    signal: AbortSignal,
+  ): Promise<LibrarySettings> {
+    signal.throwIfAborted();
+    const trimmed = request.path.trim();
+    const path = trimmed === "" ? "" : resolveUserPath(trimmed);
+    if (path !== "") {
+      const info = await stat(path).catch(() => undefined);
+      if (info === undefined || !info.isFile()) {
+        throw new Error(`Obsidian 可执行文件不是普通文件：${path}`);
+      }
+    }
+    return withOverlayLock(this.dataDir, async () => {
+      const overlay = await loadOverlay(this.dataDir);
+      if (path === "") delete overlay.obsidianExecutable;
+      else overlay.obsidianExecutable = path;
+      await saveOverlay(this.dataDir, overlay);
+      this.rememberOverlay(overlay);
+      return this.settingsOf(overlay.libraryRoot ?? this.libraryRoot, overlay);
+    });
+  }
+
 
   async getCreatorGuide(signal: AbortSignal): Promise<CreatorGuideResult> {
     signal.throwIfAborted();
@@ -1056,6 +1199,8 @@ export class OilCreatorService extends TypertRemoteService {
   rememberOverlay(overlay: OverlayStore): void {
     this.cachedScriptRules = overlay.scriptRules;
     this.cachedEnabledPlatforms = overlay.profile?.enabledPlatforms ?? emptyProfile().enabledPlatforms;
+    this.obsidianExecutable = overlay.obsidianExecutable ?? this.obsidianExecutableConfig;
+    this.trellis.applyProjectsRoot(overlay.trellisProjectsRoot);
   }
 
   async settingsOf(
@@ -1067,6 +1212,8 @@ export class OilCreatorService extends TypertRemoteService {
       profile: overlay.profile ?? emptyProfile(),
       secrets: await describeCreatorSecrets(this.ctx),
       ...(overlay.scriptRules === undefined ? {} : { scriptRules: overlay.scriptRules }),
+      trellisProjectsRoot: this.trellis.projectsRoot,
+      ...(this.obsidianExecutable === undefined ? {} : { obsidianExecutable: this.obsidianExecutable }),
     };
   }
 

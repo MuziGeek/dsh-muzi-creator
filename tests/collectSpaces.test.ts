@@ -18,7 +18,7 @@ import {
 describe("collectSpaces", () => {
   it("keeps the collect registry inside the configured data directory", () => {
     expect(collectRegistryPathForDataDir("/tmp/oil-data")).toBe(
-      "/tmp/oil-data/collect-spaces.json",
+      join("/tmp/oil-data", "collect-spaces.json"),
     );
   });
 

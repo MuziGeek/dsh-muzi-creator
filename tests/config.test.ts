@@ -8,12 +8,15 @@ import {
   defaultDataDir,
   defaultLibraryRoot,
   defaultSubtitleSkillDir,
+  defaultTrellisProjectsRoot,
   expandHomePath,
   resolveConfiguredPath,
   resolveDataDir,
   resolveSkillDir,
+  resolveTrellisConfig,
   skillDirCandidates,
 } from "../src/config.ts";
+import type { Config } from "../src/config.ts";
 
 describe("portable config defaults", () => {
   it("uses Creator Studio on Windows and a Muzi Creator media root elsewhere", () => {
@@ -22,7 +25,15 @@ describe("portable config defaults", () => {
     expect(defaultLibraryRoot("linux")).toBe(join(homedir(), "Videos", "Muzi Creator"));
   });
 
-  it("resolves empty dataDir to the home-local store", () => {
+  it("uses the local Git collection as the Windows Trellis project root", () => {
+    expect(defaultTrellisProjectsRoot("win32")).toBe("D:\\GitProject");
+    expect(defaultTrellisProjectsRoot("linux")).toBe(join(homedir(), "Projects"));
+    expect(resolveTrellisConfig({ trellisProjectsRoot: "   " } as Config).trellisProjectsRoot)
+      .toBe(defaultTrellisProjectsRoot());
+  });
+
+  it("keeps the legacy home-local data directory", () => {
+    expect(defaultDataDir()).toBe(join(homedir(), ".dsh-oil-creator"));
     expect(resolveDataDir({
       libraryRoot: defaultLibraryRoot(),
       dataDir: "",

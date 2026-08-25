@@ -1,0 +1,97 @@
+[data-plugin="dsh-oil-creator"] .trellisProjectPanel { min-width: 0; }
+
+[data-plugin="dsh-oil-creator"] .trellisProjectList {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 12px 20px 4px;
+  scrollbar-gutter: stable;
+}
+
+[data-plugin="dsh-oil-creator"] .trellisProjectsRoot {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 10px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+[data-plugin="dsh-oil-creator"] .trellisProjectsRoot span { flex: none; }
+[data-plugin="dsh-oil-creator"] .trellisProjectsRoot code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-plugin="dsh-oil-creator"] .trellisProjectCard {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  margin: 0 0 7px;
+  border: 1px solid var(--muzi-border);
+  border-radius: var(--muzi-radius-md);
+  background: var(--muzi-surface);
+  overflow: hidden;
+  transition: border-color var(--muzi-motion-fast) var(--muzi-ease), background-color var(--muzi-motion-fast) var(--muzi-ease);
+}
+
+[data-plugin="dsh-oil-creator"] .trellisProjectCard:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .trellisProjectCard.selected {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 62%, var(--muzi-border));
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 6%, var(--muzi-surface));
+}
+
+[data-plugin="dsh-oil-creator"] .trellisProjectMain {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 11px 11px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+[data-plugin="dsh-oil-creator"] .trellisProjectMain:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+}
+
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  margin-top: 5px;
+  border: 2px solid var(--muzi-surface);
+  border-radius: 50%;
+  background: var(--dsw-alias-label-tertiary);
+  box-shadow: 0 0 0 1px var(--muzi-border-strong);
+}
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark.ready { background: var(--dsw-alias-state-success-primary, #2f9461); }
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark.degraded { background: var(--dsw-alias-state-warn-label, #b77700); }
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark.path-missing,
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark.not-git-root,
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark.trellis-missing,
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark.unreadable,
+[data-plugin="dsh-oil-creator"] .trellisConnectionMark.invalid { background: var(--dsw-alias-state-error-primary, #c94b42); }
+
+[data-plugin="dsh-oil-creator"] .trellisProjectBody { display: grid; min-width: 0; flex: 1; gap: 6px; }
+[data-plugin="dsh-oil-creator"] .trellisProjectHeading { display: flex; min-width: 0; align-items: baseline; gap: 7px; }
+[data-plugin="dsh-oil-creator"] .trellisProjectHeading strong { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 18px; }
+[data-plugin="dsh-oil-creator"] .trellisProjectHeading small { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
+[data-plugin="dsh-oil-creator"] .trellisProjectPath { overflow: hidden; color: var(--dsw-alias-label-tertiary); font-size: 10px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .trellisProjectCounts { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 15px; }
+[data-plugin="dsh-oil-creator"] .trellisProjectCounts b { color: var(--dsw-alias-label-primary); font-variant-numeric: tabular-nums; }
+[data-plugin="dsh-oil-creator"] .trellisProjectCounts .invalid { color: var(--dsw-alias-state-error-primary); }
+
+[data-plugin="dsh-oil-creator"] .trellisProjectEmpty { display: grid; max-width: 220px; justify-items: center; gap: 8px; margin: 38px auto 0; color: var(--dsw-alias-label-tertiary); text-align: center; }
+[data-plugin="dsh-oil-creator"] .trellisProjectEmpty p { margin: 0; font-size: 11px; line-height: 18px; }

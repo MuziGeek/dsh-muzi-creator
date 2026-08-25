@@ -6,6 +6,14 @@ import {
   saveCreatorUiState,
   type SidebarTab,
 } from "./persistence.ts";
+import {
+  clampInspectorPreference,
+  INSPECTOR_DEFAULT,
+  INSPECTOR_MAX,
+  INSPECTOR_MIN,
+} from "./inspectorLayout.ts";
+
+export { INSPECTOR_DEFAULT, INSPECTOR_MAX, INSPECTOR_MIN } from "./inspectorLayout.ts";
 
 type Listener = () => void;
 
@@ -18,14 +26,7 @@ let sidebarTab: SidebarTab = initialUi.sidebarTab;
 let libraryEpoch = 0;
 let profileEpoch = 0;
 let sidebarWidthPx = 280;
-export const INSPECTOR_MIN = 320;
-export const INSPECTOR_MAX = 800;
-export const INSPECTOR_DEFAULT = 640;
-let inspectorWidthPx = clampInspectorWidth(initialUi.inspectorWidth ?? INSPECTOR_DEFAULT);
-
-function clampInspectorWidth(px: number): number {
-  return Math.min(INSPECTOR_MAX, Math.max(INSPECTOR_MIN, Math.round(px)));
-}
+let inspectorWidthPx = clampInspectorPreference(initialUi.inspectorWidth ?? INSPECTOR_DEFAULT);
 
 const chromeListeners = new Set<Listener>();
 
@@ -91,8 +92,17 @@ export function getSidebarChromeWidth(): number {
   return sidebarWidthPx;
 }
 
+/** Subscribe React views to the current sidebar width. */
+export function useSidebarChromeWidth(): number {
+  const [width, setWidth] = useState(getSidebarChromeWidth);
+  useEffect(() => subscribeSidebarChrome(() => {
+    setWidth(getSidebarChromeWidth());
+  }), []);
+  return width;
+}
+
 export function setInspectorWidth(px: number): void {
-  const next = clampInspectorWidth(px);
+  const next = clampInspectorPreference(px);
   if (inspectorWidthPx === next) return;
   inspectorWidthPx = next;
   const state = loadCreatorUiState(browserCreatorStorage());

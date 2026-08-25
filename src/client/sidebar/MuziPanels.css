@@ -13,22 +13,30 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  height: 36px;
+  height: 40px;
   margin: 2px 4px 4px 0;
   padding-left: 4px;
-  border-radius: 12px;
+  border-radius: var(--muzi-radius-md);
   box-sizing: border-box;
   color: var(--dsw-alias-label-tertiary);
 }
 
 [data-plugin="dsh-oil-creator"] .muziSectionLabel {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   max-width: 45%;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   line-height: 20px;
   transition: opacity 120ms var(--ds-ease-in-out), transform 180ms var(--ds-ease-in-out);
+}
+
+[data-plugin="dsh-oil-creator"] .muziSectionCount {
+  flex: none;
+  font-variant-numeric: tabular-nums;
 }
 
 [data-plugin="dsh-oil-creator"] .muziSectionLabel.hidden {
@@ -40,7 +48,7 @@
 
 [data-plugin="dsh-oil-creator"] .muziSearchSlot {
   flex: 1;
-  max-width: 28px;
+  max-width: var(--muzi-control-size);
   min-width: 0;
   display: flex;
   align-items: center;
@@ -53,19 +61,25 @@
   display: flex;
   align-items: center;
   width: 100%;
-  height: 28px;
+  height: var(--muzi-control-size);
   border: 1px solid transparent;
-  border-radius: 50%;
+  border-radius: 999px;
   overflow: hidden;
   cursor: text;
   color: var(--dsw-alias-label-secondary);
-  transition: border-color 180ms var(--ds-ease-in-out), border-radius 180ms var(--ds-ease-in-out);
+  transition: border-color var(--muzi-motion-fast) var(--muzi-ease), border-radius var(--muzi-motion-fast) var(--muzi-ease), background-color var(--muzi-motion-fast) var(--muzi-ease);
 }
 
 [data-plugin="dsh-oil-creator"] .muziSearch.expanded {
-  height: 30px;
+  height: var(--muzi-control-size);
   border-color: var(--dsw-alias-border-l2);
-  border-radius: 10px;
+  border-radius: var(--muzi-radius-sm);
+  background: var(--muzi-surface);
+}
+
+[data-plugin="dsh-oil-creator"] .muziSearch.expanded:focus-within {
+  border-color: var(--dsw-alias-state-business-primary);
+  box-shadow: 0 0 0 1px var(--dsw-alias-state-business-primary);
 }
 
 [data-plugin="dsh-oil-creator"] .muziSearchButton,
@@ -75,11 +89,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--muzi-control-size);
+  height: var(--muzi-control-size);
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--muzi-radius-sm);
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -95,7 +109,7 @@
   flex: 1;
   width: 0;
   min-width: 0;
-  height: 30px;
+  height: var(--muzi-control-size);
   padding: 0;
   border: none;
   outline: none;
@@ -108,7 +122,7 @@
 
 [data-plugin="dsh-oil-creator"] .muziSearch.expanded .muziSearchInput { opacity: 1; pointer-events: auto; }
 [data-plugin="dsh-oil-creator"] .muziSearchInput::placeholder { color: var(--dsw-alias-label-tertiary); }
-[data-plugin="dsh-oil-creator"] .muziClearButton { width: 24px; height: 24px; }
+[data-plugin="dsh-oil-creator"] .muziClearButton { width: 28px; height: 28px; }
 
 [data-plugin="dsh-oil-creator"] .muziHeaderActions {
   flex: none;
@@ -146,8 +160,7 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
 }
 
-[data-plugin="dsh-oil-creator"] .muziViewMenuItem,
-[data-plugin="dsh-oil-creator"] .muziViewToggle {
+[data-plugin="dsh-oil-creator"] .muziViewMenuItem {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -162,8 +175,8 @@
   cursor: pointer;
 }
 
-[data-plugin="dsh-oil-creator"] .muziViewMenuItem:hover,
-[data-plugin="dsh-oil-creator"] .muziViewToggle:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .muziViewMenuItem:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .muziViewToggle { width: 100%; padding: 6px 8px; }
 
 [data-plugin="dsh-oil-creator"] .muziViewSelect {
   display: grid;
@@ -261,13 +274,12 @@
   border-radius: 999px;
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-secondary);
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 [data-plugin="dsh-oil-creator"] .muziSectionEmpty {
   padding: 12px 8px 16px;
-  color: var(--dsw-alias-label-tertiary);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -293,51 +305,140 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding-right: 8px;
+  padding: 4px 12px 20px 4px;
+  scroll-padding: 4px 12px 20px 4px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 [data-plugin="dsh-oil-creator"] .muziListRow {
+  position: relative;
   display: flex;
-  width: 100%;
-  gap: 8px;
-  padding: 9px 8px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: inherit;
+  width: auto;
+  min-height: 88px;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 9px;
+  box-sizing: border-box;
   text-align: left;
-  cursor: pointer;
 }
 
-[data-plugin="dsh-oil-creator"] .muziListRow:hover,
-[data-plugin="dsh-oil-creator"] .muziListRow.selected { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .muziListRow.selected {
+  outline: 2px solid var(--animal-primary-color);
+  outline-offset: -2px;
+}
 
 [data-plugin="dsh-oil-creator"] .muziListIcon {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 34px;
+  width: 38px;
+  height: 44px;
   flex: none;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--dsw-alias-state-business-primary);
+  border: 1px solid var(--animal-border-color-light);
+  border-radius: var(--animal-border-radius-sm);
+  background: var(--animal-bg-color);
+  color: var(--animal-primary-color);
 }
 
-[data-plugin="dsh-oil-creator"] .muziListIcon.knowledge { height: 34px; }
-[data-plugin="dsh-oil-creator"] .muziListBody { display: grid; min-width: 0; gap: 3px; }
-[data-plugin="dsh-oil-creator"] .muziListTitle { overflow: hidden; font-size: 13px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
-[data-plugin="dsh-oil-creator"] .muziListMeta { display: flex; gap: 4px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
-[data-plugin="dsh-oil-creator"] .muziListSummary { overflow: hidden; font-size: 11px; color: var(--dsw-alias-label-tertiary); text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .muziListIcon.knowledge { height: 44px; }
+[data-plugin="dsh-oil-creator"] .muziListIcon.pending { color: var(--dsw-alias-state-warn-label); }
+[data-plugin="dsh-oil-creator"] .muziListRow.pending { min-height: 72px; }
+[data-plugin="dsh-oil-creator"] .muziPendingState { display: inline-flex; min-height: 20px; align-items: center; padding: 0 7px; border-radius: 999px; background: var(--dsw-alias-state-warn-tertiary); color: var(--dsw-alias-state-warn-label); font-weight: 550; }
+[data-plugin="dsh-oil-creator"] .muziContentCover {
+  position: relative;
+  display: grid;
+  width: 52px;
+  height: 70px;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--animal-border-color-light);
+  border-radius: var(--animal-border-radius-sm);
+  background: var(--animal-bg-color-secondary);
+  box-sizing: border-box;
+}
+[data-plugin="dsh-oil-creator"] .muziContentCover img { width: 100%; height: 100%; object-fit: cover; animation: muziCoverReveal var(--muzi-motion-enter) var(--muzi-ease); }
+[data-plugin="dsh-oil-creator"] .muziCoverFallback { display: grid; width: 100%; height: 100%; place-content: center; justify-items: center; gap: 4px; color: var(--dsw-alias-label-tertiary); }
+[data-plugin="dsh-oil-creator"] .muziCoverFallback span { font-size: 10px; line-height: 13px; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .muziListBody { display: grid; min-width: 0; flex: 1; gap: 6px; }
+[data-plugin="dsh-oil-creator"] .muziListHeading { display: flex; min-width: 0; align-items: flex-start; gap: 4px; }
+[data-plugin="dsh-oil-creator"] .muziListTitle { display: -webkit-box; min-width: 0; flex: 1; overflow: hidden; font-size: 13px; font-weight: 600; line-height: 18px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+[data-plugin="dsh-oil-creator"] .muziListMeta { display: flex; min-width: 0; align-items: center; gap: 6px; font-size: 11px; color: var(--animal-text-color-secondary); }
+[data-plugin="dsh-oil-creator"] .muziCardTag { flex: none; }
+[data-plugin="dsh-oil-creator"] .muziCardMetaText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .muziListSummary { overflow: hidden; font-size: 11px; color: var(--animal-text-color-secondary); }
+[data-plugin="dsh-oil-creator"] .muziProgressSummary { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .muziProgressSummary strong { color: var(--dsw-alias-label-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
+[data-plugin="dsh-oil-creator"] .muziKnowledgeRow { min-height: 104px; align-items: flex-start; }
+[data-plugin="dsh-oil-creator"] .muziKnowledgeRow .muziListIcon { margin-top: 2px; }
+[data-plugin="dsh-oil-creator"] .muziKnowledgeExcerpt { display: -webkit-box; line-height: 17px; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 [data-plugin="dsh-oil-creator"] .muziEmpty { padding: 28px 12px; color: var(--dsw-alias-label-tertiary); text-align: center; font-size: 12px; }
 [data-plugin="dsh-oil-creator"] .muziEmpty.error { color: var(--dsw-alias-state-error); }
+
+[data-plugin="dsh-oil-creator"] .muziPanelState {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0;
+  padding: 24px 16px;
+  text-align: center;
+}
+[data-plugin="dsh-oil-creator"] .muziPanelState strong { font-size: 12px; font-weight: 600; }
+[data-plugin="dsh-oil-creator"] .muziPanelState p { margin: 0; font-size: 11px; line-height: 17px; }
+[data-plugin="dsh-oil-creator"] .muziPanelState.error strong,
+[data-plugin="dsh-oil-creator"] .muziPanelState.error p { color: var(--animal-error-color); }
+
+[data-plugin="dsh-oil-creator"] .muziCardSkeletons { display: grid; gap: 8px; padding-top: 4px; }
+
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] {
+  width: min(430px, calc(100vw - 32px));
+  max-width: none;
+  padding: 0;
+  border: 1px solid var(--muzi-border);
+  border-radius: var(--muzi-radius-lg);
+  background: var(--muzi-surface);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: var(--dsw-shadow-l3);
+  animation: muziDialogEnter var(--muzi-motion-enter) var(--muzi-ease);
+}
+
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"]::backdrop {
+  background: rgb(0 0 0 / 20%);
+}
+
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] form { display: grid; gap: 18px; padding: 20px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] header { display: grid; gap: 5px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] h2 { margin: 0; font-size: 18px; line-height: 26px; letter-spacing: -.02em; text-wrap: balance; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] header p { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] .muziCreateField { display: grid; gap: 7px; font-size: 12px; font-weight: 550; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] .muziCreateField input { width: 100%; height: 38px; padding: 0 11px; border: 1px solid var(--muzi-border-strong); border-radius: var(--muzi-radius-sm); outline: 0; background: var(--muzi-surface); color: inherit; box-sizing: border-box; font: inherit; font-weight: 400; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] .muziCreateField input:focus-visible { border-color: var(--dsw-alias-state-business-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-business-primary) 18%, transparent); }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] .muziCreateField input::placeholder { color: var(--dsw-alias-label-tertiary); }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] .muziCreateField small { color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 400; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset { display: grid; gap: 7px; margin: 0; padding: 0; border: 0; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] legend { margin-bottom: 7px; font-size: 12px; font-weight: 550; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset label { display: flex; min-height: 54px; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-sm); cursor: pointer; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset label:has(input:checked) { border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 45%, var(--muzi-border)); background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 6%, var(--muzi-surface)); }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset label:focus-within { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset input { margin: 0; accent-color: var(--dsw-alias-state-business-primary); }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset span { display: grid; gap: 2px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset strong { font-size: 12px; font-weight: 600; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] fieldset small { color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] .muziCreateError { margin: -6px 0 0; color: var(--dsw-alias-state-error-primary); font-size: 11px; line-height: 17px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] footer { display: flex; justify-content: flex-end; gap: 8px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] footer button { min-width: 76px; height: 34px; padding: 0 13px; border-radius: var(--muzi-radius-sm); cursor: pointer; font-size: 12px; font-weight: 550; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] footer button.secondary { border: 1px solid var(--muzi-border-strong); background: transparent; color: inherit; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] footer button.primary { border: 0; background: var(--dsw-alias-state-business-primary); color: var(--dsw-specific-button-label-primary); }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] footer button:hover:not(:disabled) { filter: brightness(.97); }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] footer button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+[data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] footer button:disabled { opacity: .5; cursor: default; }
 
 [data-plugin="dsh-oil-creator"] .muziHeaderIcon:focus-visible,
 [data-plugin="dsh-oil-creator"] .muziSearchButton:focus-visible,
 [data-plugin="dsh-oil-creator"] .muziClearButton:focus-visible,
 [data-plugin="dsh-oil-creator"] .muziViewMenuItem:focus-visible,
 [data-plugin="dsh-oil-creator"] .muziListRow:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline: 2px solid var(--animal-primary-color);
   outline-offset: 2px;
 }
 
@@ -352,5 +453,17 @@
   [data-plugin="dsh-oil-creator"] .muziSectionLabel,
   [data-plugin="dsh-oil-creator"] .muziSearchSlot,
   [data-plugin="dsh-oil-creator"] .muziSearch,
-  [data-plugin="dsh-oil-creator"] .muziHeaderActions { transition: none; }
+  [data-plugin="dsh-oil-creator"] .muziHeaderActions,
+  [data-plugin="dsh-oil-creator"] .muziListRow { transition: none; }
+  [data-plugin="dsh-oil-creator"] .muziContentCover img { animation: none; }
+  [data-plugin="dsh-oil-creator"][data-surface="muzi-create-dialog"] { animation: none; }
+}
+
+@keyframes muziCoverReveal {
+  from { opacity: .65; }
+  to { opacity: 1; }
+}
+
+@keyframes muziDialogEnter {
+  from { opacity: .72; transform: translateY(4px); }
 }

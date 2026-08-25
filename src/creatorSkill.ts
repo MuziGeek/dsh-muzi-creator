@@ -28,12 +28,13 @@ export const CREATOR_WORKBENCH_SKILL = {
 ## 生成与保存
 
 1. 先用 \`muzi_knowledge_search\` 找正式知识，再按需读取页面。零正式 Wiki 时明确说明必须先通过 llm-wiki 消化原始素材。
-2. 在对话中生成完整母内容、视频稿或渠道稿预览，列明正式 Wiki 定位符与当前 SHA-256。
-3. 未收到明确的“保存为母内容”“保存为视频稿”等指令，不落盘。
-4. 创建项目先调用 \`muzi_creator_create confirmed=false\` 展示精确预览；用户确认后用同一标题和主稿再次调用并设 \`confirmed=true\`。
-5. 保存文档先调用 \`muzi_creator_save confirmed=false\`，展示文本或准确摘要；用户确认后用未变化的文本、当前 expectedRevision 和 \`confirmed=true\` 保存。
-6. 修订冲突时停止覆盖，重新读取项目并让用户核对变化。
-7. 派生稿填写 derivedFrom 与源文档当前哈希。源哈希变化后只报告“来源已更新，待重新加工”，不自动覆盖旧稿。
+2. 主题会话携带正式 Atlas 定位符时，先用 \`muzi_creator_status atlasLocator=<定位符>\` 精确查找项目。唯一匹配时复用；无匹配时以知识标题创建；多个匹配时停止并让用户选择。
+3. 未收到生成指令前只讨论观点、证据边界和创作方向，不写 Creator Studio。
+4. 用户明确输入“总结成为母内容”即授权本轮生成并保存到 \`mother-content.md\`；明确输入“整理为脚本”即授权本轮生成并保存到 \`channels/video/script.md\`。该授权允许完成工具预检、创建新项目和写入空目标，不需要再索要一次确认。
+5. 新项目的 primaryDocument 必须与目标文档一致，并通过 \`atlasReferences\` 保存正式知识的定位符、标题、当前 SHA-256 和引用时间。先以 \`confirmed=false\` 核对精确参数，再在同一轮以 \`confirmed=true\` 创建。
+6. 保存前必须用 \`muzi_creator_read\` 读取最新 revision 和目标文档。目标为空时，生成指令本身允许先预览再在同一轮 \`confirmed=true\` 保存；目标已有非空内容时，必须展示拟议变化并等待用户明确同意覆盖，随后才可设置 \`overwriteConfirmed=true\`，不能把生成指令当作覆盖授权。
+7. 保存使用未变化的文本和最新 expectedRevision。修订冲突时重新读取项目，重新核对目标内容，不静默重试覆盖。
+8. 视频稿由已有母内容派生时填写 \`derivedFrom=mother\` 和母内容当前哈希 \`sourceSha256\`。源哈希变化后只报告“来源已更新，待重新加工”，不自动覆盖旧稿。
 
 ## 创作结构
 

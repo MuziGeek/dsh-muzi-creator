@@ -120,6 +120,8 @@ export const librarySettingsSchema = z.object({
     cover: secretViewSchema,
   }),
   scriptRules: z.string().optional(),
+  trellisProjectsRoot: z.string(),
+  obsidianExecutable: z.string().optional(),
 });
 
 export const listContentsRequestSchema = z.object({
@@ -262,6 +264,14 @@ export const waitExportRequestSchema = z.object({
 
 export const setLibraryRootRequestSchema = z.object({
   path: z.string().min(1),
+});
+
+export const setTrellisProjectsRootRequestSchema = z.object({
+  path: z.string(),
+});
+
+export const setObsidianExecutableRequestSchema = z.object({
+  path: z.string(),
 });
 
 export const createContentRequestSchema = z.object({

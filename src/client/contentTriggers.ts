@@ -1,6 +1,6 @@
 import { formatContentRef } from "../contentRef.ts";
 import type { ContentDetail } from "../types.ts";
-import type { KnowledgePageSummary, MuziProjectDetail } from "../muziTypes.ts";
+import type { KnowledgePageSummary, MuziProjectDetail, PendingKnowledgeReference } from "../muziTypes.ts";
 import { getSelectedContentId, subscribeSelectedContentId } from "./contentSelection.ts";
 
 interface TriggerCandidate {
@@ -193,6 +193,7 @@ export function registerMuziTriggers(
   listProjects: () => Promise<ReadonlyArray<{ id: string; title: string }>>,
   loadKnowledge: (locator: string) => Promise<{ title: string; locator: string; sha256: string; markdown: string }>,
   searchKnowledge: (query: string) => Promise<ReadonlyArray<KnowledgePageSummary>>,
+  loadPending: (id: string, expectedSha256?: string) => Promise<PendingKnowledgeReference>,
 ): () => void {
   if (inputTriggers === undefined) return () => undefined;
   const source: TriggerSource = {
@@ -235,6 +236,11 @@ export function registerMuziTriggers(
         if (ref.startsWith("knowledge:")) {
           const page = await loadKnowledge(ref.slice("knowledge:".length));
           return `# 正式知识：${page.title}\n定位符：${page.locator}\nSHA-256：${page.sha256}\n\n${page.markdown}`;
+        }
+        if (ref.startsWith("pending:")) {
+          const [, id, expectedSha256] = ref.split(":");
+          if (id === undefined) return "无效的待消化文件引用。";
+          return (await loadPending(id, expectedSha256)).text;
         }
         return "无效的 Muzi 引用。";
       },

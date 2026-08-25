@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, readdir, realpath, stat } from "node:fs/promises";
-import { basename, join, relative, resolve, sep } from "node:path";
+import { createReadStream } from "node:fs";
+import { lstat, open, readFile, readdir, realpath, stat } from "node:fs/promises";
+import { basename, extname, join, relative, resolve, sep } from "node:path";
 
 import type { Config } from "./config.ts";
 import type {
@@ -19,6 +20,12 @@ import type {
   KnowledgeSearchRequest,
   KnowledgeSearchResult,
   KnowledgeStatus,
+  PendingKnowledgeFile,
+  PendingKnowledgeGetRequest,
+  PendingKnowledgeListRequest,
+  PendingKnowledgeListResult,
+  PendingKnowledgeReference,
+  PendingKnowledgeState,
 } from "./muziTypes.ts";
 
 const CATEGORIES = ["entities", "topics", "sources", "comparisons", "synthesis", "queries"] as const satisfies readonly KnowledgeCategory[];
@@ -31,6 +38,18 @@ const CATEGORY_DETAILS: Record<KnowledgeCategory, { label: string; role: Knowled
   entities: { label: "实体", role: "supporting", priority: 4 },
   sources: { label: "来源", role: "supporting", priority: 5 },
 };
+const PENDING_EXTENSIONS = new Set([".md", ".txt", ".pdf", ".html"]);
+
+interface CacheEntry {
+  hash: string;
+  sourcePage: string;
+}
+
+interface PendingRecord {
+  path: string;
+  summary: Omit<PendingKnowledgeFile, "sha256" | "previewKind" | "text" | "truncated">;
+  sha256: string;
+}
 
 interface FormalPageRecord {
   markdown: string;
@@ -44,6 +63,12 @@ interface AtlasSnapshot {
 
 function hash(text: string): string {
   return createHash("sha256").update(text).digest("hex");
+}
+
+async function fileHash(relativePath: string, path: string): Promise<string> {
+  const digest = createHash("sha256").update(relativePath).update(Buffer.from([0]));
+  for await (const chunk of createReadStream(path)) digest.update(chunk as Buffer);
+  return digest.digest("hex");
 }
 
 function childOf(root: string, target: string): boolean {
@@ -68,6 +93,46 @@ async function regularFiles(root: string): Promise<string[]> {
   };
   await visit(root);
   return files;
+}
+
+async function pendingFiles(root: string): Promise<string[]> {
+  const rootInfo = await lstat(root).catch(() => undefined);
+  if (rootInfo === undefined || !rootInfo.isDirectory() || rootInfo.isSymbolicLink()) return [];
+  const canonicalRoot = await realpath(root);
+  const files: string[] = [];
+  const visit = async (directory: string, depth: number): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name.startsWith(".") || entry.isSymbolicLink() || (depth === 0 && entry.name === "assets")) continue;
+      const path = join(directory, entry.name);
+      const actual = await realpath(path).catch(() => undefined);
+      if (actual === undefined || !childOf(canonicalRoot, actual)) continue;
+      if (entry.isDirectory()) await visit(path, depth + 1);
+      else if (entry.isFile() && PENDING_EXTENSIONS.has(extname(entry.name).toLowerCase())) files.push(path);
+    }
+  };
+  await visit(root, 0);
+  return files.sort();
+}
+
+function cacheEntries(value: unknown): Map<string, CacheEntry> {
+  if (typeof value !== "object" || value === null || (value as { version?: unknown }).version !== 1) {
+    throw new Error("llm-wiki 缓存格式无效，请先修复 .wiki-cache.json");
+  }
+  const rawEntries = (value as { entries?: unknown }).entries;
+  if (typeof rawEntries !== "object" || rawEntries === null || Array.isArray(rawEntries)) {
+    throw new Error("llm-wiki 缓存缺少 entries，请先修复 .wiki-cache.json");
+  }
+  const entries = new Map<string, CacheEntry>();
+  for (const [path, raw] of Object.entries(rawEntries)) {
+    if (typeof raw !== "object" || raw === null) throw new Error(`llm-wiki 缓存条目无效：${path}`);
+    const entry = raw as { hash?: unknown; source_page?: unknown };
+    if (typeof entry.hash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(entry.hash)
+      || typeof entry.source_page !== "string" || entry.source_page.trim() === "") {
+      throw new Error(`llm-wiki 缓存条目无效：${path}`);
+    }
+    entries.set(path.replaceAll("\\", "/"), { hash: entry.hash.slice("sha256:".length), sourcePage: entry.source_page });
+  }
+  return entries;
 }
 
 function titleOf(markdown: string, path: string): string {
@@ -332,8 +397,94 @@ export class AtlasReadService {
     };
   }
 
+  async listPending(request: PendingKnowledgeListRequest): Promise<PendingKnowledgeListResult> {
+    const [snapshot, records] = await Promise.all([this.snapshot(), this.pendingRecords()]);
+    const query = request.query?.trim().toLocaleLowerCase() ?? "";
+    const offset = request.offset ?? 0;
+    const limit = Math.min(request.limit ?? this.searchResultLimit, this.searchResultLimit);
+    const matches = records.filter((record) => query === ""
+      || record.summary.title.toLocaleLowerCase().includes(query)
+      || record.summary.relativePath.toLocaleLowerCase().includes(query));
+    const items = matches.slice(offset, offset + limit).map((record) => record.summary);
+    return {
+      status: snapshot.status,
+      total: matches.length,
+      offset,
+      nextOffset: offset + items.length < matches.length ? offset + items.length : null,
+      items,
+    };
+  }
+
+  async getPending(request: PendingKnowledgeGetRequest): Promise<PendingKnowledgeFile> {
+    const record = (await this.pendingRecords()).find((candidate) => candidate.summary.id === request.id);
+    if (record === undefined) throw new Error("待消化文件已处理、已移动或不存在，请刷新列表");
+    const previewKind = record.summary.extension === "md"
+      ? "markdown"
+      : record.summary.extension === "html"
+        ? "html_text"
+        : record.summary.extension === "pdf"
+          ? "binary"
+          : "text";
+    if (previewKind === "binary") {
+      return { ...record.summary, sha256: record.sha256, previewKind, text: "", truncated: false };
+    }
+    const handle = await open(record.path, "r");
+    try {
+      const length = Math.min(record.summary.size, this.previewMaxBytes);
+      const buffer = Buffer.alloc(length);
+      const { bytesRead } = await handle.read(buffer, 0, length, 0);
+      const source = buffer.subarray(0, bytesRead).toString("utf8");
+      return {
+        ...record.summary,
+        sha256: record.sha256,
+        previewKind,
+        text: previewKind === "html_text" ? safeMarkdown(source) : safeMarkdown(source),
+        truncated: record.summary.size > bytesRead,
+      };
+    } finally {
+      await handle.close();
+    }
+  }
+
+  async pendingReference(request: PendingKnowledgeGetRequest): Promise<PendingKnowledgeReference> {
+    const record = (await this.pendingRecords()).find((candidate) => candidate.summary.id === request.id);
+    if (record === undefined) throw new Error("待消化文件已处理、已移动或不存在，请刷新列表");
+    if (request.expectedSha256 !== undefined && request.expectedSha256 !== record.sha256) {
+      throw new Error("待消化文件内容已变化，请刷新预览后重新发送");
+    }
+    const stateLabel: Record<PendingKnowledgeState, string> = {
+      new: "首次消化",
+      changed: "内容已变化，需要重新消化",
+      source_missing: "正式来源页缺失，需要重新消化",
+    };
+    return {
+      text: [
+        "# 待消化素材",
+        `文件：${record.summary.title}`,
+        `Atlas 相对位置：${record.summary.relativePath}`,
+        `本地文件路径：${record.path}`,
+        `状态：${stateLabel[record.summary.state]}`,
+        `SHA-256：${record.sha256}`,
+      ].join("\n"),
+    };
+  }
+
+  async revision(): Promise<string> {
+    const paths = [
+      join(this.atlasRoot, ".wiki-cache.json"),
+      ...(await pendingFiles(join(this.atlasRoot, "raw"))),
+      ...(await this.formalFiles()),
+    ];
+    const rows = await Promise.all(paths.map(async (path) => {
+      const info = await stat(path).catch(() => undefined);
+      return info === undefined ? `${path}\0missing` : `${path}\0${info.size}\0${Math.trunc(info.mtimeMs)}`;
+    }));
+    return hash(rows.sort().join("\n")).slice(0, 16);
+  }
+
   async preview(): Promise<KnowledgePreviewResult> {
     const snapshot = await this.snapshot();
+    const pending = await this.pendingRecords();
     const counts = new Map(CATEGORIES.map((category) => [category, directoryOf(category, snapshot.pages).count]));
     const graph = snapshot.status.status === "ready"
       ? buildGraph(snapshot.pages, this.graphNodeLimit, this.graphEdgeLimit)
@@ -346,7 +497,7 @@ export class AtlasReadService {
         entities: counts.get("entities") ?? 0,
         sources: counts.get("sources") ?? 0,
         analyses: (counts.get("synthesis") ?? 0) + (counts.get("comparisons") ?? 0) + (counts.get("queries") ?? 0),
-        pendingMarkdown: snapshot.status.rawMarkdownCount,
+        pendingMarkdown: pending.filter((record) => record.summary.extension === "md").length,
         rawFiles: snapshot.status.rawFileCount,
       },
       ...graph,
@@ -407,6 +558,57 @@ export class AtlasReadService {
         pages: [],
       };
     }
+  }
+
+  private async pendingRecords(): Promise<PendingRecord[]> {
+    const cachePath = join(this.atlasRoot, ".wiki-cache.json");
+    const cacheText = await readFile(cachePath, "utf8");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cacheText) as unknown;
+    } catch {
+      throw new Error("llm-wiki 缓存损坏，请先修复 .wiki-cache.json");
+    }
+    const entries = cacheEntries(parsed);
+    const rawRoot = join(this.atlasRoot, "raw");
+    const paths = await pendingFiles(rawRoot);
+    const records = (await Promise.all(paths.map(async (path): Promise<PendingRecord | undefined> => {
+      const relativePath = relative(this.atlasRoot, path).replaceAll("\\", "/");
+      const info = await stat(path);
+      const sha256 = await fileHash(relativePath, path);
+      const entry = entries.get(relativePath);
+      let state: PendingKnowledgeState | undefined;
+      if (entry === undefined) state = "new";
+      else if (entry.hash !== sha256) state = "changed";
+      else if (!await this.sourcePageExists(entry.sourcePage)) state = "source_missing";
+      if (state === undefined) return undefined;
+      const extension = extname(path).slice(1).toLowerCase() as PendingKnowledgeFile["extension"];
+      return {
+        path,
+        sha256,
+        summary: {
+          id: `pk_${hash(relativePath).slice(0, 24)}`,
+          relativePath,
+          title: basename(path, extname(path)),
+          extension,
+          size: info.size,
+          updatedAt: info.mtime.toISOString(),
+          state,
+        },
+      };
+    }))).filter((record): record is PendingRecord => record !== undefined);
+    const priority: Record<PendingKnowledgeState, number> = { changed: 0, source_missing: 1, new: 2 };
+    return records.sort((left, right) => priority[left.summary.state] - priority[right.summary.state]
+      || right.summary.updatedAt.localeCompare(left.summary.updatedAt)
+      || left.summary.relativePath.localeCompare(right.summary.relativePath, "zh-CN"));
+  }
+
+  private async sourcePageExists(sourcePage: string): Promise<boolean> {
+    if (sourcePage.includes("\\") || sourcePage.startsWith("/") || /^[A-Za-z]:/.test(sourcePage)) return false;
+    const target = resolve(this.atlasRoot, sourcePage);
+    if (!childOf(this.atlasRoot, target)) return false;
+    const info = await lstat(target).catch(() => undefined);
+    return info !== undefined && info.isFile() && !info.isSymbolicLink();
   }
 
   private async formalFiles(): Promise<string[]> {

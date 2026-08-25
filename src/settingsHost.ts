@@ -1,5 +1,8 @@
 import Schema from "@deepseek-ai/schemastery";
-import { settingsNamespace, type SettingsProvider } from "@deepseek-ai/dsh-settings";
+import {
+  settingsNamespace,
+  type SettingsProvider,
+} from "@deepseek-ai/dsh-settings";
 
 import { CREATOR_SETTINGS_NAMESPACE } from "./settingsContract.ts";
 

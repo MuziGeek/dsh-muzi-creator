@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -8,6 +8,7 @@ import type { Config } from "../src/config.ts";
 import { MuziCreatorService } from "../src/muziService.ts";
 
 const roots: string[] = [];
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
 
 async function config(): Promise<Config> {
   const root = await mkdtemp(join(tmpdir(), "muzi-creator-test-"));
@@ -59,6 +60,36 @@ describe("muzi.creator/2", () => {
     expect(project.content.wechat).toBe("派生稿");
   });
 
+  it("filters projects by an exact Atlas locator", async () => {
+    const service = new MuziCreatorService(await config());
+    const locator = "atlas://wiki/topics/agent.md";
+    await service.createProject({
+      title: "Agent",
+      primaryDocument: "mother",
+      confirmed: true,
+      atlasReferences: [{ locator, title: "Agent", sha256: "a".repeat(64), attachedAt: "2026-08-22T00:00:00.000Z" }],
+    });
+    await service.createProject({ title: "Other", primaryDocument: "video", confirmed: true });
+    expect((await service.listProjects({ atlasLocator: locator })).items.map((item) => item.title)).toEqual(["Agent"]);
+    expect((await service.listProjects({ atlasLocator: "atlas://wiki/topics/missing.md" })).items).toEqual([]);
+  });
+
+  it("projects document changes through a revision token and returns an Obsidian registration guide", async () => {
+    const cfg = await config();
+    const service = new MuziCreatorService(cfg);
+    const created = await service.createProject({ title: "只读预览", primaryDocument: "mother", confirmed: true });
+    const before = await service.revision();
+    const projectRoot = join(cfg.creatorRoot, "10-active", created.folderName);
+    await writeFile(join(projectRoot, "mother-content.md"), "在 Obsidian 中编辑");
+    const after = await service.revision();
+    expect(after).not.toBe(before);
+    const location = await service.documentLocation({ id: created.id, document: "mother" });
+    expect(location.path).toBe(join(projectRoot, "mother-content.md"));
+    expect(location.obsidianReady).toBe(false);
+    expect(location.obsidianUri).toBeNull();
+    expect(location.message).toContain("独立仓库");
+  });
+
   it("migrates V1 without changing the stable id or body", async () => {
     const cfg = await config();
     const projectRoot = join(cfg.creatorRoot, "10-active", "2026-08-20_old");
@@ -71,5 +102,46 @@ describe("muzi.creator/2", () => {
     expect(project.primaryDocument).toBe("video");
     expect(project.content.video).toBe("原脚本");
     expect(await readFile(join(projectRoot, "project.yml"), "utf8")).toContain("muzi.creator/2");
+  });
+
+  it("prefers the portrait Oil cover and exposes no filesystem path", async () => {
+    const cfg = await config();
+    const service = new MuziCreatorService(cfg);
+    const created = await service.createProject({ title: "有封面", primaryDocument: "mother", confirmed: true });
+    const projectRoot = join(cfg.creatorRoot, "10-active", created.folderName);
+    const wide = Buffer.concat([PNG, Buffer.from("wide")]);
+    const portrait = Buffer.concat([PNG, Buffer.from("portrait")]);
+    await writeFile(join(projectRoot, "episode_16x9.png"), wide);
+    await writeFile(join(projectRoot, "episode_3x4.png"), portrait);
+
+    const project = await service.getProject({ id: created.id });
+    const cover = await service.getProjectCover({ id: created.id });
+    expect(project.coverRevision).toMatch(/^[a-f0-9]{16}$/);
+    expect(JSON.stringify(project)).not.toContain(projectRoot);
+    expect(cover).toEqual({ found: true, mime: "image/png", base64: portrait.toString("base64") });
+  });
+
+  it("returns an empty cover for missing, invalid, oversized, and linked files", async () => {
+    const cfg = await config();
+    const service = new MuziCreatorService(cfg);
+    const created = await service.createProject({ title: "无封面", primaryDocument: "mother", confirmed: true });
+    const projectRoot = join(cfg.creatorRoot, "10-active", created.folderName);
+    expect((await service.getProject({ id: created.id })).coverRevision).toBeNull();
+    expect(await service.getProjectCover({ id: created.id })).toEqual({ found: false, mime: "", base64: "" });
+
+    await writeFile(join(projectRoot, "broken_3x4.png"), "not a png");
+    expect((await service.getProject({ id: created.id })).coverRevision).toBeNull();
+
+    await rm(join(projectRoot, "broken_3x4.png"));
+    await writeFile(join(projectRoot, "large_3x4.png"), Buffer.concat([PNG, Buffer.alloc(cfg.previewMaxBytes)]));
+    expect((await service.getProject({ id: created.id })).coverRevision).toBeNull();
+
+    await rm(join(projectRoot, "large_3x4.png"));
+    const external = join(cfg.creatorRoot, "external-cover");
+    await mkdir(external);
+    await writeFile(join(external, "cover.png"), PNG);
+    await symlink(external, join(projectRoot, "linked_3x4.png"), "junction");
+    expect((await service.getProject({ id: created.id })).coverRevision).toBeNull();
+    expect(await service.getProjectCover({ id: created.id })).toEqual({ found: false, mime: "", base64: "" });
   });
 });

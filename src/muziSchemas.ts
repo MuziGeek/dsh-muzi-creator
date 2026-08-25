@@ -39,6 +39,7 @@ const muziProjectSummarySchema = z.object({
   stage: muziProjectStageSchema,
   primaryDocument: muziPrimaryDocumentSchema,
   updatedAt: z.string().datetime(),
+  coverRevision: z.string().regex(/^[a-f0-9]{16}$/).nullable(),
   documents: z.record(muziDocumentKeySchema, muziDocumentStateSchema),
   publications: z.record(muziPublishTargetSchema, muziPublicationStateSchema),
   referenceCount: z.number().int().nonnegative(),
@@ -55,6 +56,7 @@ export const muziProjectDetailSchema = muziProjectSummarySchema.extend({
 export const muziProjectListRequestSchema = z.object({
   query: z.string().optional(),
   includeArchived: z.boolean().optional(),
+  atlasLocator: atlasReferenceSchema.shape.locator.optional(),
 });
 export const muziProjectListResultSchema = z.object({ items: z.array(muziProjectSummarySchema) });
 export const muziProjectGetRequestSchema = z.object({ id: z.string().regex(/^mc_[a-f0-9]{24}$/) });
@@ -179,4 +181,57 @@ export const knowledgeSearchResultSchema = z.object({
 });
 export const knowledgeGetRequestSchema = z.object({
   locator: z.string().regex(/^atlas:\/\/wiki\/(?:entities|topics|sources|comparisons|synthesis|queries)\/[^?#]+\.md$/),
+});
+
+export const pendingKnowledgeStateSchema = z.enum(["new", "changed", "source_missing"]);
+export const pendingKnowledgePreviewKindSchema = z.enum(["markdown", "text", "html_text", "binary"]);
+const pendingKnowledgeSummarySchema = z.object({
+  id: z.string().regex(/^pk_[a-f0-9]{24}$/),
+  relativePath: z.string().regex(/^raw\/(?!assets(?:\/|$))[^\\]+$/),
+  title: z.string().min(1),
+  extension: z.enum(["md", "txt", "pdf", "html"]),
+  size: z.number().int().nonnegative(),
+  updatedAt: z.string().datetime(),
+  state: pendingKnowledgeStateSchema,
+});
+export const pendingKnowledgeListRequestSchema = z.object({
+  query: z.string().optional(),
+  offset: z.number().int().nonnegative().optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+});
+export const pendingKnowledgeListResultSchema = z.object({
+  status: knowledgeStatusSchema,
+  total: z.number().int().nonnegative(),
+  offset: z.number().int().nonnegative(),
+  nextOffset: z.number().int().nonnegative().nullable(),
+  items: z.array(pendingKnowledgeSummarySchema),
+});
+export const pendingKnowledgeGetRequestSchema = z.object({
+  id: z.string().regex(/^pk_[a-f0-9]{24}$/),
+  expectedSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+});
+export const pendingKnowledgeFileSchema = pendingKnowledgeSummarySchema.extend({
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  previewKind: pendingKnowledgePreviewKindSchema,
+  text: z.string(),
+  truncated: z.boolean(),
+});
+export const pendingKnowledgeReferenceSchema = z.object({ text: z.string().min(1) });
+export const muziWorkspaceRevisionSchema = z.object({
+  creator: z.string().regex(/^[a-f0-9]{16}$/),
+  knowledge: z.string().regex(/^[a-f0-9]{16}$/),
+  trellis: z.number().int().nonnegative(),
+});
+export const muziDocumentLocationRequestSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  document: muziDocumentKeySchema,
+});
+export const muziDocumentLocationSchema = z.object({
+  path: z.string().min(1),
+  obsidianReady: z.boolean(),
+  obsidianUri: z.string().nullable(),
+  message: z.string().nullable(),
+});
+export const muziDocumentOpenResultSchema = z.object({
+  opened: z.literal(true),
 });

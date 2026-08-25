@@ -39,6 +39,7 @@ export interface MuziProjectSummary {
   stage: MuziProjectStage;
   primaryDocument: MuziPrimaryDocument;
   updatedAt: string;
+  coverRevision: string | null;
   documents: Record<MuziDocumentKey, MuziDocumentState>;
   publications: Record<MuziPublishTarget, MuziPublicationState>;
   referenceCount: number;
@@ -55,6 +56,7 @@ export interface MuziProjectDetail extends MuziProjectSummary {
 export interface MuziProjectListRequest {
   query?: string;
   includeArchived?: boolean;
+  atlasLocator?: string;
 }
 
 export interface MuziProjectListResult {
@@ -112,6 +114,67 @@ export interface KnowledgeStatus {
   rawMarkdownCount: number;
   rawFileCount: number;
   formalPageCount: number;
+  message: string | null;
+}
+
+export type PendingKnowledgeState = "new" | "changed" | "source_missing";
+export type PendingKnowledgePreviewKind = "markdown" | "text" | "html_text" | "binary";
+
+export interface PendingKnowledgeSummary {
+  id: string;
+  relativePath: string;
+  title: string;
+  extension: "md" | "txt" | "pdf" | "html";
+  size: number;
+  updatedAt: string;
+  state: PendingKnowledgeState;
+}
+
+export interface PendingKnowledgeFile extends PendingKnowledgeSummary {
+  sha256: string;
+  previewKind: PendingKnowledgePreviewKind;
+  text: string;
+  truncated: boolean;
+}
+
+export interface PendingKnowledgeListRequest {
+  query?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface PendingKnowledgeListResult {
+  status: KnowledgeStatus;
+  total: number;
+  offset: number;
+  nextOffset: number | null;
+  items: PendingKnowledgeSummary[];
+}
+
+export interface PendingKnowledgeGetRequest {
+  id: string;
+  expectedSha256?: string;
+}
+
+export interface PendingKnowledgeReference {
+  text: string;
+}
+
+export interface MuziWorkspaceRevision {
+  creator: string;
+  knowledge: string;
+  trellis: number;
+}
+
+export interface MuziDocumentLocationRequest {
+  id: string;
+  document: MuziDocumentKey;
+}
+
+export interface MuziDocumentLocation {
+  path: string;
+  obsidianReady: boolean;
+  obsidianUri: string | null;
   message: string | null;
 }
 

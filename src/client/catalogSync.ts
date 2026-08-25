@@ -3,10 +3,11 @@ import { bumpLibrary } from "./contentSelection.ts";
 export const LIBRARY_POLL_MS = 1000;
 
 export function startLibraryLiveSync(
-  readRevision: () => Promise<number>,
+  readRevision: () => Promise<string | number>,
   intervalMs = LIBRARY_POLL_MS,
+  onChange: () => void = bumpLibrary,
 ): () => void {
-  let last = -1;
+  let last: string | number | undefined;
   let inFlight = false;
   let stopped = false;
 
@@ -16,14 +17,14 @@ export function startLibraryLiveSync(
     try {
       const revision = await readRevision();
       if (stopped) return;
-      if (last < 0) {
+      if (last === undefined) {
         last = revision;
-        if (revision > 0) bumpLibrary();
+        if (typeof revision === "number" && revision > 0) onChange();
         return;
       }
       if (revision !== last) {
         last = revision;
-        bumpLibrary();
+        onChange();
       }
     } catch {
       // Remote may not be mounted yet.

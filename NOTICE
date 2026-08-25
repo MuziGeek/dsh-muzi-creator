@@ -8,3 +8,10 @@ Copyright (c) 2026 dsh-oil-creator contributors.
 
 The 3D knowledge graph uses react-force-graph-3d, Three.js, and three-spritetext.
 These dependencies are distributed under the MIT License.
+
+The content and knowledge workbench uses animal-island-ui 1.6.0 by guokaigdg:
+https://github.com/guokaigdg/animal-island-ui
+
+animal-island-ui is distributed under the Creative Commons Attribution-
+NonCommercial 4.0 International License (CC BY-NC 4.0). This integration is
+intended for personal, non-commercial use.

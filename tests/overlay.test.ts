@@ -82,6 +82,27 @@ describe("script rules", () => {
   });
 });
 
+describe("projects root and obsidian executable", () => {
+  it("round-trips both fields through save and load", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "oil-overlay-paths-"));
+    const overlay = emptyOverlay();
+    overlay.trellisProjectsRoot = "D:\\GitProject";
+    overlay.obsidianExecutable = "D:\\WorkSoft\\Obsidian\\Obsidian.exe";
+    await saveOverlay(dataDir, overlay);
+
+    const loaded = await loadOverlay(dataDir);
+    expect(loaded.trellisProjectsRoot).toBe("D:\\GitProject");
+    expect(loaded.obsidianExecutable).toBe("D:\\WorkSoft\\Obsidian\\Obsidian.exe");
+  });
+
+  it("drops empty and whitespace-only values when decoding", () => {
+    expect(decodeOverlay({
+      trellisProjectsRoot: "  ",
+      obsidianExecutable: "",
+    })).toMatchObject({});
+  });
+});
+
 describe("overlay lock", () => {
   it("serializes overlapping writes", async () => {
     const dir = await mkdtemp(join(tmpdir(), "oil-overlay-"));

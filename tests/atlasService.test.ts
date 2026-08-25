@@ -1,4 +1,5 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -18,6 +19,7 @@ async function fixture(): Promise<Config> {
   await mkdir(join(atlasRoot, "raw"), { recursive: true });
   await Promise.all(CATEGORIES.map((category) => mkdir(join(atlasRoot, "wiki", category), { recursive: true })));
   await writeFile(join(atlasRoot, ".wiki-schema.md"), "# llm-wiki\nSchema Version: 1.1\nLanguage: zh-CN\n");
+  await writeFile(join(atlasRoot, ".wiki-cache.json"), JSON.stringify({ version: 1, entries: {} }));
   await writeFile(join(atlasRoot, "raw", "private.md"), "raw secret");
   await writeFile(join(atlasRoot, "raw", "asset.bin"), "raw asset");
   await writeFile(join(atlasRoot, "wiki", "topics", "formal.md"), "# 正式主题\n\n可信正文<script>alert(1)</script>\n![](https://example.com/a.png)\n\n[[Agent Runtime]]\n```md\n[[Code Only]]\n```");
@@ -39,6 +41,10 @@ async function fixture(): Promise<Config> {
     enabledPublishTargets: [],
     externalActionsEnabled: false,
   };
+}
+
+function pendingHash(relativePath: string, bytes: string | Buffer): string {
+  return createHash("sha256").update(relativePath).update(Buffer.from([0])).update(bytes).digest("hex");
 }
 
 afterEach(async () => {
@@ -148,5 +154,62 @@ describe("llm-wiki read projection", () => {
     expect(page.markdown).not.toContain("<script>");
     expect(page.markdown).not.toContain("https://example.com/a.png");
     await expect(service.get({ locator: "atlas://raw/private.md" })).rejects.toThrow("only formal Wiki");
+  });
+
+  it("classifies supported raw files from the llm-wiki cache and excludes hidden, asset, linked, and unsupported files", async () => {
+    const config = await fixture();
+    const rawRoot = join(config.atlasRoot, "raw");
+    await Promise.all([
+      writeFile(join(rawRoot, "hit.md"), "cached"),
+      writeFile(join(rawRoot, "changed.txt"), "changed"),
+      writeFile(join(rawRoot, "missing.html"), "<h1>Missing</h1><script>alert(1)</script>"),
+      writeFile(join(rawRoot, "document.pdf"), "%PDF fixture"),
+      writeFile(join(rawRoot, ".hidden.md"), "hidden"),
+      writeFile(join(rawRoot, "ignored.docx"), "ignored"),
+    ]);
+    await mkdir(join(rawRoot, "assets"));
+    await writeFile(join(rawRoot, "assets", "asset.md"), "asset");
+    const linked = join(config.atlasRoot, "linked-source");
+    await mkdir(linked);
+    await writeFile(join(linked, "linked.md"), "linked");
+    await symlink(linked, join(rawRoot, "linked"), "junction");
+    await writeFile(join(config.atlasRoot, ".wiki-cache.json"), JSON.stringify({
+      version: 1,
+      entries: {
+        "raw/hit.md": { hash: `sha256:${pendingHash("raw/hit.md", "cached")}`, source_page: "wiki/sources/source.md" },
+        "raw/changed.txt": { hash: `sha256:${"0".repeat(64)}`, source_page: "wiki/sources/source.md" },
+        "raw/missing.html": { hash: `sha256:${pendingHash("raw/missing.html", "<h1>Missing</h1><script>alert(1)</script>")}`, source_page: "wiki/sources/gone.md" },
+      },
+    }));
+
+    const service = new AtlasReadService(config);
+    const result = await service.listPending({ limit: 100 });
+    expect(result.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ relativePath: "raw/changed.txt", extension: "txt", state: "changed" }),
+      expect.objectContaining({ relativePath: "raw/missing.html", extension: "html", state: "source_missing" }),
+      expect.objectContaining({ relativePath: "raw/document.pdf", extension: "pdf", state: "new" }),
+      expect.objectContaining({ relativePath: "raw/private.md", extension: "md", state: "new" }),
+    ]));
+    expect(result.items.map((item) => item.relativePath)).not.toEqual(expect.arrayContaining([
+      "raw/hit.md", "raw/.hidden.md", "raw/assets/asset.md", "raw/linked/linked.md", "raw/ignored.docx",
+    ]));
+  });
+
+  it("provides safe read-only previews and rejects a changed send-time reference", async () => {
+    const config = await fixture();
+    const service = new AtlasReadService(config);
+    const listed = await service.listPending({ query: "private" });
+    const item = listed.items[0]!;
+    const preview = await service.getPending({ id: item.id });
+    expect(preview).toMatchObject({ relativePath: "raw/private.md", previewKind: "markdown", text: "raw secret" });
+    expect(preview.sha256).toBe(pendingHash("raw/private.md", "raw secret"));
+    await expect(service.pendingReference({ id: item.id, expectedSha256: "0".repeat(64) })).rejects.toThrow("内容已变化");
+    expect((await service.pendingReference({ id: item.id, expectedSha256: preview.sha256 })).text).toContain("本地文件路径：");
+  });
+
+  it("reports a damaged cache instead of marking every raw file as pending", async () => {
+    const config = await fixture();
+    await writeFile(join(config.atlasRoot, ".wiki-cache.json"), "{not-json");
+    await expect(new AtlasReadService(config).listPending({})).rejects.toThrow("缓存损坏");
   });
 });

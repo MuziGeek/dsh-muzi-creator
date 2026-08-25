@@ -19,7 +19,7 @@ export type CreatorSettingsCardProps =
   & PropsRuntime<"settings.plugin.item">
   & PropsLocale<"dsh.oil.creator">
   & InjectFace<
-    Pick<CreatorViewFace, "ready" | "getSettings" | "getCapabilities" | "setLibraryRoot" | "setProfile" | "setScriptRules" | "pickDirectory">
+    Pick<CreatorViewFace, "ready" | "getSettings" | "getCapabilities" | "setLibraryRoot" | "setProfile" | "setScriptRules" | "setTrellisProjectsRoot" | "setObsidianExecutable" | "pickDirectory">
     & { credentials: CredentialsClient | undefined }
   >;
 
@@ -65,6 +65,8 @@ export function CreatorSettingsCard({
   ready,
   getSettings,
   setLibraryRoot,
+  setTrellisProjectsRoot,
+  setObsidianExecutable,
   setProfile,
   setScriptRules,
   pickDirectory,
@@ -78,6 +80,10 @@ export function CreatorSettingsCard({
   const [draftProfile, setDraftProfile] = useState<CreatorProfile>(EMPTY_PROFILE);
   const [savedRules, setSavedRules] = useState("");
   const [draftRules, setDraftRules] = useState("");
+  const [savedTrellisRoot, setSavedTrellisRoot] = useState("");
+  const [draftTrellisRoot, setDraftTrellisRoot] = useState("");
+  const [savedObsidian, setSavedObsidian] = useState("");
+  const [draftObsidian, setDraftObsidian] = useState("");
   const [secrets, setSecrets] = useState<SecretDraft[]>([
     secretDraftOf(EMPTY_SECRETS.subtitle),
     secretDraftOf(EMPTY_SECRETS.cover),
@@ -100,6 +106,10 @@ export function CreatorSettingsCard({
       setDraftProfile(cloneProfile(settings.profile));
       setSavedRules(settings.scriptRules ?? "");
       setDraftRules(settings.scriptRules ?? "");
+      setSavedTrellisRoot(settings.trellisProjectsRoot);
+      setDraftTrellisRoot(settings.trellisProjectsRoot);
+      setSavedObsidian(settings.obsidianExecutable ?? "");
+      setDraftObsidian(settings.obsidianExecutable ?? "");
       const nextSecrets = settings.secrets ?? EMPTY_SECRETS;
       setSecrets([
         secretDraftOf(nextSecrets.subtitle),
@@ -147,10 +157,12 @@ export function CreatorSettingsCard({
   }, [open, ready, getCapabilities]);
 
   const dirtyRoot = draftRoot !== savedRoot;
+  const dirtyTrellisRoot = draftTrellisRoot !== savedTrellisRoot;
+  const dirtyObsidian = draftObsidian !== savedObsidian;
   const dirtyProfile = !sameProfile(draftProfile, savedProfile);
   const dirtyRules = draftRules !== savedRules;
   const dirtyKeys = secrets.some((item) => item.nextValue.trim() !== "");
-  const dirty = dirtyRoot || dirtyProfile || dirtyRules || dirtyKeys;
+  const dirty = dirtyRoot || dirtyTrellisRoot || dirtyObsidian || dirtyProfile || dirtyRules || dirtyKeys;
   const title = t("settings.title" as CreatorKey);
 
   const onPick = async () => {
@@ -161,6 +173,13 @@ export function CreatorSettingsCard({
     setFailed(false);
   };
 
+  const onPickTrellis = async () => {
+    const path = await pickDirectory();
+    if (path === null) return;
+    setDraftTrellisRoot(path);
+    setSaved(false);
+    setFailed(false);
+  };
   const patchProfile = (platform: PublishPlatform, enabled: boolean) => {
     setDraftProfile((current) => {
       const enabledPlatforms = enabled
@@ -202,6 +221,14 @@ export function CreatorSettingsCard({
       if (dirtyRoot) {
         await setLibraryRoot(draftRoot);
         setSavedRoot(draftRoot);
+      }
+      if (dirtyTrellisRoot) {
+        await setTrellisProjectsRoot(draftTrellisRoot);
+        setSavedTrellisRoot(draftTrellisRoot);
+      }
+      if (dirtyObsidian) {
+        await setObsidianExecutable(draftObsidian);
+        setSavedObsidian(draftObsidian);
       }
       if (dirtyProfile) {
         await setProfile(draftProfile);
@@ -268,6 +295,18 @@ export function CreatorSettingsCard({
               </ActionButton>
             </span>
           </label>
+          <label className="field">
+            <span className="fieldLabel">{t("settings.trellisRoot" as CreatorKey)}</span>
+            <span className="fieldHint">{t("settings.trellisRootHint" as CreatorKey)}</span>
+            <span className="pathRow">
+              <span className={draftTrellisRoot === "" ? "path empty" : "path"}>
+                {draftTrellisRoot === "" ? t("settings.trellisRootEmpty" as CreatorKey) : draftTrellisRoot}
+              </span>
+              <ActionButton onClick={() => { void onPickTrellis(); }}>
+                {t("settings.pick" as CreatorKey)}
+              </ActionButton>
+            </span>
+          </label>
           <div className="field">
             <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.enabledPlatformsHint" as CreatorKey)}</span>
@@ -294,6 +333,20 @@ export function CreatorSettingsCard({
               value={draftRules}
               onChange={(event) => {
                 setDraftRules(event.target.value);
+                setSaved(false);
+                setFailed(false);
+              }}
+            />
+          </div>
+          <div className="field">
+            <span className="fieldLabel">{t("settings.obsidianExecutable" as CreatorKey)}</span>
+            <span className="fieldHint">{t("settings.obsidianExecutableHint" as CreatorKey)}</span>
+            <input
+              className="input"
+              placeholder={t("settings.obsidianExecutablePlaceholder" as CreatorKey)}
+              value={draftObsidian}
+              onChange={(event) => {
+                setDraftObsidian(event.target.value);
                 setSaved(false);
                 setFailed(false);
               }}
@@ -349,6 +402,8 @@ export function CreatorSettingsCard({
                 disabled={!dirty || saving || !loaded}
                 onClick={() => {
                   setDraftRoot(savedRoot);
+                  setDraftTrellisRoot(savedTrellisRoot);
+                  setDraftObsidian(savedObsidian);
                   setDraftProfile(cloneProfile(savedProfile));
                   setDraftRules(savedRules);
                   setSecrets((current) => current.map((item) => ({ ...item, nextValue: "" })));
