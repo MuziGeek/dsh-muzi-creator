@@ -58,6 +58,10 @@ import {
   pendingKnowledgeReferenceSchema,
 } from "./muziSchemas.ts";
 import {
+  dailyHotResultSchema,
+  getDailyHotRequestSchema,
+} from "./dailyHotSchemas.ts";
+import {
   archiveTrellisTaskRequestSchema,
   getTrellisProjectRequestSchema,
   prepareTrellisTaskArchiveRequestSchema,
@@ -154,6 +158,7 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("listPendingKnowledge", pendingKnowledgeListRequestSchema, pendingKnowledgeListResultSchema),
   invocation("getPendingKnowledgeFile", pendingKnowledgeGetRequestSchema, pendingKnowledgeFileSchema),
   invocation("serializePendingKnowledgeReference", pendingKnowledgeGetRequestSchema, pendingKnowledgeReferenceSchema),
+  invocation("getDailyHot", getDailyHotRequestSchema, dailyHotResultSchema),
   invocation("listTrellisProjects", emptyObjectSchema, trellisProjectListResultSchema),
   invocation("getTrellisProject", getTrellisProjectRequestSchema, trellisProjectDetailSchema),
   invocation("prepareTrellisTaskArchive", prepareTrellisTaskArchiveRequestSchema, trellisArchivePreviewSchema),

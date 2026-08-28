@@ -4,6 +4,11 @@ const projectIdSchema = z.string().min(1);
 const taskKeySchema = z.string().min(1);
 const archiveTokenSchema = z.string().min(16);
 
+export const trellisPhaseActionSchema = z.object({
+  phase: z.number().int().positive(),
+  action: z.string().min(1),
+});
+
 export const trellisTaskStatusSchema = z.enum(["planning", "in_progress", "completed", "unknown"]);
 export const trellisProjectConnectionStatusSchema = z.enum([
   "ready",
@@ -49,6 +54,8 @@ export const trellisTaskSchema = z.object({
   title: z.string(),
   description: z.string(),
   status: trellisTaskStatusSchema,
+  currentPhase: z.number().int().nonnegative().nullable(),
+  phaseActions: z.array(trellisPhaseActionSchema),
   rawStatus: z.string().nullable(),
   priority: z.string().nullable(),
   creator: z.string().nullable(),

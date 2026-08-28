@@ -2,7 +2,7 @@ import type { ContentFilter } from "../types.ts";
 
 export const CREATOR_STORAGE_KEY = "dsh-muzi-creator/ui/v2";
 
-export type SidebarTab = "sessions" | "content" | "knowledge" | "projects";
+export type SidebarTab = "sessions" | "hot" | "content" | "knowledge" | "projects";
 
 export interface CreatorUiState {
   schemaVersion: 1;
@@ -41,12 +41,12 @@ export function loadCreatorUiState(storage: CreatorStorage | undefined): Creator
     if (raw === null) return { ...DEFAULT_UI_STATE };
     const parsed = JSON.parse(raw) as Partial<CreatorUiState>;
     const filter = parsed.filter;
-    const sidebarTab = parsed.sidebarTab === "content" || parsed.sidebarTab === "knowledge" || parsed.sidebarTab === "projects"
+    const sidebarTab = parsed.sidebarTab === "hot" || parsed.sidebarTab === "content" || parsed.sidebarTab === "knowledge" || parsed.sidebarTab === "projects"
       ? parsed.sidebarTab
       : "sessions";
     return {
       schemaVersion: 1,
-      selectedId: sidebarTab === "knowledge" || sidebarTab === "projects"
+      selectedId: sidebarTab === "hot" || sidebarTab === "knowledge" || sidebarTab === "projects"
         ? null
         : typeof parsed.selectedId === "string" ? parsed.selectedId : null,
       filter: filter === "cover" || filter === "subtitle" || filter === "article" ? filter : "all",

@@ -2,13 +2,15 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   IconBrowseOutline16,
   IconFolderClose16,
+  IconLightOutline16,
   IconNewChatOutline16,
   IconPanelLeftOutline16,
   IconProjectAddOutline16,
   Tooltip,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 
-import type { CreatorViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
+import { selectDailyHotItem } from "../dailyHotSelection.ts";
+import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
 import {
   setSidebarChromeWidth,
@@ -19,6 +21,7 @@ import {
 import { selectTrellisProject } from "../trellisSelection.ts";
 import { nextSidebarTab, SIDEBAR_TABS } from "../trellisUiModel.ts";
 import { KnowledgePanel } from "./KnowledgePanel.tsx";
+import { DailyHotPanel } from "./DailyHotPanel.tsx";
 import { MuziContentPanel } from "./MuziContentPanel.tsx";
 import { TrellisProjectPanel } from "./TrellisProjectPanel.tsx";
 import { OilBrand } from "./OilBrand.tsx";
@@ -34,8 +37,9 @@ function cx(...parts: Array<string | false | undefined>): string {
 export type OilSidebarRootProps =
   & OilSidebarSlotProps
   & {
-    tabLabels: { sessions: string; content: string; knowledge: string; projects: string };
+    tabLabels: { sessions: string; hot: string; content: string; knowledge: string; projects: string };
     contentFace: CreatorViewFace;
+    hotFace: DailyHotViewFace;
     muziFace: MuziViewFace;
     trellisFace: TrellisViewFace;
     contentT: (key: CreatorKey) => string;
@@ -50,6 +54,7 @@ export function OilSidebarRoot({
   renderSlot,
   tabLabels,
   contentFace,
+  hotFace,
   muziFace,
   trellisFace,
   contentT,
@@ -74,8 +79,9 @@ export function OilSidebarRoot({
   const sidebarTab = useSidebarTab();
 
   const chooseTab = (tab: typeof sidebarTab): void => {
-    if (tab === "knowledge" || tab === "projects") setSelectedContentId(null);
+    if (tab === "hot" || tab === "knowledge" || tab === "projects") setSelectedContentId(null);
     if (tab !== "projects") selectTrellisProject(null);
+    if (tab !== "hot") selectDailyHotItem(null);
     setSidebarTab(tab);
   };
 
@@ -127,16 +133,19 @@ export function OilSidebarRoot({
   }, [pointerInside]);
 
   const [contentMounted, setContentMounted] = useState(sidebarTab === "content");
+  const [hotMounted, setHotMounted] = useState(sidebarTab === "hot");
   const [knowledgeMounted, setKnowledgeMounted] = useState(sidebarTab === "knowledge");
   const [projectsMounted, setProjectsMounted] = useState(sidebarTab === "projects");
   useEffect(() => {
     if (sidebarTab === "content") setContentMounted(true);
+    if (sidebarTab === "hot") setHotMounted(true);
     if (sidebarTab === "knowledge") setKnowledgeMounted(true);
     if (sidebarTab === "projects") setProjectsMounted(true);
   }, [sidebarTab]);
 
   const sessionsVisible = !wide || sidebarTab === "sessions";
   const contentVisible = wide && sidebarTab === "content";
+  const hotVisible = wide && sidebarTab === "hot";
   const knowledgeVisible = wide && sidebarTab === "knowledge";
   const projectsVisible = wide && sidebarTab === "projects";
 
@@ -222,6 +231,19 @@ export function OilSidebarRoot({
             <button
               type="button"
               role="tab"
+              aria-selected={sidebarTab === "hot"}
+              tabIndex={sidebarTab === "hot" ? 0 : -1}
+              data-sidebar-tab="hot"
+              className={cx("tabButton", sidebarTab === "hot" && "active")}
+              onClick={() => { chooseTab("hot"); }}
+              onKeyDown={(event) => { moveSidebarTab(event, "hot"); }}
+            >
+              <IconLightOutline16 size={14} />
+              {tabLabels.hot}
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={sidebarTab === "content"}
               tabIndex={sidebarTab === "content" ? 0 : -1}
               data-sidebar-tab="content"
@@ -283,6 +305,11 @@ export function OilSidebarRoot({
             expandSidebar: () => { if (collapsed) toggleSidebar(); },
           })}
         </div>
+        {hotMounted && (
+          <div className={cx("regionPane", !hotVisible && "hidden")}>
+            <DailyHotPanel face={hotFace} t={contentT} />
+          </div>
+        )}
         {contentMounted && (
           <div className={cx("regionPane", !contentVisible && "hidden")}>
             <MuziContentPanel face={muziFace} />

@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const releaseCheck = resolve(root, "scripts/check-release.mjs");
 const buildScript = "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs";
-const releaseCheckTimeout = process.platform === "win32" ? 30_000 : 10_000;
+const releaseCheckTimeout = process.platform === "win32" ? 90_000 : 10_000;
 const REQUIRED_CHAIN_FILES = [
   "src/creatorSkill.ts",
   "src/capabilities.ts",

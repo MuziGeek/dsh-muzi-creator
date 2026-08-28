@@ -9,6 +9,7 @@ import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
 
 import { TYPERT_REMOTE } from "../remote.ts";
 import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
+import type { DailyHotResult } from "../dailyHotTypes.ts";
 import { startLibraryLiveSync } from "./catalogSync.ts";
 import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 import { releaseShellChrome } from "./contentSelection.ts";
@@ -60,7 +61,13 @@ import type {
   TrellisProjectListResult,
 } from "../trellisTypes.ts";
 import { MuziInspector } from "./MuziInspector.tsx";
+import { DailyHotInspector } from "./DailyHotInspector.tsx";
 import { TrellisProjectInspector } from "./TrellisProjectInspector.tsx";
+import {
+  registerMuziHeroBrandHeadline,
+  registerMuziHeroBrandMark,
+  type CompatibleHeroBrandSlots,
+} from "./heroBrand.tsx";
 import "./CalmWorkbench.css";
 import {
   bumpLibrary,
@@ -72,7 +79,12 @@ import {
 } from "./contentSelection.ts";
 import type { CredentialsClient } from "./credentialsApi.ts";
 import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
-import type { CreatorViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
+import {
+  getSelectedDailyHotItem,
+  selectDailyHotItem,
+  subscribeDailyHotSelection,
+} from "./dailyHotSelection.ts";
+import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
 import { en, NS, type CreatorKey, zh } from "./locales.ts";
 import { OilSidebarRoot } from "./sidebar/OilSidebarRoot.tsx";
 import type { OilSidebarInjected, OilSidebarSlotProps } from "./sidebar/slots.ts";
@@ -148,6 +160,7 @@ interface OilCreatorRemote {
   listPendingKnowledge: (request: { query?: string; offset?: number; limit?: number }) => Promise<RemoteAnswer<PendingKnowledgeListResult>>;
   getPendingKnowledgeFile: (request: { id: string }) => Promise<RemoteAnswer<PendingKnowledgeFile>>;
   serializePendingKnowledgeReference: (request: { id: string; expectedSha256?: string }) => Promise<RemoteAnswer<PendingKnowledgeReference>>;
+  getDailyHot: (request: { refresh?: boolean }) => Promise<RemoteAnswer<DailyHotResult>>;
   getMuziWorkspaceRevision: (request: Record<string, never>) => Promise<RemoteAnswer<MuziWorkspaceRevision>>;
   openMuziDocumentInObsidian: (request: { id: string; document: MuziDocumentSaveRequest["document"] }) => Promise<RemoteAnswer<{ opened: true }>>;
   listTrellisProjects: (request: Record<string, never>) => Promise<RemoteAnswer<TrellisProjectListResult>>;
@@ -209,6 +222,10 @@ export function apply(ctx: ClientContext): void {
       && typeof remote.archiveTrellisTask === "function"
       ? remote
       : undefined;
+  };
+  const dailyHotRemoteOf = (): OilCreatorRemote | undefined => {
+    const remote = remoteOf();
+    return remote !== undefined && typeof remote.getDailyHot === "function" ? remote : undefined;
   };
 
   const face = (): CreatorViewFace => ({
@@ -538,6 +555,17 @@ export function apply(ctx: ClientContext): void {
     },
     openPath: (path) => ctx.workspaces.openPath(path),
   };
+  const dailyHotFace: DailyHotViewFace = {
+    ready: () => dailyHotRemoteOf() !== undefined,
+    getDailyHot: async (refresh) => {
+      const remote = dailyHotRemoteOf();
+      if (remote === undefined) throw new Error("热点接口正在连接，请稍候后重试");
+      return unwrap(
+        await remote.getDailyHot(refresh === undefined ? {} : { refresh }),
+        "hotspot read failed",
+      );
+    },
+  };
 
   const handoffWorkspace = (): WorkspaceId => {
     const workspaces = ctx.workspaces.list.getSnapshot();
@@ -623,11 +651,13 @@ export function apply(ctx: ClientContext): void {
         {...props}
         tabLabels={{
           sessions: contentT("tab.sessions"),
+          hot: contentT("tab.hot"),
           content: contentT("tab"),
           knowledge: contentT("tab.knowledge"),
           projects: contentT("tab.projects"),
         }}
         contentFace={contentFace}
+        hotFace={dailyHotFace}
         muziFace={muziFace}
         trellisFace={trellisFace}
         contentT={contentT}
@@ -648,6 +678,12 @@ export function apply(ctx: ClientContext): void {
       inject: injectSidebar,
     }, BoundSidebar),
   );
+  ctx.slots.inject("conversation.hero.brand.mark" as never, () =>
+    registerMuziHeroBrandMark(ctx.slots as unknown as CompatibleHeroBrandSlots),
+  );
+  ctx.slots.inject("conversation.hero.brand.headline", () =>
+    registerMuziHeroBrandHeadline(ctx.slots as unknown as CompatibleHeroBrandSlots),
+  );
 
   ctx.effect(async () => {
     const disposeRemote = await ctx.remote.$mount(TYPERT_REMOTE);
@@ -663,7 +699,7 @@ export function apply(ctx: ClientContext): void {
 
     const stopOverlay = ctx.slots.inject("shell.overlay", () => {
       let disposeOccupant: (() => void) | undefined;
-      let occupant: "content" | "project" | null = null;
+      let occupant: "content" | "hot" | "project" | null = null;
       const release = (): void => {
         disposeOccupant?.();
         disposeOccupant = undefined;
@@ -672,7 +708,8 @@ export function apply(ctx: ClientContext): void {
       const sync = (): void => {
         const contentSelected = getSelectedContentId() !== null;
         const projectSelected = getSelectedTrellisProjectId() !== null;
-        const next = contentSelected ? "content" : projectSelected ? "project" : null;
+        const hotSelected = getSelectedDailyHotItem() !== null;
+        const next = contentSelected ? "content" : projectSelected ? "project" : hotSelected ? "hot" : null;
         if (next === null) {
           release();
           return;
@@ -692,6 +729,20 @@ export function apply(ctx: ClientContext): void {
             }),
           }, TrellisProjectInspector);
           occupant = "project";
+          return;
+        }
+        if (next === "hot") {
+          disposeOccupant = ctx.slots.register({
+            name: "shell.overlay",
+            id: "muzi-daily-hot-inspector",
+            order: 20,
+            locale: NS,
+            inject: () => ({
+              t: ctx.locale.bind(NS),
+              closeDetails: () => { selectDailyHotItem(null); },
+            }),
+          }, DailyHotInspector);
+          occupant = "hot";
           return;
         }
         disposeOccupant = ctx.slots.register({
@@ -722,10 +773,12 @@ export function apply(ctx: ClientContext): void {
       };
       const stopContent = subscribeSelectedContentId(sync);
       const stopProject = subscribeTrellisSelection(sync);
+      const stopHot = subscribeDailyHotSelection(sync);
       sync();
       return () => {
         stopContent();
         stopProject();
+        stopHot();
         release();
       };
     });

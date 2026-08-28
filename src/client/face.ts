@@ -1,4 +1,7 @@
 import type {
+  DailyHotResult,
+} from "../dailyHotTypes.ts";
+import type {
   ContentDetail,
   ContentFilter,
   CoverThumbResult,
@@ -122,4 +125,10 @@ export interface TrellisViewFace {
   prepareArchive: (projectId: TrellisProjectId, taskKey: TrellisTaskKey) => Promise<TrellisArchivePreview>;
   archiveTask: (token: TrellisArchiveToken) => Promise<TrellisArchiveResult>;
   openPath: (path: string) => Promise<void>;
+}
+
+/** Read-only client face for the AIHOT aggregate. */
+export interface DailyHotViewFace {
+  ready: () => boolean;
+  getDailyHot: (refresh?: boolean) => Promise<DailyHotResult>;
 }

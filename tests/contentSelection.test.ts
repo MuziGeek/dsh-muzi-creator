@@ -130,6 +130,18 @@ describe("content selection", () => {
     expect(applyConversationInset(720, true)).toBe(host);
     expect(host.style.getPropertyValue("padding-left")).toBe("720px");
 
+    setSelectedContentId(null);
+    expect(host.style.getPropertyValue("padding-left")).toBe("720px");
+    expect(host.style.getPropertyValue("transition")).toBe(
+      "padding-left var(--ds-transition-duration-slow) var(--ds-ease-in-out)",
+    );
+
+    setSelectedContentId("content-selection-test");
+    setSelectedContentId(null);
+    expect(host.style.getPropertyValue("padding-left")).toBe("8px");
+    expect(host.style.getPropertyPriority("padding-left")).toBe("important");
+    expect(host.style.getPropertyValue("transition")).toBe("opacity 1s");
+
     setSidebarChromeWidth(350);
     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("350px");
     releaseShellChrome();

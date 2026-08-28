@@ -3,10 +3,12 @@ import {
   IconArchiveOutline20,
   IconBranchOutline16,
   IconChecklistOutline14,
+  IconChevronDownOutline14,
   IconCloseOutline16,
   IconFolderOpenOutline16,
   IconRefreshOutline16,
   IconWarningOutline16,
+  Menu,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
@@ -36,7 +38,13 @@ import {
   useTrellisEpoch,
   useTrellisSelection,
 } from "./trellisSelection.ts";
-import { archivePreviewCanExecute, filterTasksByPriority } from "./trellisUiModel.ts";
+import {
+  archivePreviewCanExecute,
+  filterTasksByPriority,
+  previewTrellisTasks,
+  taskIsOutsidePreview,
+  taskPhaseSummary,
+} from "./trellisUiModel.ts";
 import "./TrellisProjectInspector.css";
 
 function useViewportWidth(): number {
@@ -62,6 +70,14 @@ const STATUS_LABELS: Record<TrellisTaskStatus, string> = {
   completed: "已完成待归档",
   unknown: "未知状态",
 };
+
+const TASK_GROUP_KEYS = ["inProgress", "planning", "completed", "archived"] as const;
+type TaskGroupKey = (typeof TASK_GROUP_KEYS)[number];
+type ExpandedTaskGroups = Record<TaskGroupKey, boolean>;
+
+function collapsedTaskGroups(): ExpandedTaskGroups {
+  return { inProgress: false, planning: false, completed: false, archived: false };
+}
 
 function taskRefs(task: TrellisTask): string[] {
   return [task.directory, task.id, task.name];
@@ -124,25 +140,43 @@ function ArchiveDialog({ preview, busy, error, t, onCancel, onConfirm }: Archive
 }
 
 interface TaskListProps {
+  groupKey: TaskGroupKey;
   label: string;
   tasks: TrellisTask[];
   selected: TrellisTaskKey | null;
   emptyLabel: string;
+  expanded: boolean;
+  onToggle: (groupKey: TaskGroupKey) => void;
+  t: (key: CreatorKey) => string;
 }
 
-function TaskList({ label, tasks, selected, emptyLabel }: TaskListProps) {
+function TaskList({ groupKey, label, tasks, selected, emptyLabel, expanded, onToggle, t }: TaskListProps) {
+  const preview = previewTrellisTasks(tasks, expanded);
+  const rowsId = `trellis-task-rows-${groupKey}`;
   return (
     <section className="trellisTaskGroup">
       <header><h3>{label}</h3><span>{tasks.length}</span></header>
       {tasks.length === 0
         ? <p className="trellisGroupEmpty">{emptyLabel}</p>
-        : <div className="trellisTaskRows">{tasks.map((task) => (
-          <button key={task.key} type="button" className={selected === task.key ? "selected" : ""} onClick={() => { selectTrellisTask(task.key); }}>
-            <span className={`trellisTaskStatus ${task.status}`} aria-hidden="true" />
-            <span className="trellisTaskRowBody"><strong>{task.title}</strong><small>{task.priority ?? "未设优先级"} · {task.assignee ?? "未分配"}</small></span>
-            {task.archived && <span className={task.verifiedCompletion ? "trellisEvidence good" : "trellisEvidence weak"}>{task.verifiedCompletion ? "已验证" : "证据不足"}</span>}
-          </button>
-        ))}</div>}
+        : <>
+          <div id={rowsId} className="trellisTaskRows">{preview.visible.map((task) => (
+            <button key={task.key} type="button" className={selected === task.key ? "selected" : ""} onClick={() => { selectTrellisTask(task.key); }}>
+              <span className={`trellisTaskStatus ${task.status}`} aria-hidden="true" />
+              <span className="trellisTaskRowBody"><strong>{task.title}</strong><small>{task.priority ?? "未设优先级"} · {task.assignee ?? "未分配"}</small></span>
+              {task.archived && <span className={task.verifiedCompletion ? "trellisEvidence good" : "trellisEvidence weak"}>{task.verifiedCompletion ? "已验证" : "证据不足"}</span>}
+            </button>
+          ))}</div>
+          {preview.remaining > 0 && <button
+            type="button"
+            className="trellisTaskDisclosure"
+            aria-expanded={expanded}
+            aria-controls={rowsId}
+            onClick={() => { onToggle(groupKey); }}
+          >
+            <span>{expanded ? t("projects.showLess") : `${t("projects.showMore")} ${String(preview.remaining)} ${t("projects.taskUnit")}`}</span>
+            <IconChevronDownOutline14 className={expanded ? "open" : ""} aria-hidden="true" />
+          </button>}
+        </>}
     </section>
   );
 }
@@ -163,11 +197,13 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
   const [width, setWidth] = useState(getInspectorWidth);
   const viewportWidth = useViewportWidth();
   const sidebarWidth = useSidebarChromeWidth();
   const layout = resolveInspectorLayout(viewportWidth, sidebarWidth, width);
   const [expanded, setExpanded] = useState(false);
+  const [expandedTaskGroups, setExpandedTaskGroups] = useState<ExpandedTaskGroups>(collapsedTaskGroups);
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; width: number; latestWidth: number } | null>(null);
 
@@ -235,20 +271,50 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
     setInspectorWidth(clamped);
   };
 
+  const active = detail?.activeTasks ?? [];
+  const archived = detail?.archivedTasks ?? [];
   const priorities = useMemo(() => {
     const values = new Set<string>();
-    for (const task of [...(detail?.activeTasks ?? []), ...(detail?.archivedTasks ?? [])]) {
+    for (const task of [...active, ...archived]) {
       if (task.priority !== null) values.add(task.priority);
     }
     return [...values].sort();
-  }, [detail]);
-  const filtered = (tasks: TrellisTask[]): TrellisTask[] => filterTasksByPriority(tasks, priority);
-  const active = detail?.activeTasks ?? [];
-  const archived = detail?.archivedTasks ?? [];
+  }, [active, archived]);
+  const taskGroups = useMemo<Record<TaskGroupKey, TrellisTask[]>>(() => ({
+    inProgress: filterTasksByPriority(active.filter((task) => task.status === "in_progress"), priority),
+    planning: filterTasksByPriority(active.filter((task) => task.status === "planning"), priority),
+    completed: filterTasksByPriority(active.filter((task) => task.status === "completed" || task.status === "unknown"), priority),
+    archived: filterTasksByPriority(archived, priority),
+  }), [active, archived, priority]);
+  const taskGroupsRef = useRef(taskGroups);
+  taskGroupsRef.current = taskGroups;
+  useEffect(() => {
+    setExpandedTaskGroups(collapsedTaskGroups());
+    setPriorityMenuOpen(false);
+    if (priority !== "all" && !priorities.includes(priority)) setPriority("all");
+  }, [selection.projectId, priority, priorities]);
+  useEffect(() => {
+    if (selection.taskKey === null) return;
+    for (const groupKey of TASK_GROUP_KEYS) {
+      if (taskIsOutsidePreview(taskGroupsRef.current[groupKey], selection.taskKey)) {
+        setExpandedTaskGroups((current) => current[groupKey] ? current : { ...current, [groupKey]: true });
+        return;
+      }
+    }
+  }, [selection.projectId, selection.taskKey]);
+  const toggleTaskGroup = (groupKey: TaskGroupKey): void => {
+    setExpandedTaskGroups((current) => ({ ...current, [groupKey]: !current[groupKey] }));
+  };
   const selectedTask = [...active, ...archived].find((task) => task.key === selection.taskKey) ?? null;
   const parent = selectedTask?.parent === null || selectedTask === null ? null : [...active, ...archived].find((task) => sameRef(task, selectedTask.parent ?? "")) ?? null;
   const children = selectedTask === null ? [] : [...active, ...archived].filter((task) => selectedTask.children.some((child) => sameRef(task, child)));
   const counts = detail?.project.counts ?? null;
+  const phaseSummary = selectedTask === null ? null : taskPhaseSummary(selectedTask);
+  const priorityItems = useMemo(() => [
+    { id: "all", label: t("projects.filter.all") },
+    ...priorities.map((value) => ({ id: value, label: value })),
+  ], [priorities, t]);
+  const priorityLabel = priority === "all" ? t("projects.filter.all") : priority;
 
   const prepareArchive = async (): Promise<void> => {
     if (selection.projectId === null || selectedTask === null) return;
@@ -312,15 +378,49 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
           </header>
 
           <div className="trellisProjectToolbar">
-            <label>优先级<select value={priority} onChange={(event) => { setPriority(event.target.value); }}><option value="all">{t("projects.filter.all")}</option>{priorities.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+            <div className="trellisPriorityField">
+              <span className="trellisPriorityLabel">优先级</span>
+              <Menu
+                open={priorityMenuOpen}
+                portal={true}
+                dense={true}
+                align="start"
+                selectedId={priority}
+                items={priorityItems}
+                anchor={(
+                  <button
+                    type="button"
+                    className="trellisPriorityTrigger"
+                    aria-haspopup="menu"
+                    aria-expanded={priorityMenuOpen}
+                    aria-label={`优先级：${priorityLabel}`}
+                    onClick={() => { setPriorityMenuOpen((open) => !open); }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setPriorityMenuOpen(true);
+                      }
+                    }}
+                  >
+                    <span>{priorityLabel}</span>
+                    <IconChevronDownOutline14 className={priorityMenuOpen ? "open" : ""} aria-hidden="true" />
+                  </button>
+                )}
+                onSelect={(id) => {
+                  if (id === "all" || priorities.includes(id)) setPriority(id);
+                  setPriorityMenuOpen(false);
+                }}
+                onClose={() => { setPriorityMenuOpen(false); }}
+              />
+            </div>
             <span>读取于 {new Date(detail.scannedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</span>
           </div>
 
           <div className="trellisTaskBoard">
-            <TaskList label={t("projects.inProgress")} tasks={filtered(active.filter((task) => task.status === "in_progress"))} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} />
-            <TaskList label={t("projects.planning")} tasks={filtered(active.filter((task) => task.status === "planning"))} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} />
-            <TaskList label={t("projects.completed")} tasks={filtered(active.filter((task) => task.status === "completed" || task.status === "unknown"))} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} />
-            <TaskList label={t("projects.archived")} tasks={filtered(archived)} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} />
+            <TaskList groupKey="inProgress" label={t("projects.inProgress")} tasks={taskGroups.inProgress} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.inProgress} onToggle={toggleTaskGroup} t={t} />
+            <TaskList groupKey="planning" label={t("projects.planning")} tasks={taskGroups.planning} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.planning} onToggle={toggleTaskGroup} t={t} />
+            <TaskList groupKey="completed" label={t("projects.completed")} tasks={taskGroups.completed} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.completed} onToggle={toggleTaskGroup} t={t} />
+            <TaskList groupKey="archived" label={t("projects.archived")} tasks={taskGroups.archived} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.archived} onToggle={toggleTaskGroup} t={t} />
           </div>
 
           {selectedTask !== null && <section className="trellisTaskDetail">
@@ -333,7 +433,11 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
               <div><dt>分支</dt><dd>{selectedTask.branch ?? "—"}</dd></div>
               <div><dt>基础分支</dt><dd>{selectedTask.baseBranch ?? "—"}</dd></div>
             </dl>
-            <div className={`trellisEvidenceCard ${selectedTask.evidence.state}`}><IconChecklistOutline14 /><div><strong>{selectedTask.archived && selectedTask.verifiedCompletion ? t("projects.evidence.verified") : selectedTask.evidence.state === "meaningful" ? "验证材料可读" : t("projects.evidence.insufficient")}</strong><p>{selectedTask.evidence.message}{selectedTask.evidence.files.length > 0 ? ` · ${selectedTask.evidence.files.join("、")}` : ""}</p></div></div>
+            {phaseSummary !== null && <dl className="trellisPhaseSummary" aria-label="任务阶段">
+              <div><dt>当前阶段</dt><dd>{phaseSummary.current}</dd></div>
+              <div><dt>下一阶段</dt><dd>{phaseSummary.next}</dd></div>
+            </dl>}
+             <div className={`trellisEvidenceCard ${selectedTask.evidence.state}`}><IconChecklistOutline14 /><div><strong>{selectedTask.archived && selectedTask.verifiedCompletion ? t("projects.evidence.verified") : selectedTask.evidence.state === "meaningful" ? "验证材料可读" : t("projects.evidence.insufficient")}</strong><p>{selectedTask.evidence.message}{selectedTask.evidence.files.length > 0 ? ` · ${selectedTask.evidence.files.join("、")}` : ""}</p></div></div>
             {(parent !== null || children.length > 0) && <div className="trellisRelations"><h3>父子任务</h3>{parent !== null && <p><span>父任务</span><button type="button" onClick={() => { selectTrellisTask(parent.key); }}>{parent.title}</button></p>}{children.length > 0 && <p><span>子任务</span>{children.map((child) => <button key={child.key} type="button" onClick={() => { selectTrellisTask(child.key); }}>{child.title}</button>)}</p>}</div>}
             {selectedTask.relatedFiles.length > 0 && <div className="trellisRelatedFiles"><h3>相关文件</h3><ul>{selectedTask.relatedFiles.map((file) => <li key={file}><code>{file}</code></li>)}</ul></div>}
             {selectedTask.notes !== "" && <div className="trellisTaskNotes"><h3>任务记录</h3><p>{selectedTask.notes}</p></div>}

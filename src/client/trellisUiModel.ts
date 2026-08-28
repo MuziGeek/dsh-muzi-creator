@@ -1,6 +1,23 @@
-import type { TrellisArchivePreview, TrellisProjectSummary, TrellisTask } from "../trellisTypes.ts";
+import type { TrellisArchivePreview, TrellisProjectSummary, TrellisTask, TrellisTaskKey } from "../trellisTypes.ts";
 
-export const SIDEBAR_TABS = ["sessions", "content", "knowledge", "projects"] as const;
+export const SIDEBAR_TABS = ["sessions", "hot", "content", "knowledge", "projects"] as const;
+export const TRELLIS_TASK_PREVIEW_LIMIT = 5;
+
+export interface TrellisTaskPreview {
+  visible: TrellisTask[];
+  remaining: number;
+}
+
+export function previewTrellisTasks(tasks: TrellisTask[], expanded: boolean): TrellisTaskPreview {
+  return {
+    visible: expanded ? tasks : tasks.slice(0, TRELLIS_TASK_PREVIEW_LIMIT),
+    remaining: Math.max(0, tasks.length - TRELLIS_TASK_PREVIEW_LIMIT),
+  };
+}
+
+export function taskIsOutsidePreview(tasks: TrellisTask[], selectedKey: TrellisTaskKey | null): boolean {
+  return selectedKey !== null && tasks.findIndex((task) => task.key === selectedKey) >= TRELLIS_TASK_PREVIEW_LIMIT;
+}
 
 export function nextSidebarTab(
   current: (typeof SIDEBAR_TABS)[number],
@@ -26,6 +43,41 @@ export function projectMatchesQuery(project: TrellisProjectSummary, query: strin
 
 export function filterTasksByPriority(tasks: TrellisTask[], priority: string): TrellisTask[] {
   return priority === "all" ? tasks : tasks.filter((task) => task.priority === priority);
+}
+
+export interface TrellisTaskPhaseSummary {
+  current: string;
+  next: string;
+}
+
+const PHASE_ACTION_LABELS: Readonly<Record<string, string>> = {
+  brainstorm: "需求梳理",
+  research: "调研",
+  implement: "实现",
+  check: "检查",
+  "update-spec": "更新规范",
+  "record-session": "记录会话",
+};
+
+function phaseActionLabel(action: string): string {
+  return PHASE_ACTION_LABELS[action] ?? action;
+}
+
+export function taskPhaseSummary(task: Pick<TrellisTask, "currentPhase" | "phaseActions">): TrellisTaskPhaseSummary | null {
+  const currentPhase = task.currentPhase;
+  if (currentPhase === null) return null;
+  const total = task.phaseActions.length;
+  const currentAction = task.phaseActions.find((entry) => entry.phase === currentPhase);
+  const nextAction = task.phaseActions.find((entry) => entry.phase > currentPhase);
+  const current = currentAction !== undefined
+    ? `${String(currentPhase)}/${String(total)} · ${phaseActionLabel(currentAction.action)}`
+    : currentPhase === 0 && total > 0
+      ? `待开始 · 0/${String(total)}`
+      : `阶段 ${String(currentPhase)}`;
+  const next = nextAction === undefined
+    ? "—"
+    : `${String(nextAction.phase)}/${String(total)} · ${phaseActionLabel(nextAction.action)}`;
+  return { current, next };
 }
 
 export function archivePreviewCanExecute(preview: TrellisArchivePreview, busy: boolean): boolean {

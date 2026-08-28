@@ -11,6 +11,12 @@ export type TrellisArchiveToken = Branded<"TrellisArchiveToken">;
 
 export type TrellisTaskStatus = "planning" | "in_progress" | "completed" | "unknown";
 
+/** A Trellis workflow phase and the action assigned to it. */
+export interface TrellisPhaseAction {
+  phase: number;
+  action: string;
+}
+
 export type TrellisProjectConnectionStatus =
   | "ready"
   | "degraded"
@@ -54,6 +60,8 @@ export interface TrellisTask {
   title: string;
   description: string;
   status: TrellisTaskStatus;
+  currentPhase: number | null;
+  phaseActions: TrellisPhaseAction[];
   rawStatus: string | null;
   priority: string | null;
   creator: string | null;

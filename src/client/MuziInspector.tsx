@@ -24,7 +24,7 @@ import type {
   MuziPublishTarget,
   PendingKnowledgeFile,
 } from "../muziTypes.ts";
-import type { BurnStatus, WorkflowStage } from "../types.ts";
+import type { ContentDetail } from "../types.ts";
 import type { CreatorViewFace, MuziViewFace } from "./face.ts";
 import {
   formatKnowledgeDate,
@@ -35,6 +35,13 @@ import {
 import { KnowledgePreview } from "./KnowledgePreview.tsx";
 import { MuziProjectCover } from "./MuziProjectCover.tsx";
 import { PlatformMark, type PlatformId } from "./PlatformMark.tsx";
+import {
+  videoProductionProgress,
+  type VideoProductionCheck,
+  type VideoProductionCheckStatus,
+  type VideoProductionProgress,
+  type VideoProductionStageStatus,
+} from "./videoProductionProgress.ts";
 import {
   applyConversationInset,
   clearConversationInset,
@@ -86,20 +93,6 @@ const PUBLICATION_STATUS_LABELS: Record<MuziPublicationStatus, string> = {
   platform_draft: "平台草稿",
   published: "已发布",
 };
-const WORKFLOW_LABELS: Record<WorkflowStage, string> = {
-  idle: "未开始",
-  record: "录制中",
-  cut: "剪辑中",
-  finish: "制作完成",
-  publish: "待发布",
-  live: "已上线",
-};
-const JOB_STATUS_LABELS: Record<BurnStatus, string> = {
-  idle: "未开始",
-  running: "处理中",
-  done: "已完成",
-  error: "处理失败",
-};
 const KNOWLEDGE_CATEGORY_LABELS: Record<string, string> = {
   entities: "实体",
   topics: "主题",
@@ -114,8 +107,8 @@ const DETAIL_TABS: Tab[] = ["overview", ...DOCUMENTS.map((item) => item.key), "e
 function statusColor(status: string): TagColor {
   if (status === "error") return "app-red";
   if (status === "review") return "app-yellow";
-  if (["ready", "published", "done", "finish", "live"].includes(status)) return "app-green";
-  if (["research", "mother_draft", "adaptation", "draft", "platform_draft", "record", "cut", "running"].includes(status)) return "app-teal";
+  if (["ready", "complete", "published", "done", "finish", "live"].includes(status)) return "app-green";
+  if (["research", "mother_draft", "adaptation", "draft", "platform_draft", "record", "cut", "running", "current"].includes(status)) return "app-teal";
   return "default";
 }
 
@@ -129,6 +122,20 @@ function projectCounts(project: MuziProjectDetail): { ready: number; published: 
     published: Object.values(project.publications).filter((item) => item.status === "published").length,
   };
 }
+
+const PRODUCTION_STAGE_STATUS_LABELS: Record<VideoProductionStageStatus, string> = {
+  complete: "已完成",
+  current: "进行中",
+  upcoming: "待处理",
+  error: "需要处理",
+};
+const PRODUCTION_CHECK_STATUS_LABELS: Record<VideoProductionCheckStatus, string> = {
+  ready: "已就绪",
+  pending: "待处理",
+  running: "处理中",
+  error: "异常",
+  optional: "可选",
+};
 
 function formatProjectDate(value: string): string {
   const date = new Date(value);
@@ -252,6 +259,8 @@ export function MuziInspector({
   const [selectedId] = useSelectedContentId();
   const epoch = useLibraryEpoch();
   const [project, setProject] = useState<MuziProjectDetail | null>(null);
+  const [productionDetail, setProductionDetail] = useState<ContentDetail | null>(null);
+  const [productionError, setProductionError] = useState<string | null>(null);
   const [page, setPage] = useState<KnowledgePage | null>(null);
   const [pending, setPending] = useState<PendingKnowledgeFile | null>(null);
   const [knowledgePreview, setKnowledgePreview] = useState<KnowledgePreviewResult | null>(null);
@@ -276,6 +285,8 @@ export function MuziInspector({
     let cancelled = false;
     setError(null);
     setProject(null);
+    setProductionDetail(null);
+    setProductionError(null);
     setPage(null);
     setPending(null);
     setKnowledgePreview(null);
@@ -290,6 +301,24 @@ export function MuziInspector({
     void load.catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "读取失败"); });
     return () => { cancelled = true; };
   }, [selectedId, epoch]);
+
+  useEffect(() => {
+    const folderName = project?.folderName;
+    if (folderName === undefined) {
+      setProductionDetail(null);
+      setProductionError(null);
+      return;
+    }
+    let cancelled = false;
+    setProductionDetail(null);
+    setProductionError(null);
+    void oilFace.getContent(folderName).then((value) => {
+      if (!cancelled) setProductionDetail(value);
+    }, (cause: unknown) => {
+      if (!cancelled) setProductionError(cause instanceof Error ? cause.message : "视频制作信息不可用");
+    });
+    return () => { cancelled = true; };
+  }, [epoch, oilFace, project?.folderName]);
 
   useEffect(() => {
     applyConversationInset(expanded && layout.mode === "split" ? layout.width : 0, !dragging);
@@ -370,6 +399,8 @@ export function MuziInspector({
     setKnowledgePreview(await muziFace.getKnowledgePreview());
   };
 
+  const openProduction = (): void => { setTab("production"); };
+
   const shownWidth = expanded ? layout.width : 0;
   return (
     <div data-plugin="dsh-oil-creator" data-surface="muzi-inspector" className={`${expanded ? "open" : ""}${layout.mode === "full" ? " full" : ""}${dragging ? " dragging" : ""}`} style={{ width: shownWidth }}>
@@ -415,6 +446,11 @@ export function MuziInspector({
                     <div><dt>已发布</dt><dd>{projectCounts(project).published}/5</dd></div>
                   </dl>
                 </Card>
+                <ProductionOverviewCard
+                  detail={productionDetail}
+                  error={productionError}
+                  onOpen={openProduction}
+                />
                 <section className="muziStatusSection">
                   <div className="sectionHeading">
                     <div><h3>稿件</h3><p>状态依据创作目录中的记录只读显示</p></div>
@@ -477,7 +513,7 @@ export function MuziInspector({
               </div>
             )}
             {tab === "evidence" && <EvidenceView project={project} />}
-            {tab === "production" && <ProductionView folderName={project.folderName} oilFace={oilFace} />}
+            {tab === "production" && <ProductionView detail={productionDetail} error={productionError} />}
           </div>
         </>
       )}
@@ -591,51 +627,96 @@ function EvidenceView({ project }: { project: MuziProjectDetail }) {
   );
 }
 
-function ProductionView({ folderName, oilFace }: { folderName: string; oilFace: CreatorViewFace }) {
-  const [detail, setDetail] = useState<Awaited<ReturnType<CreatorViewFace["getContent"]>> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    void oilFace.getContent(folderName).then(setDetail, (cause: unknown) => { setError(cause instanceof Error ? cause.message : "视频制作信息不可用"); });
-  }, [folderName]);
+function productionStageStatus(progress: VideoProductionProgress): VideoProductionStageStatus {
+  return progress.stages.find((stage) => stage.id === progress.currentStage)?.status ?? "current";
+}
+
+function ProductionProgressStrip({ progress }: { progress: VideoProductionProgress }) {
+  return (
+    <ol className="productionProgressStrip" aria-label="视频制作阶段进度">
+      {progress.stages.map((stage) => {
+        const selected = stage.id === progress.currentStage;
+        return (
+          <li
+            className={`productionProgressItem ${stage.status}${selected ? " selected" : ""}`}
+            key={stage.id}
+            aria-current={selected ? "step" : undefined}
+            aria-label={`${stage.title}：${PRODUCTION_STAGE_STATUS_LABELS[stage.status]}`}
+          >
+            <span className="productionProgressDot" aria-hidden="true" />
+            <span className="productionProgressLabel">{stage.title}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function ProductionOverviewCard({
+  detail,
+  error,
+  onOpen,
+}: {
+  detail: ContentDetail | null;
+  error: string | null;
+  onOpen: () => void;
+}) {
+  return (
+    <section className="muziStatusSection" aria-labelledby="production-overview-title">
+      <div className="sectionHeading">
+        <div><h3 id="production-overview-title">视频制作</h3><p>从录制准备到成片就绪的只读阶段进度</p></div>
+      </div>
+      {error !== null
+        ? <Card type="dashed" className="productionOverviewState error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></Card>
+        : detail === null
+          ? <Card type="dashed" className="productionOverviewState"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></Card>
+          : (() => {
+            const progress = videoProductionProgress(detail);
+            return (
+              <Card
+                className="productionOverviewCard"
+                color="default"
+                hoverable
+                role="button"
+                tabIndex={0}
+                aria-label={`视频制作：${progress.currentTitle}，下一步：${progress.nextAction}`}
+                onClick={onOpen}
+                onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  onOpen();
+                }}
+              >
+                <div className="productionOverviewHeading">
+                  <div><strong>{progress.currentTitle}</strong><p>下一步：{progress.nextAction}</p></div>
+                  <StatusBadge status={productionStageStatus(progress)} label={progress.complete ? "已就绪" : PRODUCTION_STAGE_STATUS_LABELS[productionStageStatus(progress)]} />
+                </div>
+                <ProductionProgressStrip progress={progress} />
+                <span className="statusNavigation"><small>查看制作阶段详情</small><small aria-hidden="true">→</small></span>
+              </Card>
+            );
+          })()}
+    </section>
+  );
+}
+
+function ProductionCheckRow({ check }: { check: VideoProductionCheck }) {
+  return (
+    <li className={`productionCheck ${check.status}`}>
+      <div className="productionCheckHeading">
+        <strong>{check.label}</strong>
+        <StatusBadge status={check.status} label={PRODUCTION_CHECK_STATUS_LABELS[check.status]} />
+      </div>
+      <p>{check.detail}</p>
+      {check.warning !== undefined && <small>最近任务：{check.warning}</small>}
+    </li>
+  );
+}
+
+function ProductionView({ detail, error }: { detail: ContentDetail | null; error: string | null }) {
   if (error !== null) return <Card type="dashed" className="detailStateCard error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></Card>;
   if (detail === null) return <Card type="dashed" className="detailStateCard"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></Card>;
-  const steps: Array<{
-    key: string;
-    title: string;
-    description: string;
-    statuses: Array<{ status: string; label: string }>;
-    error?: string;
-  }> = [
-    {
-      key: "raw",
-      title: "素材准备",
-      description: "录制或导入的原始视频素材",
-      statuses: [{ status: detail.videoRaw === undefined ? "idle" : "ready", label: detail.videoRaw === undefined ? "原始视频不可用" : "原始视频已存在" }],
-    },
-    {
-      key: "subtitle",
-      title: "字幕处理",
-      description: "字幕任务与字幕成片状态",
-      statuses: [
-        { status: detail.subtitleJob.status, label: `任务${JOB_STATUS_LABELS[detail.subtitleJob.status]}` },
-        { status: detail.videoSubtitled === undefined ? "idle" : "ready", label: detail.videoSubtitled === undefined ? "成片不可用" : "成片已存在" },
-      ],
-      ...(detail.subtitleJob.error === undefined ? {} : { error: detail.subtitleJob.error }),
-    },
-    {
-      key: "cover",
-      title: "封面生成",
-      description: "视频封面生成任务",
-      statuses: [{ status: detail.coverJob.status, label: JOB_STATUS_LABELS[detail.coverJob.status] }],
-      ...(detail.coverJob.error === undefined ? {} : { error: detail.coverJob.error }),
-    },
-    {
-      key: "studio",
-      title: "录屏工程",
-      description: "本地录屏项目绑定状态",
-      statuses: [{ status: detail.studioPath === undefined ? "idle" : "ready", label: detail.studioPath === undefined ? "未绑定" : "已绑定" }],
-    },
-  ];
+  const progress = videoProductionProgress(detail);
   return (
     <div className="productionView">
       <Card className="productionSummary" color="default" pattern="default">
@@ -645,27 +726,35 @@ function ProductionView({ folderName, oilFace }: { folderName: string; oilFace: 
         </div>
         <div className="productionStage">
           <span>当前阶段</span>
-          <StatusBadge status={detail.workflow} label={WORKFLOW_LABELS[detail.workflow]} />
+          <StatusBadge status={productionStageStatus(progress)} label={progress.complete ? "已就绪" : progress.currentTitle} />
+          <small>下一步：{progress.nextAction}</small>
         </div>
       </Card>
       <section className="productionSection" aria-labelledby="production-steps-title">
         <div className="detailSectionHeading">
           <div>
-            <h3 id="production-steps-title">制作链路</h3>
-            <p>依次核对素材、字幕、封面和录屏工程。</p>
+            <h3 id="production-steps-title">阶段进度</h3>
+            <p>录制工程、导出、字幕与封面按真实产物同步。</p>
           </div>
         </div>
         <Card className="productionTimeline" color="default">
           <ol>
-            {steps.map((step, index) => (
-              <li key={step.key}>
-                <span className="productionStepIndex" aria-hidden="true">{index + 1}</span>
+            {progress.stages.map((stage, index) => (
+              <li
+                className={`productionTimelineItem ${stage.status}${stage.id === progress.currentStage ? " selected" : ""}`}
+                key={stage.id}
+                aria-current={stage.id === progress.currentStage ? "step" : undefined}
+                aria-label={`${stage.title}：${PRODUCTION_STAGE_STATUS_LABELS[stage.status]}`}
+              >
+                <div className="productionStepMarker" aria-hidden="true"><span>{index + 1}</span></div>
                 <div className="productionStepBody">
                   <div className="productionStepHeading">
-                    <div><strong>{step.title}</strong><p>{step.description}</p></div>
-                    <div className="productionStepStatus">{step.statuses.map((status) => <StatusBadge key={status.label} status={status.status} label={status.label} />)}</div>
+                    <div><strong>{stage.title}</strong><p>{stage.description}</p></div>
+                    <div className="productionStepStatus"><StatusBadge status={stage.status} label={PRODUCTION_STAGE_STATUS_LABELS[stage.status]} /></div>
                   </div>
-                  {step.error !== undefined && <p className="productionStepError">{step.error}</p>}
+                  <ul className="productionChecks">
+                    {stage.checks.map((check) => <ProductionCheckRow check={check} key={check.id} />)}
+                  </ul>
                 </div>
               </li>
             ))}

@@ -9,6 +9,7 @@ import type {
   TrellisProjectDetail,
   TrellisProjectSummary,
   TrellisProjectId,
+  TrellisPhaseAction,
   TrellisTask,
   TrellisTaskKey,
   TrellisTaskStatus,
@@ -22,6 +23,8 @@ const KNOWN_TASK_FIELDS = new Set([
   "title",
   "description",
   "status",
+  "current_phase",
+  "next_action",
   "dev_type",
   "scope",
   "package",
@@ -84,6 +87,52 @@ function stringArray(value: unknown): string[] {
     .filter((entry): entry is string => typeof entry === "string")
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+function integerAtLeast(value: unknown, minimum: number): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= minimum;
+}
+
+function phaseMetadata(parsed: Record<string, unknown>): {
+  currentPhase: number | null;
+  phaseActions: TrellisPhaseAction[];
+  issues: string[];
+} {
+  const issues: string[] = [];
+  const currentValue = parsed.current_phase;
+  const currentPhase = currentValue === undefined && !Object.hasOwn(parsed, "current_phase")
+    ? null
+    : integerAtLeast(currentValue, 0)
+      ? currentValue
+      : null;
+  if (Object.hasOwn(parsed, "current_phase") && currentPhase === null) issues.push("current_phase 格式无效");
+
+  const phaseActions: TrellisPhaseAction[] = [];
+  const rawActions = parsed.next_action;
+  if (Object.hasOwn(parsed, "next_action")) {
+    if (!Array.isArray(rawActions)) {
+      issues.push("next_action 格式无效");
+    } else {
+      const seen = new Set<number>();
+      for (const [index, entry] of rawActions.entries()) {
+        const phase = isRecord(entry) && integerAtLeast(entry.phase, 1) ? entry.phase : null;
+        const action = isRecord(entry) ? stringValue(entry.action) : null;
+        if (phase === null || action === null) {
+          issues.push(`next_action 第 ${String(index + 1)} 项格式无效`);
+          continue;
+        }
+        if (seen.has(phase)) {
+          issues.push(`next_action 阶段 ${String(phase)} 重复`);
+          continue;
+        }
+        seen.add(phase);
+        phaseActions.push({ phase, action });
+      }
+      phaseActions.sort((left, right) => left.phase - right.phase);
+    }
+  }
+
+  return { currentPhase, phaseActions, issues };
 }
 
 function taskStatus(raw: string | null): TrellisTaskStatus {
@@ -276,8 +325,9 @@ async function readTask(
   const name = stringValue(parsed.name) ?? id;
   const rawStatus = stringValue(parsed.status);
   const status = taskStatus(rawStatus);
+  const phases = phaseMetadata(parsed);
   const evidence = await inspectEvidence(root.rootPath, safeDirectory, config.trellisMaxTaskBytes);
-  const issues: string[] = [];
+  const issues: string[] = [...phases.issues];
   if (rawStatus === null) issues.push("任务未声明状态");
   else if (status === "unknown") issues.push(`未知任务状态：${rawStatus}`);
   if (archived && status !== "completed") issues.push("任务已归档，但状态不是 completed");
@@ -291,6 +341,8 @@ async function readTask(
     title: stringValue(parsed.title) ?? name,
     description: stringValue(parsed.description) ?? "",
     status,
+    currentPhase: phases.currentPhase,
+    phaseActions: phases.phaseActions,
     rawStatus,
     priority: stringValue(parsed.priority),
     creator: stringValue(parsed.creator),

@@ -1,0 +1,90 @@
+[data-plugin="dsh-oil-creator"][data-surface="daily-hot-inspector"] {
+  --muzi-surface: var(--dsw-alias-bg-base);
+  --muzi-surface-soft: var(--dsw-alias-bg-layer-1);
+  --muzi-surface-muted: var(--dsw-alias-bg-layer-2);
+  --muzi-border: var(--dsw-alias-border-l1);
+  --muzi-border-strong: var(--dsw-alias-border-l2);
+  position: absolute;
+  inset: 0 auto 0 var(--oil-sidebar-width, 280px);
+  z-index: 8;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--muzi-border);
+  background: var(--muzi-surface);
+  color: var(--dsw-alias-label-primary);
+  box-sizing: border-box;
+}
+[data-plugin="dsh-oil-creator"][data-surface="daily-hot-inspector"].full { left: 0; width: 100% !important; }
+[data-plugin="dsh-oil-creator"][data-surface="daily-hot-inspector"].dragging { user-select: none; }
+
+[data-plugin="dsh-oil-creator"] .dailyHotInspectorTop {
+  display: flex;
+  height: 52px;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 0 18px;
+  border-bottom: 1px solid var(--muzi-border);
+}
+[data-plugin="dsh-oil-creator"] .dailyHotInspectorTop > div { display: flex; min-width: 0; align-items: center; gap: 8px; }
+[data-plugin="dsh-oil-creator"] .dailyHotInspectorTop > div span { overflow: hidden; font-size: 13px; line-height: 20px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .dailyHotInspectorTop > button { display: grid; width: 30px; height: 30px; flex: none; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer; }
+[data-plugin="dsh-oil-creator"] .dailyHotInspectorTop > button:hover { background: var(--dsw-alias-interactive-bg-hover); }
+[data-plugin="dsh-oil-creator"] .dailyHotInspectorTop > button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 1px; }
+
+[data-plugin="dsh-oil-creator"] .dailyHotInspectorScroll { flex: 1; min-height: 0; padding: 0 24px 48px; overflow: auto; }
+[data-plugin="dsh-oil-creator"] .dailyHotHero { display: grid; gap: 12px; padding: 28px 0 24px; border-bottom: 1px solid var(--muzi-border); }
+[data-plugin="dsh-oil-creator"] .dailyHotHeroMeta { display: flex; flex-wrap: wrap; gap: 7px; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }
+[data-plugin="dsh-oil-creator"] .dailyHotHeroMeta > span { padding: 3px 7px; border-radius: 999px; background: var(--muzi-surface-muted); }
+[data-plugin="dsh-oil-creator"] .dailyHotEvidence.multi-source { background: var(--dsw-alias-state-success-tertiary, rgb(45 145 93 / 9%)); color: var(--dsw-alias-state-success-primary, #2f9461); }
+[data-plugin="dsh-oil-creator"] .dailyHotEvidence.summary-only { background: var(--dsw-alias-state-warn-tertiary, rgb(180 115 0 / 9%)); color: var(--dsw-alias-state-warn-label, #8c5c00); }
+[data-plugin="dsh-oil-creator"] .dailyHotHero h1 { max-width: 28ch; margin: 0; font-size: 24px; line-height: 32px; letter-spacing: -.025em; text-wrap: balance; }
+[data-plugin="dsh-oil-creator"] .dailyHotHero > p { max-width: 68ch; margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 21px; }
+[data-plugin="dsh-oil-creator"] .dailyHotDomains { display: flex; flex-wrap: wrap; gap: 6px; }
+[data-plugin="dsh-oil-creator"] .dailyHotDomains span { padding: 4px 8px; border: 1px solid var(--muzi-border); border-radius: 999px; color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 16px; }
+
+[data-plugin="dsh-oil-creator"] .dailyHotDetailSection { display: grid; gap: 8px; padding: 22px 0; border-bottom: 1px solid var(--muzi-border); }
+[data-plugin="dsh-oil-creator"] .dailyHotDetailSection h2 { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 20px; font-weight: 650; }
+[data-plugin="dsh-oil-creator"] .dailyHotDetailSection p { max-width: 72ch; margin: 0; color: var(--dsw-alias-label-primary); font-size: 14px; line-height: 24px; white-space: pre-wrap; }
+
+[data-plugin="dsh-oil-creator"] .dailyHotFacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 22px 0 0; overflow: hidden; border: 1px solid var(--muzi-border); border-radius: 12px; background: var(--muzi-border); }
+[data-plugin="dsh-oil-creator"] .dailyHotFacts > div { display: grid; min-width: 0; gap: 4px; padding: 11px; background: var(--muzi-surface); }
+[data-plugin="dsh-oil-creator"] .dailyHotFacts dt { color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }
+[data-plugin="dsh-oil-creator"] .dailyHotFacts dd { min-width: 0; margin: 0; overflow: hidden; font-size: 13px; line-height: 19px; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-oil-creator"] .dailyHotSourceNames ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+[data-plugin="dsh-oil-creator"] .dailyHotSourceNames li { padding: 5px 8px; border-radius: 7px; background: var(--muzi-surface-soft); color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 16px; }
+
+[data-plugin="dsh-oil-creator"] .dailyHotLinks { display: flex; flex-wrap: wrap; gap: 8px; padding: 22px 0; border-bottom: 1px solid var(--muzi-border); }
+[data-plugin="dsh-oil-creator"] .dailyHotLinks a { display: inline-flex; min-height: 36px; align-items: center; gap: 7px; padding: 0 12px; border: 1px solid var(--muzi-border-strong); border-radius: 8px; color: var(--dsw-alias-label-primary); font-size: 12px; line-height: 18px; text-decoration: none; }
+[data-plugin="dsh-oil-creator"] .dailyHotLinks a:first-child { border-color: var(--dsw-alias-state-business-primary); background: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-state-business-on-primary, white); }
+[data-plugin="dsh-oil-creator"] .dailyHotLinks a:hover { filter: brightness(.97); }
+[data-plugin="dsh-oil-creator"] .dailyHotLinks a:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
+
+[data-plugin="dsh-oil-creator"] .dailyHotDisclaimer { display: flex; align-items: flex-start; gap: 9px; margin-top: 22px; padding: 12px; border-radius: 10px; background: var(--muzi-surface-soft); color: var(--dsw-alias-label-secondary); }
+[data-plugin="dsh-oil-creator"] .dailyHotDisclaimer svg { flex: none; margin-top: 2px; }
+[data-plugin="dsh-oil-creator"] .dailyHotDisclaimer p { margin: 0; font-size: 12px; line-height: 19px; }
+[data-plugin="dsh-oil-creator"] .dailyHotDisclaimer strong { display: block; margin-bottom: 2px; color: var(--dsw-alias-label-primary); }
+
+[data-plugin="dsh-oil-creator"] .dailyHotResize { position: absolute; top: 0; right: -6px; bottom: 0; z-index: 2; width: 12px; cursor: col-resize; touch-action: none; }
+[data-plugin="dsh-oil-creator"] .dailyHotResize::after { position: absolute; top: 50%; left: 5px; width: 2px; height: 36px; border-radius: 999px; background: var(--muzi-border-strong); content: ""; opacity: 0; transform: translateY(-50%); }
+[data-plugin="dsh-oil-creator"] .dailyHotResize:hover::after,
+[data-plugin="dsh-oil-creator"] .dailyHotResize:focus-visible::after { background: var(--dsw-alias-state-business-primary); opacity: 1; }
+[data-plugin="dsh-oil-creator"] .dailyHotResize:focus-visible { outline: 0; }
+
+@media (max-width: 880px) {
+  [data-plugin="dsh-oil-creator"][data-surface="daily-hot-inspector"] { left: 0; width: 100% !important; }
+  [data-plugin="dsh-oil-creator"] .dailyHotResize { display: none; }
+}
+
+@media (max-width: 620px) {
+  [data-plugin="dsh-oil-creator"] .dailyHotInspectorTop { height: 48px; padding: 0 10px 0 14px; }
+  [data-plugin="dsh-oil-creator"] .dailyHotInspectorScroll { padding: 0 15px 40px; }
+  [data-plugin="dsh-oil-creator"] .dailyHotHero { padding-top: 22px; }
+  [data-plugin="dsh-oil-creator"] .dailyHotHero h1 { font-size: 21px; line-height: 29px; }
+  [data-plugin="dsh-oil-creator"] .dailyHotFacts { grid-template-columns: 1fr; }
+  [data-plugin="dsh-oil-creator"] .dailyHotLinks { flex-direction: column; }
+  [data-plugin="dsh-oil-creator"] .dailyHotLinks a { justify-content: center; }
+}

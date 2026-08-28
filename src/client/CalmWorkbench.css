@@ -396,6 +396,7 @@ body[data-ds-dark-theme] [data-plugin="dsh-oil-creator"] .muziMarkdownBody {
 
 [data-slot="conversation"] [data-phase="hero"] [class*="_headline"] {
   color: var(--muzi-editorial-text);
+  grid-template-columns: 34px auto;
 }
 
 [data-slot="conversation"] [data-phase="hero"] [class*="_headlineText"] {
@@ -404,15 +405,20 @@ body[data-ds-dark-theme] [data-plugin="dsh-oil-creator"] .muziMarkdownBody {
   letter-spacing: -.045em;
 }
 
-[data-slot="conversation"] [data-phase="hero"] [class*="_previewBadge"] {
-  border-color: #bfd0f7;
-  background: #edf3ff;
-  color: var(--muzi-editorial-blue);
+[data-slot="conversation"] [data-phase="hero"] [class*="previewBadge"] {
+  display: none;
 }
 
-body[data-ds-dark-theme] [data-slot="conversation"] [data-phase="hero"] [class*="_previewBadge"] {
-  border-color: #455a89;
-  background: #252f45;
+[data-slot="conversation"] [data-phase="hero"] .muziHeroBrandMark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+[data-slot="conversation"] [data-phase="hero"] .muziHeroBrandHeadline {
+  white-space: nowrap;
 }
 
 [data-slot="conversation"] [data-phase="hero"] [class*="_heroGlow"] {

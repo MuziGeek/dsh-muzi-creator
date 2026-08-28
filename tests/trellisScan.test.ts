@@ -87,6 +87,65 @@ describe("scanTrellisProject", () => {
     expect(result.detail.project).not.toHaveProperty("progress");
   });
 
+  it("recognizes Trellis phase metadata while retaining truly unknown fields", async () => {
+    const root = await fixture();
+    await task(root, "01-phase", {
+      id: "phase",
+      title: "Phase",
+      status: "in_progress",
+      current_phase: 4,
+      next_action: [
+        { phase: 4, action: "check" },
+        { phase: 1, action: "brainstorm" },
+        { phase: 6, action: "record-session" },
+      ],
+      customFlag: true,
+    });
+
+    const result = await scanTrellisProject(project(root), config);
+    expect(result.detail.activeTasks[0]).toMatchObject({
+      currentPhase: 4,
+      phaseActions: [
+        { phase: 1, action: "brainstorm" },
+        { phase: 4, action: "check" },
+        { phase: 6, action: "record-session" },
+      ],
+      unknownFields: ["customFlag"],
+    });
+  });
+
+  it("does not expose invalid or duplicate phase definitions and records task issues", async () => {
+    const root = await fixture();
+    await task(root, "01-invalid-phase", {
+      id: "invalid-phase",
+      title: "Invalid phase",
+      status: "planning",
+      current_phase: "4",
+      next_action: [
+        { phase: 1, action: "research" },
+        { phase: 1, action: "duplicate" },
+        { phase: 0, action: "invalid" },
+        { phase: 2, action: " " },
+        "invalid",
+      ],
+    });
+
+    const result = await scanTrellisProject(project(root), config);
+    const invalid = result.detail.activeTasks[0];
+    expect(invalid).toMatchObject({
+      currentPhase: null,
+      phaseActions: [{ phase: 1, action: "research" }],
+      unknownFields: [],
+    });
+    expect(invalid?.issues).toEqual(expect.arrayContaining([
+      "current_phase 格式无效",
+      "next_action 阶段 1 重复",
+      "next_action 第 3 项格式无效",
+      "next_action 第 4 项格式无效",
+      "next_action 第 5 项格式无效",
+    ]));
+  });
+
   it("reports corrupt tasks as degraded instead of converting the project to zero progress", async () => {
     const root = await fixture();
     await task(root, "01-good", { id: "good", title: "Good", status: "in_progress" });

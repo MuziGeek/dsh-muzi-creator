@@ -74,6 +74,19 @@ describe("loadCreatorUiState", () => {
     expect(loadCreatorUiState(storage)).toMatchObject({ sidebarTab: "projects", selectedId: null });
   });
 
+  it("keeps the Hot tab and clears persisted content selection", () => {
+    const storage = memoryStorage({
+      [CREATOR_STORAGE_KEY]: JSON.stringify({
+        schemaVersion: 1,
+        selectedId: "creator-project",
+        filter: "all",
+        query: "",
+        sidebarTab: "hot",
+      }),
+    });
+    expect(loadCreatorUiState(storage)).toMatchObject({ sidebarTab: "hot", selectedId: null });
+  });
+
   it("falls back when filter is unknown", () => {
     const storage = memoryStorage({
       [CREATOR_STORAGE_KEY]: JSON.stringify({

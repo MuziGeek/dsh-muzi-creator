@@ -89,6 +89,8 @@ import { coverThumb } from "./thumbs.ts";
 import { startArticleServer } from "./articleServe.ts";
 import { playbackOf, startVideoServer } from "./videoServe.ts";
 import { AtlasReadService } from "./atlasService.ts";
+import { createDailyHotLoader, type DailyHotLoader } from "./dailyHotService.ts";
+import type { DailyHotResult, GetDailyHotRequest } from "./dailyHotTypes.ts";
 import { MuziCreatorService } from "./muziService.ts";
 import { TrellisProjectService } from "./trellisService.ts";
 import type {
@@ -189,6 +191,7 @@ export class OilCreatorService extends TypertRemoteService {
   readonly muzi: MuziCreatorService;
   readonly atlas: AtlasReadService;
   readonly trellis: TrellisProjectService;
+  readonly dailyHot: DailyHotLoader;
   readonly externalActionsEnabled: boolean;
   readonly obsidianExecutableConfig: string | undefined;
   obsidianExecutable: string | undefined;
@@ -205,6 +208,7 @@ export class OilCreatorService extends TypertRemoteService {
     this.muzi = new MuziCreatorService(config);
     this.atlas = new AtlasReadService(config);
     this.trellis = new TrellisProjectService(ctx, config);
+    this.dailyHot = createDailyHotLoader();
     this.externalActionsEnabled = config.externalActionsEnabled;
     this.obsidianExecutableConfig = config.obsidianExecutable;
     this.obsidianExecutable = config.obsidianExecutable;
@@ -264,6 +268,10 @@ export class OilCreatorService extends TypertRemoteService {
 
   async listTrellisProjects(_request: Record<string, never>, signal: AbortSignal): Promise<TrellisProjectListResult> {
     return this.trellis.list(signal);
+  }
+
+  async getDailyHot(request: GetDailyHotRequest, signal: AbortSignal): Promise<DailyHotResult> {
+    return this.dailyHot(request, signal);
   }
 
   async getTrellisProject(request: GetTrellisProjectRequest, signal: AbortSignal): Promise<TrellisProjectDetail> {

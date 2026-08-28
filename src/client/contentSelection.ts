@@ -268,10 +268,7 @@ export function getSelectedContentId(): string | null {
 }
 
 export function setSelectedContentId(id: string | null): void {
-  if (selectedId === id) {
-    if (id === null) clearConversationInset();
-    return;
-  }
+  if (selectedId === id) return;
   selectedId = id;
   const state = loadCreatorUiState(browserCreatorStorage());
   saveCreatorUiState(browserCreatorStorage(), { ...state, selectedId });

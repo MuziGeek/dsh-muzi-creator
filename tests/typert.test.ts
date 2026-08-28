@@ -59,6 +59,7 @@ describe("handwritten TYPERT", () => {
       "listPendingKnowledge",
       "getPendingKnowledgeFile",
       "serializePendingKnowledgeReference",
+      "getDailyHot",
       "listTrellisProjects",
       "getTrellisProject",
       "prepareTrellisTaskArchive",

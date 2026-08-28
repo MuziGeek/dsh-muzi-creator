@@ -115,7 +115,8 @@
   width: 24px;
   height: 24px;
   flex: none;
-  border-radius: 999px;
+  border-radius: 6px;
+  object-fit: contain;
 }
 
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] .oilBrandText {
