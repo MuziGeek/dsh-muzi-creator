@@ -46,6 +46,8 @@ describe("handwritten TYPERT", () => {
       "saveMuziDocument",
       "setMuziProjectStatus",
       "setMuziPublication",
+      "beginMuziVideoAcceptance",
+      "finalizeMuziVideoAcceptance",
       "prepareMuziVideoPublish",
       "commitMuziVideoPublish",
       "getMuziVideoPublishStatus",

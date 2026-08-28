@@ -9,6 +9,7 @@ export type MuziPublicationStatus = "unpublished" | "platform_draft" | "publishe
 export type MuziPublicationSource = "manual" | "sync" | "publisher";
 export type MuziVideoPlatform = "bilibili" | "douyin" | "wechat" | "xiaohongshu";
 export type VideoPublishMode = "prepare_only" | "publish_now" | "schedule";
+export type AcceptanceCapability = "prepare_only" | "publish_now" | "schedule" | "metrics";
 export type VideoPublishState =
   | "NEW"
   | "PREPARING"
@@ -146,6 +147,8 @@ export interface VideoPublishPlatformResult {
   confirmedAt: string | null;
   remoteId: string | null;
   url: string | null;
+  acceptanceSessionId?: string | null;
+  acceptanceEvidence?: { path: string; sha256: string } | null;
 }
 
 export interface VideoPublishTaskResult {
@@ -166,6 +169,7 @@ export interface VideoPublishPrepareRequest {
   intents: PlatformPublishIntent[];
   confirmed: boolean;
   originalRightsConfirmed?: boolean;
+  acceptanceSessionId?: string;
 }
 
 export interface VideoPublishCommitRequest {
@@ -175,6 +179,54 @@ export interface VideoPublishCommitRequest {
   platform: MuziVideoPlatform;
   authorizationDigest: string;
   confirmed: boolean;
+  acceptanceSessionId?: string;
+}
+
+export interface VideoAcceptanceBeginRequest {
+  id: string;
+  expectedRevision: number;
+  packagePath?: string;
+  platform: MuziVideoPlatform;
+  accountProfile: string;
+  capability: AcceptanceCapability;
+  scheduledAt?: string;
+  expectedAccountLabel: string;
+  confirmed: boolean;
+}
+
+export interface VideoAcceptanceSessionResult {
+  ok: boolean;
+  sessionId: string;
+  expiresAt: string;
+  platform: MuziVideoPlatform;
+  accountProfile: string;
+  capability: AcceptanceCapability;
+  bindingSha256: string;
+  account: { label: string; verified: boolean; evidenceSha256: string };
+  durableAcceptanceWritten: false;
+  ordinaryAuthorizationIssued: false;
+}
+
+export interface VideoAcceptanceFinalizeRequest {
+  id: string;
+  expectedRevision: number;
+  packagePath?: string;
+  taskId?: string;
+  platform: MuziVideoPlatform;
+  capability: AcceptanceCapability;
+  acceptanceSessionId: string;
+  confirmed: boolean;
+}
+
+export interface VideoAcceptanceFinalizeResult {
+  ok: boolean;
+  platform: MuziVideoPlatform;
+  capability: "prepare_only";
+  acceptedAt: string;
+  evidencePath: string;
+  sessionId: string;
+  commitEnabled: false;
+  authorizationDigest: null;
 }
 
 export interface VideoPublishStatusRequest {
@@ -213,6 +265,7 @@ export interface VideoMetricsSyncRequest {
   platforms?: MuziVideoPlatform[];
   force?: boolean;
   confirmed: boolean;
+  acceptanceSessionId?: string;
 }
 
 export interface VideoMetricsSyncResult {

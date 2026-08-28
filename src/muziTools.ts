@@ -7,6 +7,7 @@ import type {
   MuziProjectStage,
   MuziVideoPlatform,
   PlatformPublishIntent,
+  AcceptanceCapability,
   VideoPublishMode,
 } from "./muziTypes.ts";
 import type { OilCreatorService } from "./service.ts";
@@ -21,6 +22,7 @@ const DOCUMENT_STATUSES = ["not_started", "draft", "review", "ready"] as const;
 const STAGES = ["idea", "research", "mother_draft", "adaptation", "review", "ready", "archived"] as const;
 const VIDEO_PLATFORMS = ["xiaohongshu", "douyin", "bilibili", "wechat"] as const;
 const VIDEO_PUBLISH_MODES = ["prepare_only", "publish_now", "schedule"] as const;
+const ACCEPTANCE_CAPABILITIES = ["prepare_only", "publish_now", "schedule", "metrics"] as const;
 
 function signalOf(exec: { signal: AbortSignal }): AbortSignal {
   return exec.signal;
@@ -227,6 +229,45 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
   }));
 
   ctx.tools.register(defineTool({
+    name: "muzi_creator_begin_video_acceptance",
+    description: "Open only the isolated Windows creator page for one platform acceptance capability, verify the user-supplied account label, and create a maximum 30-minute bound acceptance session. It never uploads, writes durable acceptance, or issues normal publication authority. Login, SMS, captcha, risk control, or uncertain identity stops the request.",
+    parameters: {
+      id: { type: "string", required: true },
+      expectedRevision: { type: "number", required: true },
+      packagePath: { type: "string", description: "Optional publish-package path inside this Creator project; auto-detected when omitted." },
+      platform: { type: "string", required: true, enum: VIDEO_PLATFORMS },
+      accountProfile: { type: "string", required: true, description: "Isolated local account profile, for example xiaohongshu-main." },
+      capability: { type: "string", required: true, enum: ACCEPTANCE_CAPABILITIES },
+      scheduledAt: { type: "string", description: "Required only for schedule acceptance; exact +08:00 time." },
+      expectedAccountLabel: { type: "string", required: true, description: "Actual creator account label the user is verifying in the isolated browser." },
+      confirmed: { type: "boolean", required: true },
+    },
+    output: { schema: JSON_VALUE, render: (_args, value) => render("Video acceptance session", (value as { sessionId?: string }).sessionId ?? "not started") },
+    presentCall: (args) => card("Begin isolated video acceptance", args),
+    execute: (args, exec) => {
+      if (typeof args.id !== "string" || typeof args.expectedRevision !== "number" || typeof args.accountProfile !== "string" || typeof args.expectedAccountLabel !== "string") {
+        throw new Error("id, expectedRevision, accountProfile and expectedAccountLabel are required");
+      }
+      const platform = oneOf<MuziVideoPlatform>(args.platform, VIDEO_PLATFORMS, "platform");
+      const capability = oneOf<AcceptanceCapability>(args.capability, ACCEPTANCE_CAPABILITIES, "capability");
+      if (capability !== "prepare_only") throw new Error("this controlled rollout can begin only prepare_only acceptance");
+      const scheduledAt = typeof args.scheduledAt === "string" ? args.scheduledAt : undefined;
+      if (scheduledAt !== undefined) throw new Error("scheduledAt is not available during the prepare-only acceptance rollout");
+      return service.beginMuziVideoAcceptance({
+        id: args.id,
+        expectedRevision: args.expectedRevision,
+        platform,
+        accountProfile: args.accountProfile.trim(),
+        capability,
+        expectedAccountLabel: args.expectedAccountLabel.trim(),
+        confirmed: args.confirmed === true,
+        ...(typeof args.packagePath === "string" ? { packagePath: args.packagePath } : {}),
+        ...(scheduledAt === undefined ? {} : { scheduledAt }),
+      }, signalOf(exec)).then(asJson);
+    },
+  }));
+
+  ctx.tools.register(defineTool({
     name: "muzi_creator_prepare_video_publish",
     description: "Prepare one or more Xiaohongshu, Douyin, Bilibili, or WeChat Channels pages on Windows. Uploads and fills the pages but centrally blocks every final publish control. Each platform intent independently chooses prepare_only, publish_now, or schedule. This is an external action and requires current-run approval.",
     parameters: {
@@ -236,6 +277,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       intents: { type: "json", required: true, description: "Array of {platform, accountProfile, mode, scheduledAt?}. scheduledAt must include +08:00." },
       confirmed: { type: "boolean", required: true },
       originalRightsConfirmed: { type: "boolean", description: "Current-run confirmation only; never persisted as publishing authority." },
+      acceptanceSessionId: { type: "string", description: "Optional bound acceptance session; one platform and one capability only." },
     },
     output: { schema: JSON_VALUE, render: (_args, value) => render("Video publish preparation", (value as { taskId?: string }).taskId ?? "prepared") },
     presentCall: (args) => card("Prepare external video pages (final submit locked)", args),
@@ -248,6 +290,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
         confirmed: args.confirmed === true,
         ...(typeof args.packagePath === "string" ? { packagePath: args.packagePath } : {}),
         ...(typeof args.originalRightsConfirmed === "boolean" ? { originalRightsConfirmed: args.originalRightsConfirmed } : {}),
+        ...(typeof args.acceptanceSessionId === "string" ? { acceptanceSessionId: args.acceptanceSessionId } : {}),
       }, signalOf(exec)).then(asJson);
     },
   }));
@@ -266,6 +309,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       mode: { type: "string", required: true, enum: ["publish_now", "schedule"] },
       scheduledAt: { type: "string", description: "Exact +08:00 time shown to the user for schedule mode." },
       confirmed: { type: "boolean", required: true },
+      acceptanceSessionId: { type: "string", description: "Optional short-lived acceptance session; never valid for prepare_only." },
     },
     output: { schema: JSON_VALUE, render: (_args, value) => render("Video final action", (value as { status?: string }).status ?? "completed") },
     presentCall: (args) => card("Confirm one platform final video action", args),
@@ -294,6 +338,42 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
         platform,
         authorizationDigest: args.authorizationDigest,
         confirmed: args.confirmed === true,
+        ...(typeof args.acceptanceSessionId === "string" ? { acceptanceSessionId: args.acceptanceSessionId } : {}),
+      }, signalOf(exec)).then(asJson);
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "muzi_creator_finalize_video_acceptance",
+    description: "After the user reviews the saved local evidence and guarded platform draft, finalize one acceptance session. This rollout permits only Xiaohongshu-style prepare_only records; it cannot enable immediate publishing, scheduling, or metrics.",
+    parameters: {
+      id: { type: "string", required: true },
+      expectedRevision: { type: "number", required: true },
+      packagePath: { type: "string", description: "Optional publish-package path inside this Creator project; auto-detected when omitted." },
+      taskId: { type: "string", description: "Prepared task id; defaults only when the session has an exact prepared task." },
+      platform: { type: "string", required: true, enum: VIDEO_PLATFORMS },
+      capability: { type: "string", required: true, enum: ACCEPTANCE_CAPABILITIES },
+      acceptanceSessionId: { type: "string", required: true },
+      confirmed: { type: "boolean", required: true, description: "Confirms that the user reviewed the local crops and page state in this run." },
+    },
+    output: { schema: JSON_VALUE, render: (_args, value) => render("Video acceptance", (value as { capability?: string }).capability ?? "not finalized") },
+    presentCall: (args) => card("Finalize guarded video acceptance", args),
+    execute: (args, exec) => {
+      if (typeof args.id !== "string" || typeof args.expectedRevision !== "number" || typeof args.acceptanceSessionId !== "string") {
+        throw new Error("id, expectedRevision and acceptanceSessionId are required");
+      }
+      const platform = oneOf<MuziVideoPlatform>(args.platform, VIDEO_PLATFORMS, "platform");
+      const capability = oneOf<AcceptanceCapability>(args.capability, ACCEPTANCE_CAPABILITIES, "capability");
+      if (capability !== "prepare_only") throw new Error("this controlled rollout can finalize only prepare_only acceptance");
+      return service.finalizeMuziVideoAcceptance({
+        id: args.id,
+        expectedRevision: args.expectedRevision,
+        platform,
+        capability,
+        acceptanceSessionId: args.acceptanceSessionId,
+        confirmed: args.confirmed === true,
+        ...(typeof args.packagePath === "string" ? { packagePath: args.packagePath } : {}),
+        ...(typeof args.taskId === "string" ? { taskId: args.taskId } : {}),
       }, signalOf(exec)).then(asJson);
     },
   }));
@@ -322,6 +402,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       platforms: { type: "json", description: "Optional array of video platforms; defaults to this project's published or scheduled platforms." },
       force: { type: "boolean" },
       confirmed: { type: "boolean", required: true },
+      acceptanceSessionId: { type: "string", description: "Reserved for a later metrics acceptance rollout; currently rejected." },
     },
     output: { schema: JSON_VALUE, render: (_args, value) => render("Video metrics", `${(value as { platforms?: unknown[] }).platforms?.length ?? 0} platforms`) },
     presentCall: (args) => card("Sync external video metrics", args),
@@ -338,6 +419,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
         confirmed: args.confirmed === true,
         ...(platforms === undefined ? {} : { platforms }),
         ...(typeof args.force === "boolean" ? { force: args.force } : {}),
+        ...(typeof args.acceptanceSessionId === "string" ? { acceptanceSessionId: args.acceptanceSessionId } : {}),
       }, signalOf(exec)).then(asJson);
     },
   }));

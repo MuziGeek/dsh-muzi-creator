@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { videoPublishTaskResultSchema } from "../src/muziSchemas.ts";
+import { videoAcceptanceBeginRequestSchema, videoAcceptanceFinalizeRequestSchema, videoPublishTaskResultSchema } from "../src/muziSchemas.ts";
 import { applyRevisionGate, mapTask } from "../src/videoPublisher.ts";
 
 describe("Windows video publisher bridge", () => {
@@ -99,5 +99,27 @@ describe("Windows video publisher bridge", () => {
       authorizationExpiresAt: null,
       commitBlocker: { code: "REVISION_CONFLICT" },
     });
+  });
+
+  it("keeps acceptance sessions bound to a single platform and only allows schedule time for schedule capability", () => {
+    const base = {
+      id: "mc_0123456789abcdef01234567",
+      expectedRevision: 4,
+      platform: "xiaohongshu",
+      accountProfile: "xiaohongshu-main",
+      expectedAccountLabel: "验收账号",
+      confirmed: true,
+    };
+    expect(videoAcceptanceBeginRequestSchema.parse({ ...base, capability: "prepare_only" }).capability).toBe("prepare_only");
+    expect(() => videoAcceptanceBeginRequestSchema.parse({ ...base, capability: "schedule" })).toThrow(/scheduledAt/);
+    expect(() => videoAcceptanceBeginRequestSchema.parse({ ...base, capability: "prepare_only", scheduledAt: "2026-09-01T20:00:00+08:00" })).toThrow(/scheduledAt/);
+    expect(videoAcceptanceFinalizeRequestSchema.parse({
+      id: base.id,
+      expectedRevision: 4,
+      platform: "xiaohongshu",
+      capability: "prepare_only",
+      acceptanceSessionId: "vas-0123456789abcdef01234567",
+      confirmed: true,
+    }).capability).toBe("prepare_only");
   });
 });

@@ -9,6 +9,7 @@ export const muziPublicationStatusSchema = z.enum(["unpublished", "platform_draf
 export const muziPublicationSourceSchema = z.enum(["manual", "sync", "publisher"]);
 export const muziVideoPlatformSchema = z.enum(["bilibili", "douyin", "wechat", "xiaohongshu"]);
 export const videoPublishModeSchema = z.enum(["prepare_only", "publish_now", "schedule"]);
+export const acceptanceCapabilitySchema = z.enum(["prepare_only", "publish_now", "schedule", "metrics"]);
 
 export const atlasReferenceSchema = z.object({
   locator: z.string().regex(/^atlas:\/\/wiki\/(?:entities|topics|sources|comparisons|synthesis|queries)\/[^?#]+\.md$/),
@@ -146,6 +147,8 @@ const videoPublishPlatformResultSchema = z.object({
   confirmedAt: z.string().nullable(),
   remoteId: z.string().nullable(),
   url: z.string().nullable(),
+  acceptanceSessionId: z.string().regex(/^vas-[a-f0-9]{24}$/).nullable().optional(),
+  acceptanceEvidence: z.object({ path: z.string(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).nullable().optional(),
 });
 export const videoPublishTaskResultSchema = z.object({
   ok: z.boolean(),
@@ -164,6 +167,7 @@ export const videoPublishPrepareRequestSchema = z.object({
   intents: z.array(platformPublishIntentSchema).min(1).max(4),
   confirmed: z.boolean(),
   originalRightsConfirmed: z.boolean().optional(),
+  acceptanceSessionId: z.string().regex(/^vas-[a-f0-9]{24}$/).optional(),
 });
 export const videoPublishCommitRequestSchema = z.object({
   id: z.string().regex(/^mc_[a-f0-9]{24}$/),
@@ -172,6 +176,57 @@ export const videoPublishCommitRequestSchema = z.object({
   platform: muziVideoPlatformSchema,
   authorizationDigest: z.string().regex(/^[a-f0-9]{64}$/),
   confirmed: z.boolean(),
+  acceptanceSessionId: z.string().regex(/^vas-[a-f0-9]{24}$/).optional(),
+});
+export const videoAcceptanceBeginRequestSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  expectedRevision: z.number().int().nonnegative(),
+  packagePath: z.string().optional(),
+  platform: muziVideoPlatformSchema,
+  accountProfile: z.string().trim().min(1).max(80),
+  capability: acceptanceCapabilitySchema,
+  scheduledAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?\+08:00$/).optional(),
+  expectedAccountLabel: z.string().trim().min(1).max(120),
+  confirmed: z.boolean(),
+}).superRefine((value, context) => {
+  if (value.capability === "schedule" && value.scheduledAt === undefined) {
+    context.addIssue({ code: "custom", path: ["scheduledAt"], message: "scheduledAt is required for schedule acceptance" });
+  }
+  if (value.capability !== "schedule" && value.scheduledAt !== undefined) {
+    context.addIssue({ code: "custom", path: ["scheduledAt"], message: "scheduledAt is valid only for schedule acceptance" });
+  }
+});
+export const videoAcceptanceSessionResultSchema = z.object({
+  ok: z.literal(true),
+  sessionId: z.string().regex(/^vas-[a-f0-9]{24}$/),
+  expiresAt: z.string().datetime(),
+  platform: muziVideoPlatformSchema,
+  accountProfile: z.string().min(1),
+  capability: acceptanceCapabilitySchema,
+  bindingSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  account: z.object({ label: z.string().min(1), verified: z.literal(true), evidenceSha256: z.string().regex(/^[a-f0-9]{64}$/) }),
+  durableAcceptanceWritten: z.literal(false),
+  ordinaryAuthorizationIssued: z.literal(false),
+});
+export const videoAcceptanceFinalizeRequestSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  expectedRevision: z.number().int().nonnegative(),
+  packagePath: z.string().optional(),
+  taskId: z.string().min(8).optional(),
+  platform: muziVideoPlatformSchema,
+  capability: acceptanceCapabilitySchema,
+  acceptanceSessionId: z.string().regex(/^vas-[a-f0-9]{24}$/),
+  confirmed: z.boolean(),
+});
+export const videoAcceptanceFinalizeResultSchema = z.object({
+  ok: z.literal(true),
+  platform: muziVideoPlatformSchema,
+  capability: z.literal("prepare_only"),
+  acceptedAt: z.string().datetime(),
+  evidencePath: z.string().min(1),
+  sessionId: z.string().regex(/^vas-[a-f0-9]{24}$/),
+  commitEnabled: z.literal(false),
+  authorizationDigest: z.null(),
 });
 export const videoPublishStatusRequestSchema = z.object({
   id: z.string().regex(/^mc_[a-f0-9]{24}$/),
@@ -203,6 +258,7 @@ export const videoMetricsSyncRequestSchema = z.object({
   platforms: z.array(muziVideoPlatformSchema).max(4).optional(),
   force: z.boolean().optional(),
   confirmed: z.boolean(),
+  acceptanceSessionId: z.string().regex(/^vas-[a-f0-9]{24}$/).optional(),
 });
 export const videoMetricsSyncResultSchema = z.object({
   id: z.string().regex(/^mc_[a-f0-9]{24}$/),

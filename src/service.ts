@@ -127,6 +127,10 @@ import type {
   MuziPublicationSetRequest,
   VideoMetricsSyncRequest,
   VideoMetricsSyncResult,
+  VideoAcceptanceBeginRequest,
+  VideoAcceptanceFinalizeRequest,
+  VideoAcceptanceFinalizeResult,
+  VideoAcceptanceSessionResult,
   VideoPublishCommitRequest,
   VideoPublishPrepareRequest,
   VideoPublishStatusRequest,
@@ -283,6 +287,16 @@ export class OilCreatorService extends TypertRemoteService {
   async prepareMuziVideoPublish(request: VideoPublishPrepareRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
     if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
     return this.videoPublisher.prepare(request, signal);
+  }
+
+  async beginMuziVideoAcceptance(request: VideoAcceptanceBeginRequest, signal: AbortSignal): Promise<VideoAcceptanceSessionResult> {
+    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    return this.videoPublisher.beginAcceptance(request, signal);
+  }
+
+  async finalizeMuziVideoAcceptance(request: VideoAcceptanceFinalizeRequest, signal: AbortSignal): Promise<VideoAcceptanceFinalizeResult> {
+    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    return this.videoPublisher.finalizeAcceptance(request, signal);
   }
 
   async commitMuziVideoPublish(request: VideoPublishCommitRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
