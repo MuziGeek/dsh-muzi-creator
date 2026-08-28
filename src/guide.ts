@@ -72,7 +72,7 @@ export function creatorGuideText(status: CreatorSetupStatus): string {
     capabilityLine("字幕凭据 DASHSCOPE_API_KEY", capabilities.subtitleCredential),
     capabilityLine("封面工作流 oil-cover", capabilities.coverSkill),
     capabilityLine("封面凭据 ZENMUX_API_KEY", capabilities.coverCredential),
-    capabilityLine("Ego Browser（自动发布与数据回收）", capabilities.publishSync),
+    capabilityLine("Patchright + Chrome（页面准备与数据同步）", capabilities.publishSync),
     capabilityLine("剪辑 skill screen-studio-editor", capabilities.editingSkill),
     capabilityLine("发布 skill video-publisher", capabilities.publishSkill),
     capabilityLine("公众号 skill oil-video-article", capabilities.articleSkill),
@@ -108,13 +108,13 @@ export function creatorGuideText(status: CreatorSetupStatus): string {
       : "- 缺 screen-studio-editor：征得用户同意后执行 `git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor`；没有它时剪辑由用户自己完成。",
     "",
     "## 自动发布与数据回收",
-    "- 这两项都依赖 Ego Browser（PATH 里的 ego-browser 命令）和已登录的各平台创作者后台。",
+    "- 这两项使用固定版本 Patchright、本机 Chrome 和独立账号目录；不连接日常 Chrome 用户目录。",
     publishPlatformLine(enabledPlatforms),
     capabilities.publishSync.state === "ready"
       ? enabledPlatforms.length === 0
-        ? "- 已发现 Ego Browser，但当前没有启用平台，不执行自动发布和数据回收。"
-        : "- 当前已发现 Ego Browser。上传发布走外部 skill video-publisher，停在最终发表按钮前由用户点；发布后或用户要求时用 oil_sync_publish 回收播放、赞、评论并写回工作台。"
-      : "- 当前未发现 Ego Browser：自动发布和 oil_sync_publish 数据回收都不可用。告诉用户到 https://lite.ego.app 下载 ego lite，完成首次引导后 ego-browser 命令可用，再登录各平台创作者后台；片库、脚本、字幕、封面不受影响，不要假装能同步。",
+        ? "- 已发现 Patchright 和 Chrome，但当前没有启用平台，不执行页面准备和数据回收。"
+        : "- 当前已发现 Patchright 和 Chrome。每个平台默认只准备；立即发布、定时发布和数据同步只有在 Windows 真实账号验收后才开放，并且每次仍需批准。"
+      : "- 当前未发现 Chrome：自动页面准备和 oil_sync_publish 数据回收都不可用。安装 Chrome 或设置 VIDEO_PUBLISHER_CHROME 后重试；片库、脚本、字幕、封面不受影响，不要假装能同步。",
     capabilities.publishSkill.state === "ready"
       ? enabledPlatforms.length === 0
         ? "- 已发现 video-publisher，但当前没有启用平台，不使用它。"

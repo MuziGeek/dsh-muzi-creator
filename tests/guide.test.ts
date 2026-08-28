@@ -56,20 +56,20 @@ describe("creatorGuideText", () => {
     expect(guide).toContain("video-publisher");
   });
 
-  it("tells the model auto-publish and data sync need Ego Browser when missing", () => {
+  it("tells the model auto-publish and data sync need Chrome when missing", () => {
     const guide = creatorGuideText(statusOf({
-      publishSync: capability("missing", "未发现 Ego Browser；自动发布和发布数据回收不可用。"),
+      publishSync: capability("missing", "未发现 Google Chrome；Windows Patchright 页面准备和发布数据同步不可用。"),
     }));
-    expect(guide).toContain("未发现 Ego Browser");
+    expect(guide).toContain("未发现 Google Chrome");
     expect(guide).toContain("自动发布");
     expect(guide).toContain("oil_sync_publish");
-    expect(guide).toContain("lite.ego.app");
+    expect(guide).toContain("VIDEO_PUBLISHER_CHROME");
     expect(guide).toContain("不要假装能同步");
   });
 
-  it("confirms publish and sync when Ego Browser is ready", () => {
+  it("confirms publish and sync when Patchright and Chrome are ready", () => {
     const guide = creatorGuideText(statusOf({}));
-    expect(guide).toContain("当前已发现 Ego Browser");
+    expect(guide).toContain("当前已发现 Patchright 和 Chrome");
     expect(guide).not.toContain("不要假装能同步");
   });
 
@@ -85,7 +85,7 @@ describe("creatorGuideText", () => {
     expect(guide).toContain("当前 enabledPlatforms 为空（[]）");
     expect(guide).toContain("不要调用 video-publisher，也不要调用 oil_sync_publish");
     expect(guide).toContain("先用 oil_creator_setup 配置启用平台");
-    expect(guide).toContain("不执行自动发布和数据回收");
+    expect(guide).toContain("不执行页面准备和数据回收");
   });
 
   it("asks for a persona before writing scripts when rules are unset", () => {

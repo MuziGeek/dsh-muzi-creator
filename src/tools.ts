@@ -35,7 +35,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
       "Self-bootstrap guide for this plugin. Call this when the user asks what this plugin does, "
       + "how to use it, or when you are unsure which step comes next. "
       + "Returns the full workflow (library, script rules, subtitles, covers, publish, data sync) "
-      + "with the live capability status, including whether Ego Browser is available for auto-publish and data collection.",
+      + "with the live capability status, including whether Patchright and Chrome are available for page preparation and data collection.",
     parameters: {},
     output: {
       schema: JSON_VALUE,
@@ -261,7 +261,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
       "Sync published titles, URLs, and counts from logged-in creator dashboards. "
       + "Pass id to update one episode only and stop paging once that title is found. "
       + "Omit id to match the whole library and collect every page. "
-      + "Requires Ego Lite and an already-logged-in creator session. "
+      + "Requires the pinned Patchright runtime, Chrome, per-platform Windows acceptance, and an already-logged-in isolated creator profile. "
       + "Repeats within 90 seconds reuse the last snapshot.",
     parameters: {
       id: {

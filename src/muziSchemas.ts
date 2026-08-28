@@ -6,7 +6,9 @@ export const muziProjectStageSchema = z.enum(["idea", "research", "mother_draft"
 export const muziPrimaryDocumentSchema = z.enum(["mother", "video"]);
 export const muziPublishTargetSchema = z.enum(["bilibili", "douyin", "wechat", "xiaohongshu", "blog"]);
 export const muziPublicationStatusSchema = z.enum(["unpublished", "platform_draft", "published"]);
-export const muziPublicationSourceSchema = z.enum(["manual", "sync"]);
+export const muziPublicationSourceSchema = z.enum(["manual", "sync", "publisher"]);
+export const muziVideoPlatformSchema = z.enum(["bilibili", "douyin", "wechat", "xiaohongshu"]);
+export const videoPublishModeSchema = z.enum(["prepare_only", "publish_now", "schedule"]);
 
 export const atlasReferenceSchema = z.object({
   locator: z.string().regex(/^atlas:\/\/wiki\/(?:entities|topics|sources|comparisons|synthesis|queries)\/[^?#]+\.md$/),
@@ -25,7 +27,9 @@ const muziDocumentStateSchema = z.object({
 
 const muziPublicationStateSchema = z.object({
   status: muziPublicationStatusSchema,
+  remoteId: z.string().nullable(),
   url: z.string().url().nullable(),
+  scheduledAt: z.string().datetime({ offset: true }).nullable(),
   publishedAt: z.string().datetime().nullable(),
   source: muziPublicationSourceSchema.nullable(),
 });
@@ -87,8 +91,130 @@ export const muziPublicationSetRequestSchema = z.object({
   status: muziPublicationStatusSchema,
   expectedRevision: z.number().int().nonnegative(),
   source: muziPublicationSourceSchema,
+  remoteId: z.string().min(1).optional(),
   url: z.string().url().optional(),
+  scheduledAt: z.string().datetime({ offset: true }).optional(),
   publishedAt: z.string().datetime().optional(),
+});
+
+export const platformPublishIntentSchema = z.object({
+  platform: muziVideoPlatformSchema,
+  accountProfile: z.string().trim().min(1).max(80),
+  mode: videoPublishModeSchema,
+  scheduledAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?\+08:00$/).optional(),
+}).superRefine((value, context) => {
+  if (value.mode === "schedule" && value.scheduledAt === undefined) {
+    context.addIssue({ code: "custom", path: ["scheduledAt"], message: "scheduledAt is required for schedule mode" });
+  }
+  if (value.mode !== "schedule" && value.scheduledAt !== undefined) {
+    context.addIssue({ code: "custom", path: ["scheduledAt"], message: "scheduledAt is allowed only for schedule mode" });
+  }
+});
+
+const videoPublishBlockerSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  evidence: z.unknown().optional(),
+});
+const videoPublishApprovalSummarySchema = z.object({
+  platform: muziVideoPlatformSchema,
+  accountProfile: z.string().min(1),
+  title: z.string().min(1),
+  mode: z.enum(["publish_now", "schedule"]),
+  scheduledAt: z.string().nullable(),
+}).superRefine((value, context) => {
+  if (value.mode === "schedule" && value.scheduledAt === null) {
+    context.addIssue({ code: "custom", path: ["scheduledAt"], message: "scheduledAt is required for schedule approval" });
+  }
+  if (value.mode === "publish_now" && value.scheduledAt !== null) {
+    context.addIssue({ code: "custom", path: ["scheduledAt"], message: "scheduledAt must be null for immediate approval" });
+  }
+});
+const videoPublishPlatformResultSchema = z.object({
+  platform: muziVideoPlatformSchema,
+  accountProfile: z.string(),
+  mode: videoPublishModeSchema,
+  scheduledAt: z.string().nullable(),
+  status: z.enum(["NEW", "PREPARING", "READY_DRAFT", "READY_TO_PUBLISH", "READY_TO_SCHEDULE", "PUBLISHED_CONFIRMED", "SCHEDULE_CONFIRMED", "COMMIT_UNKNOWN", "BLOCKED"]),
+  ready: z.boolean(),
+  commitEnabled: z.boolean(),
+  commitBlocker: videoPublishBlockerSchema.nullable(),
+  approvalSummary: videoPublishApprovalSummarySchema.nullable(),
+  authorizationDigest: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  authorizationExpiresAt: z.string().nullable(),
+  commitAttemptedAt: z.string().nullable(),
+  confirmedAt: z.string().nullable(),
+  remoteId: z.string().nullable(),
+  url: z.string().nullable(),
+});
+export const videoPublishTaskResultSchema = z.object({
+  ok: z.boolean(),
+  taskId: z.string(),
+  projectId: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  revision: z.number().int().nonnegative(),
+  status: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  platforms: z.partialRecord(muziVideoPlatformSchema, videoPublishPlatformResultSchema),
+});
+export const videoPublishPrepareRequestSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  expectedRevision: z.number().int().nonnegative(),
+  packagePath: z.string().optional(),
+  intents: z.array(platformPublishIntentSchema).min(1).max(4),
+  confirmed: z.boolean(),
+  originalRightsConfirmed: z.boolean().optional(),
+});
+export const videoPublishCommitRequestSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  expectedRevision: z.number().int().nonnegative(),
+  taskId: z.string().min(8),
+  platform: muziVideoPlatformSchema,
+  authorizationDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  confirmed: z.boolean(),
+});
+export const videoPublishStatusRequestSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  taskId: z.string().min(8).optional(),
+});
+const creatorMetricSnapshotSchema = z.object({
+  schema: z.literal("muzi.creator.metrics/1"),
+  mcId: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  platform: muziVideoPlatformSchema,
+  remoteId: z.string().nullable(),
+  observedAt: z.string().datetime(),
+  views: z.number().int().nonnegative().nullable(),
+  likes: z.number().int().nonnegative().nullable(),
+  comments: z.number().int().nonnegative().nullable(),
+  collectorVersion: z.literal("1"),
+});
+const creatorMetricLatestSchema = creatorMetricSnapshotSchema.extend({
+  delta: z.object({ views: z.number().int().nullable(), likes: z.number().int().nullable(), comments: z.number().int().nullable() }),
+});
+const videoMetricPlatformResultSchema = z.object({
+  platform: muziVideoPlatformSchema,
+  status: z.enum(["SYNCED", "CACHED", "LOGIN_REQUIRED", "PAGINATION_INCOMPLETE", "AMBIGUOUS", "NOT_FOUND", "ERROR"]),
+  message: z.string().nullable(),
+  latest: creatorMetricLatestSchema.nullable(),
+});
+export const videoMetricsSyncRequestSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  expectedRevision: z.number().int().nonnegative(),
+  platforms: z.array(muziVideoPlatformSchema).max(4).optional(),
+  force: z.boolean().optional(),
+  confirmed: z.boolean(),
+});
+export const videoMetricsSyncResultSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  revision: z.number().int().nonnegative(),
+  cached: z.boolean(),
+  observedAt: z.string().datetime(),
+  platforms: z.array(videoMetricPlatformResultSchema),
+});
+export const videoPublishStatusResultSchema = z.object({
+  id: z.string().regex(/^mc_[a-f0-9]{24}$/),
+  task: videoPublishTaskResultSchema.nullable(),
+  metrics: z.partialRecord(muziVideoPlatformSchema, creatorMetricLatestSchema),
 });
 export const muziArchiveRequestSchema = z.object({
   id: z.string().regex(/^mc_[a-f0-9]{24}$/),

@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -27,5 +27,15 @@ describe("collect cache scope", () => {
     const loaded = await loadCollectCache(dir);
     expect(loaded?.scope).toBe("partial");
     expect(loaded?.result.collected[0]?.items[0]?.title).toBe("一期");
+  });
+
+  it("round-trips an optional caller context key", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "oil-collect-cache-context-"));
+    await saveCollectCache(dir, {
+      collected: [{ platform: "douyin", items: [] }],
+    }, { scope: "partial", contextKey: "project-account-target" });
+    const loaded = await loadCollectCache(dir);
+    expect(loaded?.contextKey).toBe("project-account-target");
+    await rm(dir, { recursive: true, force: true });
   });
 });

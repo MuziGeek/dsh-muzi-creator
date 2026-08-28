@@ -92,6 +92,7 @@ import { AtlasReadService } from "./atlasService.ts";
 import { createDailyHotLoader, type DailyHotLoader } from "./dailyHotService.ts";
 import type { DailyHotResult, GetDailyHotRequest } from "./dailyHotTypes.ts";
 import { MuziCreatorService } from "./muziService.ts";
+import { VideoPublisherService } from "./videoPublisher.ts";
 import { TrellisProjectService } from "./trellisService.ts";
 import type {
   ArchiveTrellisTaskRequest,
@@ -124,6 +125,13 @@ import type {
   MuziProjectListResult,
   MuziProjectStatusRequest,
   MuziPublicationSetRequest,
+  VideoMetricsSyncRequest,
+  VideoMetricsSyncResult,
+  VideoPublishCommitRequest,
+  VideoPublishPrepareRequest,
+  VideoPublishStatusRequest,
+  VideoPublishStatusResult,
+  VideoPublishTaskResult,
   PendingKnowledgeFile,
   PendingKnowledgeGetRequest,
   PendingKnowledgeListRequest,
@@ -189,6 +197,7 @@ export class OilCreatorService extends TypertRemoteService {
   videos = new Map<string, { url: string; path: string; close: () => void }>();
   articles = new Map<string, { origin: string; root: string; close: () => void }>();
   readonly muzi: MuziCreatorService;
+  readonly videoPublisher: VideoPublisherService;
   readonly atlas: AtlasReadService;
   readonly trellis: TrellisProjectService;
   readonly dailyHot: DailyHotLoader;
@@ -206,6 +215,7 @@ export class OilCreatorService extends TypertRemoteService {
     this.subtitleSkillDirConfig = config.subtitleSkillDir;
     this.coverSkillDirConfig = config.coverSkillDir;
     this.muzi = new MuziCreatorService(config);
+    this.videoPublisher = new VideoPublisherService(config, this.dataDir, this.muzi);
     this.atlas = new AtlasReadService(config);
     this.trellis = new TrellisProjectService(ctx, config);
     this.dailyHot = createDailyHotLoader();
@@ -268,6 +278,25 @@ export class OilCreatorService extends TypertRemoteService {
 
   async listTrellisProjects(_request: Record<string, never>, signal: AbortSignal): Promise<TrellisProjectListResult> {
     return this.trellis.list(signal);
+  }
+
+  async prepareMuziVideoPublish(request: VideoPublishPrepareRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
+    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    return this.videoPublisher.prepare(request, signal);
+  }
+
+  async commitMuziVideoPublish(request: VideoPublishCommitRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
+    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    return this.videoPublisher.commit(request, signal);
+  }
+
+  async getMuziVideoPublishStatus(request: VideoPublishStatusRequest, signal: AbortSignal): Promise<VideoPublishStatusResult> {
+    return this.videoPublisher.status(request, signal);
+  }
+
+  async syncMuziVideoMetrics(request: VideoMetricsSyncRequest, signal: AbortSignal): Promise<VideoMetricsSyncResult> {
+    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    return this.videoPublisher.syncMetrics(request, signal);
   }
 
   async getDailyHot(request: GetDailyHotRequest, signal: AbortSignal): Promise<DailyHotResult> {
@@ -813,6 +842,7 @@ export class OilCreatorService extends TypertRemoteService {
 
   async syncPublish(request: SyncPublishRequest, signal: AbortSignal): Promise<SyncPublishResult> {
     signal.throwIfAborted();
+    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
     const configured = await loadOverlay(this.dataDir);
     const enabledPlatforms = configured.profile?.enabledPlatforms ?? emptyProfile().enabledPlatforms;
     if (request.platform !== undefined && !enabledPlatforms.includes(request.platform)) {

@@ -6,7 +6,19 @@ export type MuziProjectStage = "idea" | "research" | "mother_draft" | "adaptatio
 export type MuziPrimaryDocument = "mother" | "video";
 export type MuziPublishTarget = "bilibili" | "douyin" | "wechat" | "xiaohongshu" | "blog";
 export type MuziPublicationStatus = "unpublished" | "platform_draft" | "published";
-export type MuziPublicationSource = "manual" | "sync";
+export type MuziPublicationSource = "manual" | "sync" | "publisher";
+export type MuziVideoPlatform = "bilibili" | "douyin" | "wechat" | "xiaohongshu";
+export type VideoPublishMode = "prepare_only" | "publish_now" | "schedule";
+export type VideoPublishState =
+  | "NEW"
+  | "PREPARING"
+  | "READY_DRAFT"
+  | "READY_TO_PUBLISH"
+  | "READY_TO_SCHEDULE"
+  | "PUBLISHED_CONFIRMED"
+  | "SCHEDULE_CONFIRMED"
+  | "COMMIT_UNKNOWN"
+  | "BLOCKED";
 
 export interface AtlasReference {
   locator: string;
@@ -25,7 +37,9 @@ export interface MuziDocumentState {
 
 export interface MuziPublicationState {
   status: MuziPublicationStatus;
+  remoteId: string | null;
   url: string | null;
+  scheduledAt: string | null;
   publishedAt: string | null;
   source: MuziPublicationSource | null;
 }
@@ -97,8 +111,122 @@ export interface MuziPublicationSetRequest {
   status: MuziPublicationStatus;
   expectedRevision: number;
   source: MuziPublicationSource;
+  remoteId?: string;
   url?: string;
+  scheduledAt?: string;
   publishedAt?: string;
+}
+
+export interface PlatformPublishIntent {
+  platform: MuziVideoPlatform;
+  accountProfile: string;
+  mode: VideoPublishMode;
+  scheduledAt?: string;
+}
+
+export interface VideoPublishPlatformResult {
+  platform: MuziVideoPlatform;
+  accountProfile: string;
+  mode: VideoPublishMode;
+  scheduledAt: string | null;
+  status: VideoPublishState;
+  ready: boolean;
+  commitEnabled: boolean;
+  commitBlocker: { code: string; message: string; evidence?: unknown } | null;
+  approvalSummary: {
+    platform: MuziVideoPlatform;
+    accountProfile: string;
+    title: string;
+    mode: "publish_now" | "schedule";
+    scheduledAt: string | null;
+  } | null;
+  authorizationDigest: string | null;
+  authorizationExpiresAt: string | null;
+  commitAttemptedAt: string | null;
+  confirmedAt: string | null;
+  remoteId: string | null;
+  url: string | null;
+}
+
+export interface VideoPublishTaskResult {
+  ok: boolean;
+  taskId: string;
+  projectId: string;
+  revision: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  platforms: Partial<Record<MuziVideoPlatform, VideoPublishPlatformResult>>;
+}
+
+export interface VideoPublishPrepareRequest {
+  id: string;
+  expectedRevision: number;
+  packagePath?: string;
+  intents: PlatformPublishIntent[];
+  confirmed: boolean;
+  originalRightsConfirmed?: boolean;
+}
+
+export interface VideoPublishCommitRequest {
+  id: string;
+  expectedRevision: number;
+  taskId: string;
+  platform: MuziVideoPlatform;
+  authorizationDigest: string;
+  confirmed: boolean;
+}
+
+export interface VideoPublishStatusRequest {
+  id: string;
+  taskId?: string;
+}
+
+export interface CreatorMetricSnapshot {
+  schema: "muzi.creator.metrics/1";
+  mcId: string;
+  platform: MuziVideoPlatform;
+  remoteId: string | null;
+  observedAt: string;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  collectorVersion: "1";
+}
+
+export interface CreatorMetricLatest extends CreatorMetricSnapshot {
+  delta: { views: number | null; likes: number | null; comments: number | null };
+}
+
+export type VideoMetricSyncState = "SYNCED" | "CACHED" | "LOGIN_REQUIRED" | "PAGINATION_INCOMPLETE" | "AMBIGUOUS" | "NOT_FOUND" | "ERROR";
+
+export interface VideoMetricPlatformResult {
+  platform: MuziVideoPlatform;
+  status: VideoMetricSyncState;
+  message: string | null;
+  latest: CreatorMetricLatest | null;
+}
+
+export interface VideoMetricsSyncRequest {
+  id: string;
+  expectedRevision: number;
+  platforms?: MuziVideoPlatform[];
+  force?: boolean;
+  confirmed: boolean;
+}
+
+export interface VideoMetricsSyncResult {
+  id: string;
+  revision: number;
+  cached: boolean;
+  observedAt: string;
+  platforms: VideoMetricPlatformResult[];
+}
+
+export interface VideoPublishStatusResult {
+  id: string;
+  task: VideoPublishTaskResult | null;
+  metrics: Partial<Record<MuziVideoPlatform, CreatorMetricLatest>>;
 }
 
 export interface MuziArchiveRequest {

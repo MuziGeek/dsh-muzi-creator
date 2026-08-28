@@ -136,6 +136,7 @@ export function filterMatchItems<T extends { id: string }>(
 }
 
 export interface CollectTarget {
+  platform?: PublishPlatform;
   title: string;
   remoteIds?: string[];
   urls?: string[];

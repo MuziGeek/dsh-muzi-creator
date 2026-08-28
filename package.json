@@ -79,6 +79,7 @@
     "@deepseek-ai/schemastery": "3.18.1",
     "animal-island-ui": "1.6.0",
     "classnames": "^2.5.1",
+    "patchright": "1.62.1",
     "react-force-graph-3d": "1.29.1",
     "three": "0.185.1",
     "three-spritetext": "1.10.0",

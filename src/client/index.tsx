@@ -50,6 +50,12 @@ import type {
   PendingKnowledgeFile,
   PendingKnowledgeListResult,
   PendingKnowledgeReference,
+  VideoMetricsSyncRequest,
+  VideoMetricsSyncResult,
+  VideoPublishCommitRequest,
+  VideoPublishPrepareRequest,
+  VideoPublishStatusResult,
+  VideoPublishTaskResult,
 } from "../muziTypes.ts";
 import type {
   ArchiveTrellisTaskRequest,
@@ -150,6 +156,10 @@ interface OilCreatorRemote {
   saveMuziDocument: (request: MuziDocumentSaveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   setMuziProjectStatus: (request: MuziProjectStatusRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   setMuziPublication: (request: MuziPublicationSetRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  prepareMuziVideoPublish: (request: VideoPublishPrepareRequest) => Promise<RemoteAnswer<VideoPublishTaskResult>>;
+  commitMuziVideoPublish: (request: VideoPublishCommitRequest) => Promise<RemoteAnswer<VideoPublishTaskResult>>;
+  getMuziVideoPublishStatus: (request: { id: string; taskId?: string }) => Promise<RemoteAnswer<VideoPublishStatusResult>>;
+  syncMuziVideoMetrics: (request: VideoMetricsSyncRequest) => Promise<RemoteAnswer<VideoMetricsSyncResult>>;
   archiveMuziProject: (request: MuziArchiveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   getKnowledgeStatus: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgeStatus>>;
   getKnowledgeHome: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgeHomeResult>>;
@@ -450,6 +460,30 @@ export function apply(ctx: ClientContext): void {
       const remote = remoteOf();
       if (remote === undefined) throw new Error("remote unavailable");
       const next = unwrap(await remote.setMuziPublication(request), "publication failed");
+      bumpLibrary();
+      return next;
+    },
+    prepareVideoPublish: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.prepareMuziVideoPublish(request), "video publish preparation failed");
+    },
+    commitVideoPublish: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.commitMuziVideoPublish(request), "video final action failed");
+      bumpLibrary();
+      return next;
+    },
+    getVideoPublishStatus: async (id, taskId) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getMuziVideoPublishStatus({ id, ...(taskId === undefined ? {} : { taskId }) }), "video publish status failed");
+    },
+    syncVideoMetrics: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.syncMuziVideoMetrics(request), "video metrics sync failed");
       bumpLibrary();
       return next;
     },

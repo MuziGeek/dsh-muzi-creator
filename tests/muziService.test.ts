@@ -48,6 +48,59 @@ describe("muzi.creator/2", () => {
     await expect(service.saveDocument({ id: created.id, document: "video", text: "视频", status: "draft", expectedRevision: created.revision, confirmed: true })).rejects.toThrow("revision conflict");
   });
 
+  it("reads old V2 publication rows and writes publisher schedule facts with revision protection", async () => {
+    const cfg = await config();
+    const service = new MuziCreatorService(cfg);
+    const created = await service.createProject({ title: "发布事实", primaryDocument: "video", confirmed: true });
+    const projectRoot = join(cfg.creatorRoot, "10-active", created.folderName);
+    const manifestPath = join(projectRoot, "project.yml");
+    const oldV2 = (await readFile(manifestPath, "utf8"))
+      .replace(/^\s+remoteId:.*\r?\n/gm, "")
+      .replace(/^\s+scheduledAt:.*\r?\n/gm, "");
+    await writeFile(manifestPath, oldV2);
+
+    const compatible = await service.getProject({ id: created.id });
+    expect(compatible.publications.douyin.remoteId).toBeNull();
+    expect(compatible.publications.douyin.scheduledAt).toBeNull();
+
+    const scheduledAt = "2026-09-01T20:00:00+08:00";
+    const saved = await service.setPublication({
+      id: created.id,
+      target: "douyin",
+      status: "platform_draft",
+      expectedRevision: compatible.revision,
+      source: "publisher",
+      remoteId: "douyin-42",
+      scheduledAt,
+    });
+    expect(saved.publications.douyin).toMatchObject({
+      status: "platform_draft",
+      remoteId: "douyin-42",
+      scheduledAt,
+      publishedAt: null,
+      source: "publisher",
+    });
+    await expect(service.setPublication({
+      id: created.id,
+      target: "douyin",
+      status: "published",
+      expectedRevision: compatible.revision,
+      source: "publisher",
+    })).rejects.toThrow("revision conflict");
+  });
+
+  it("serializes competing publication fact writes and rejects the stale revision", async () => {
+    const service = new MuziCreatorService(await config());
+    const created = await service.createProject({ title: "并发事实", primaryDocument: "video", confirmed: true });
+    const writes = await Promise.allSettled([
+      service.setPublication({ id: created.id, target: "douyin", status: "published", expectedRevision: created.revision, source: "publisher", remoteId: "d-1" }),
+      service.setPublication({ id: created.id, target: "bilibili", status: "published", expectedRevision: created.revision, source: "publisher", remoteId: "b-1" }),
+    ]);
+    expect(writes.filter((item) => item.status === "fulfilled")).toHaveLength(1);
+    const rejected = writes.find((item): item is PromiseRejectedResult => item.status === "rejected");
+    expect(String(rejected?.reason)).toContain("revision conflict");
+  });
+
   it("marks a derivative stale when its source changes", async () => {
     const service = new MuziCreatorService(await config());
     let project = await service.createProject({ title: "先母内容", primaryDocument: "mother", confirmed: true });

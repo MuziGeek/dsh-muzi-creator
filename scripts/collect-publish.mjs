@@ -1,8 +1,204 @@
-// Ego Lite script. Run: ego-browser nodejs < scripts/collect-publish.mjs
+// Windows Patchright collector. Run: node scripts/collect-publish.mjs
 // Optional: OIL_COLLECT_PLATFORMS, OIL_COLLECT_TARGETS, OIL_COLLECT_SPACE,
 // OIL_COLLECT_KEEP, OIL_COLLECT_CLEANUP_STALE, OIL_COLLECT_CLEANUP_NAMES,
 // OIL_COLLECT_CLEANUP_PREFIXES, OIL_COLLECT_MAX_PAGES, OIL_COLLECT_XHS_SCROLL.
-// Each run uses a new oil-collect-* space and closes it when finished.
+// Login state is isolated by platform/account under ~/.video-publisher/chrome-profiles.
+import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawn } from "node:child_process";
+
+import { chromium } from "patchright";
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const platformKey = (platform) => platform === "wechat" ? "wechat_channels" : platform;
+const accountProfiles = (() => {
+  try {
+    const value = JSON.parse(process.env.OIL_COLLECT_ACCOUNTS || "{}");
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+})();
+let activeBrowser = null;
+let activeContext = null;
+let activePage = null;
+let activeCdp = null;
+let activePlatform = null;
+let releaseAccount = null;
+
+function safePart(value) {
+  return String(value || "default").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 36) || "default";
+}
+
+function profileKey(platform, account) {
+  const hash = crypto.createHash("sha256").update(`${platform}\0${account}`).digest("hex").slice(0, 12);
+  return `${safePart(platform)}--${safePart(account)}--${hash}`;
+}
+
+function lockName(platform, account) {
+  const hash = crypto.createHash("sha256").update(`${platform}\0${account}`).digest("hex").slice(0, 12);
+  return `${platform}--${safePart(account).slice(0, 32)}--${hash}.lock`;
+}
+
+function processAlive(pid) {
+  if (!Number.isInteger(pid) || pid < 1) return false;
+  try { process.kill(pid, 0); return true; } catch (error) { return error?.code === "EPERM"; }
+}
+
+function acquireAccount(platform, account) {
+  const root = path.resolve(process.env.VIDEO_PUBLISHER_ACCOUNT_LOCK_ROOT || path.join(os.homedir(), ".video-publisher", "account-locks"));
+  const lockPath = path.join(root, lockName(platform, account));
+  fs.mkdirSync(root, { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      fs.mkdirSync(lockPath);
+      fs.writeFileSync(path.join(lockPath, "owner.json"), JSON.stringify({ pid: process.pid, platform, accountProfile: account, action: "metrics", acquiredAt: new Date().toISOString() }, null, 2));
+      return () => fs.rmSync(lockPath, { recursive: true, force: true });
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      let owner = {};
+      try { owner = JSON.parse(fs.readFileSync(path.join(lockPath, "owner.json"), "utf8")); } catch {}
+      if (!processAlive(Number(owner.pid))) { fs.rmSync(lockPath, { recursive: true, force: true }); continue; }
+      throw Object.assign(new Error(`Account ${platform}/${account} is busy`), { code: "ACCOUNT_BUSY" });
+    }
+  }
+  throw new Error(`Could not acquire account lock for ${platform}/${account}`);
+}
+
+function acceptedForMetrics(platform) {
+  const filePath = path.resolve(process.env.VIDEO_PUBLISHER_ACCEPTANCE || path.join(os.homedir(), ".video-publisher", "acceptance.json"));
+  try {
+    const acceptance = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (acceptance?.schemaVersion !== 1 || !acceptance.platforms || typeof acceptance.platforms !== "object") return false;
+    const row = acceptance.platforms?.[platform]?.metrics;
+    return row?.accepted === true && typeof row.evidence === "string" && row.evidence.trim() !== "" && Number.isFinite(Date.parse(row.acceptedAt));
+  } catch {
+    return false;
+  }
+}
+
+function chromeExecutable() {
+  const candidates = process.platform === "win32"
+    ? [
+      process.env.VIDEO_PUBLISHER_CHROME,
+      process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
+      process.env["PROGRAMFILES(X86)"] && path.join(process.env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
+      process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+    ]
+    : process.platform === "darwin"
+      ? [process.env.VIDEO_PUBLISHER_CHROME, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+      : [process.env.VIDEO_PUBLISHER_CHROME, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium"];
+  const found = candidates.filter(Boolean).find((candidate) => fs.existsSync(candidate));
+  if (!found) throw Object.assign(new Error("Google Chrome not found; set VIDEO_PUBLISHER_CHROME"), { code: "CHROME_NOT_FOUND" });
+  return path.resolve(found);
+}
+
+function devToolsPort(profileDir) {
+  try {
+    const port = Number(fs.readFileSync(path.join(profileDir, "DevToolsActivePort"), "utf8").split(/\r?\n/)[0]);
+    return Number.isInteger(port) && port > 0 ? port : null;
+  } catch { return null; }
+}
+
+async function endpointAlive(port) {
+  if (!port) return false;
+  try { return (await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(1200) })).ok; } catch { return false; }
+}
+
+async function ensureChrome(profileDir, platform, account) {
+  fs.mkdirSync(profileDir, { recursive: true });
+  let port = devToolsPort(profileDir);
+  if (await endpointAlive(port)) return port;
+  const executable = chromeExecutable();
+  const child = spawn(executable, [
+    `--user-data-dir=${profileDir}`,
+    "--remote-debugging-address=127.0.0.1",
+    "--remote-debugging-port=0",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-mode",
+    "--new-window",
+    "about:blank",
+  ], { detached: true, stdio: "ignore", windowsHide: false });
+  if (!child.pid) throw new Error("Chrome did not provide a PID");
+  child.unref();
+  try {
+    const started = Date.now();
+    while (Date.now() - started < 20_000) {
+      if (!processAlive(child.pid)) throw new Error(`Chrome exited before ready for ${platform}/${account}`);
+      port = devToolsPort(profileDir);
+      if (await endpointAlive(port)) return port;
+      await sleep(250);
+    }
+    throw new Error(`Chrome debugging endpoint timed out for ${platform}/${account}`);
+  } catch (cause) {
+    if (processAlive(child.pid)) process.kill(child.pid, "SIGTERM");
+    throw cause;
+  }
+}
+
+async function disconnectActive() {
+  if (activeCdp) await activeCdp.detach().catch(() => undefined);
+  activeCdp = null;
+  const connection = activeBrowser?._connection;
+  if (connection && typeof connection.close === "function") await Promise.resolve(connection.close()).catch(() => undefined);
+  activeBrowser = null;
+  activeContext = null;
+  activePage = null;
+  activePlatform = null;
+  if (releaseAccount) releaseAccount();
+  releaseAccount = null;
+}
+
+async function connectPlatform(platform) {
+  const key = platformKey(platform);
+  if (activePlatform === key && activePage && !activePage.isClosed()) return;
+  await disconnectActive();
+  if (!acceptedForMetrics(key)) throw Object.assign(new Error(`${key} metrics has not passed Windows live acceptance`), { code: "LIVE_ACCEPTANCE_REQUIRED" });
+  const account = String(accountProfiles[platform] || accountProfiles[key] || "default").trim() || "default";
+  releaseAccount = acquireAccount(key, account);
+  const profileRoot = path.resolve(process.env.VIDEO_PUBLISHER_PROFILE_ROOT || path.join(os.homedir(), ".video-publisher", "chrome-profiles"));
+  const profileDir = path.join(profileRoot, profileKey(key, account));
+  const port = await ensureChrome(profileDir, key, account);
+  activeBrowser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+  activeContext = activeBrowser.contexts()[0];
+  if (!activeContext) throw new Error("Patchright connected without a default context");
+  activePage = activeContext.pages().find((page) => !page.isClosed()) || await activeContext.newPage();
+  activePlatform = key;
+}
+
+async function useOrCreateTaskSpace(name) {
+  return { id: Number.parseInt(crypto.createHash("sha256").update(String(name)).digest("hex").slice(0, 7), 16), name };
+}
+async function completeTaskSpace() { await disconnectActive(); }
+async function listTaskSpaces() { return []; }
+async function openOrReuseTab(url, options = {}) {
+  const page = PAGES.find((row) => new URL(row.url).hostname === new URL(url).hostname);
+  if (!page) throw new Error(`Unknown collector page: ${url}`);
+  await connectPlatform(page.platform);
+  const existing = activeContext.pages().find((candidate) => {
+    try { return new URL(candidate.url()).hostname === new URL(url).hostname; } catch { return false; }
+  });
+  if (existing) activePage = existing;
+  else activePage = await activeContext.newPage();
+  await activePage.bringToFront();
+  if (activePage.url() !== url) await activePage.goto(url, { waitUntil: "domcontentloaded", timeout: (options.timeout || 35) * 1000 });
+}
+async function gotoAndWait(url, options = {}) {
+  await openOrReuseTab(url, options);
+  if (options.settle) await sleep(Number(options.settle) * 1000);
+}
+async function js(expression) { return activePage.evaluate(expression); }
+async function cdp(method, params = {}) {
+  if (!activeCdp) activeCdp = await activeContext.newCDPSession(activePage);
+  return activeCdp.send(method, params);
+}
+async function wait(seconds) { await sleep(Number(seconds) * 1000); }
+async function scroll({ dx = 0, dy = 0 } = {}) { await activePage.mouse.wheel(dx, dy); }
+function cliLog(value) { console.log(String(value)); }
+
 const PAGES = [
   { platform: "xiaohongshu", url: "https://creator.xiaohongshu.com/new/note-manager" },
   { platform: "douyin", url: "https://creator.douyin.com/creator-micro/content/manage" },
@@ -42,41 +238,23 @@ const targets = parseTargets(
   typeof OIL_COLLECT_TARGETS !== "undefined" ? OIL_COLLECT_TARGETS : process.env.OIL_COLLECT_TARGETS,
 );
 
-function normalizeTitle(value) {
-  return String(value || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
-}
-
-function titleScore(local, remote) {
-  const left = normalizeTitle(local);
-  const right = normalizeTitle(remote);
-  if (left === "" || right === "") return 0;
-  if (left === right) return 1;
-  if (left.includes(right) || right.includes(left)) return 0.88;
-  const shorter = left.length < right.length ? left : right;
-  const longer = left.length < right.length ? right : left;
-  let hits = 0;
-  const size = Math.min(4, shorter.length);
-  if (size < 2) return 0;
-  for (let index = 0; index <= shorter.length - size; index += 1) {
-    if (longer.includes(shorter.slice(index, index + size))) hits += 1;
-  }
-  const possible = shorter.length - size + 1;
-  return possible === 0 ? 0 : hits / possible * 0.7;
-}
-
-function hitsTarget(item) {
+function hitsStrongTarget(item) {
   if (targets.length === 0) return false;
   return targets.some((target) => {
+    if (target.platform && platformKey(target.platform) !== activePlatform) return false;
     const remoteIds = Array.isArray(target.remoteIds) ? target.remoteIds : [];
     const urls = Array.isArray(target.urls) ? target.urls : [];
     if (item.remoteId && remoteIds.includes(item.remoteId)) return true;
     if (item.url && urls.includes(item.url)) return true;
-    return titleScore(target.title, item.title) >= 0.85;
+    return false;
   });
 }
 
 function foundTargets(items) {
-  return targets.length > 0 && (items || []).some(hitsTarget);
+  // A remote id or URL is unique enough to stop pagination. A title is not:
+  // first-time title binding must scan the complete list so duplicates can be
+  // reported as AMBIGUOUS instead of silently binding the first result.
+  return targets.length > 0 && (items || []).some(hitsStrongTarget);
 }
 
 const HOOK = `(() => {
@@ -298,31 +476,33 @@ async function collectXiaohongshu(url) {
       await wait(1);
     }
   }
-  if (state.loginRequired) return { items: [], loginRequired: true };
+  if (state.loginRequired) return { items: [], loginRequired: true, paginationComplete: false };
 
   let last = state.n;
   let stall = 0;
+  let paginationComplete = false;
   for (let step = 0; step < XHS_SCROLL_STEPS; step += 1) {
-    if (foundTargets(state.items)) break;
-    if (state.total > 0 && state.n >= state.total && !state.loading) break;
+    if (foundTargets(state.items)) { paginationComplete = true; break; }
+    if (state.total > 0 && state.n >= state.total && !state.loading) { paginationComplete = true; break; }
     await scrollXhsList();
     await wait(1.1);
     state = await xhsState();
     if (state.n <= last) {
       stall += 1;
-      if (stall >= 5 && !state.loading) break;
+      if (stall >= 5 && !state.loading) { paginationComplete = true; break; }
     } else {
       stall = 0;
       last = state.n;
     }
   }
-  return { items: dedupe(state.items || []), loginRequired: false };
+  return { items: dedupe(state.items || []), loginRequired: false, paginationComplete };
 }
 
 async function collectDouyin() {
   const items = [];
   let cursor = 0;
   let total = Number.POSITIVE_INFINITY;
+  let paginationComplete = false;
   for (let page = 0; page < MAX_PAGES; page += 1) {
     const payload = await pageJson(`fetch("/janus/douyin/creator/pc/work_list?status=0&count=20&max_cursor=${cursor}&scene=star_atlas&device_platform=android&aid=1128", {
       credentials: "include"
@@ -331,15 +511,15 @@ async function collectDouyin() {
     if (payload?.http && payload.http >= 400) break;
     const batch = parseDouyinPayload(json);
     items.push(...batch);
-    if (foundTargets(items)) break;
+    if (foundTargets(items)) { paginationComplete = true; break; }
     if (typeof json?.total === "number") total = json.total;
     const hasMore = json?.has_more === true || json?.has_more === 1;
     const next = Number(json?.max_cursor);
-    if (batch.length === 0 || !hasMore || items.length >= total) break;
+    if (batch.length === 0 || !hasMore || items.length >= total) { paginationComplete = true; break; }
     if (!Number.isFinite(next) || next === cursor) break;
     cursor = next;
   }
-  if (items.length > 0) return { items: dedupe(items), loginRequired: false };
+  if (items.length > 0 || paginationComplete) return { items: dedupe(items), loginRequired: false, paginationComplete };
 
   await hookTab();
   const started = Date.now();
@@ -375,32 +555,37 @@ async function collectDouyin() {
       }
       return { items: [...byId.values()], loginRequired: byId.size === 0 && login };
     })()`);
-    if (hooked?.loginRequired || (Array.isArray(hooked?.items) && hooked.items.length > 0)) return hooked;
+    if (hooked?.loginRequired) return { ...hooked, paginationComplete: false };
+    if (Array.isArray(hooked?.items) && hooked.items.length > 0) {
+      return { ...hooked, paginationComplete: foundTargets(hooked.items) };
+    }
     await wait(1);
   }
-  return { items: [], loginRequired: false };
+  return { items: [], loginRequired: false, paginationComplete: false };
 }
 
 async function collectBilibili() {
   const items = [];
   let expected = Number.POSITIVE_INFINITY;
+  let paginationComplete = false;
   for (let pn = 1; pn <= MAX_PAGES; pn += 1) {
     const payload = await pageJson(`fetch("/x/web/archives?status=pubed&pn=${pn}&ps=30&coop=1&interactive=1", {
       credentials: "include"
     }).then((r) => r.json())`);
     const batch = parseBiliPayload(payload);
     items.push(...batch);
-    if (foundTargets(items)) break;
+    if (foundTargets(items)) { paginationComplete = true; break; }
     const count = payload?.data?.page?.count ?? payload?.data?.class?.pubed;
     if (typeof count === "number") expected = count;
-    if (batch.length === 0 || items.length >= expected) break;
+    if (batch.length === 0 || items.length >= expected) { paginationComplete = true; break; }
   }
-  return { items: dedupe(items), loginRequired: false };
+  return { items: dedupe(items), loginRequired: false, paginationComplete };
 }
 
 async function collectWechat() {
   const items = [];
   let expected = Number.POSITIVE_INFINITY;
+  let paginationComplete = false;
   for (let currentPage = 1; currentPage <= MAX_PAGES; currentPage += 1) {
     const payload = await pageJson(`fetch("/cgi-bin/mmfinderassistant-bin/post/post_list", {
       method: "POST",
@@ -410,12 +595,12 @@ async function collectWechat() {
     }).then((r) => r.json())`);
     const batch = parseWechatPayload(payload);
     items.push(...batch);
-    if (foundTargets(items)) break;
+    if (foundTargets(items)) { paginationComplete = true; break; }
     if (typeof payload?.data?.totalCount === "number") expected = payload.data.totalCount;
     const cont = payload?.data?.continueFlag;
-    if (batch.length === 0 || cont === false || items.length >= expected) break;
+    if (batch.length === 0 || cont === false || items.length >= expected) { paginationComplete = true; break; }
   }
-  return { items: dedupe(items), loginRequired: false };
+  return { items: dedupe(items), loginRequired: false, paginationComplete };
 }
 
 function csvNames(raw) {
@@ -461,6 +646,9 @@ try {
         platform: page.platform,
         items: Array.isArray(extracted?.items) ? extracted.items : [],
         loginRequired: extracted?.loginRequired === true,
+        ...(extracted?.loginRequired !== true && extracted?.paginationComplete === false
+          ? { error: `PAGINATION_INCOMPLETE: ${page.platform} reached its collection limit before a complete result` }
+          : {}),
       });
     } catch (cause) {
       collected.push({
@@ -474,6 +662,15 @@ try {
   if (!keepSpace) {
     try {
       await completeTaskSpace(task.id, { keep: false });
+      spaceClosed = true;
+    } catch {
+      spaceClosed = false;
+    }
+  } else {
+    // Chrome itself is independently launched and remains available for login
+    // review. Always detach the collector client and release the account lock.
+    try {
+      await disconnectActive();
       spaceClosed = true;
     } catch {
       spaceClosed = false;

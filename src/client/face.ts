@@ -35,6 +35,12 @@ import type {
   MuziPublicationStatus,
   MuziPublishTarget,
   MuziWorkspaceRevision,
+  VideoMetricsSyncRequest,
+  VideoMetricsSyncResult,
+  VideoPublishCommitRequest,
+  VideoPublishPrepareRequest,
+  VideoPublishStatusResult,
+  VideoPublishTaskResult,
   PendingKnowledgeFile,
   PendingKnowledgeListResult,
 } from "../muziTypes.ts";
@@ -105,6 +111,10 @@ export interface MuziViewFace {
     url?: string;
     publishedAt?: string;
   }) => Promise<MuziProjectDetail>;
+  prepareVideoPublish: (request: VideoPublishPrepareRequest) => Promise<VideoPublishTaskResult>;
+  commitVideoPublish: (request: VideoPublishCommitRequest) => Promise<VideoPublishTaskResult>;
+  getVideoPublishStatus: (id: string, taskId?: string) => Promise<VideoPublishStatusResult>;
+  syncVideoMetrics: (request: VideoMetricsSyncRequest) => Promise<VideoMetricsSyncResult>;
   archiveProject: (id: string, expectedRevision: number) => Promise<MuziProjectDetail>;
   getKnowledgeStatus: () => Promise<KnowledgeStatus>;
   getKnowledgeHome: () => Promise<KnowledgeHomeResult>;

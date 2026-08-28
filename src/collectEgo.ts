@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -49,6 +49,7 @@ export interface CollectRunOptions {
   maxPages?: number;
   xhsScrollSteps?: number;
   registryPath?: string;
+  accounts?: Partial<Record<PublishPlatform, string>>;
 }
 
 export { defaultCollectSpaceName } from "./collectSpaces.ts";
@@ -58,7 +59,7 @@ export async function runCollectPublish(
   signal: AbortSignal,
   options: CollectRunOptions = {},
 ): Promise<CollectResult> {
-  const source = await readFile(await resolveCollectScript(scriptPath), "utf8");
+  const resolvedScript = await resolveCollectScript(scriptPath);
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
       reject(signal.reason ?? new Error("aborted"));
@@ -94,31 +95,14 @@ export async function runCollectPublish(
     }
     if (options.maxPages !== undefined) env.OIL_COLLECT_MAX_PAGES = String(options.maxPages);
     if (options.xhsScrollSteps !== undefined) env.OIL_COLLECT_XHS_SCROLL = String(options.xhsScrollSteps);
-    const child = spawn("ego-browser", ["nodejs"], {
-      stdio: ["pipe", "pipe", "pipe"],
+    if (options.accounts !== undefined) env.OIL_COLLECT_ACCOUNTS = JSON.stringify(options.accounts);
+    const child = spawn(process.execPath, [resolvedScript], {
+      stdio: ["ignore", "pipe", "pipe"],
       env,
     });
     if (child.pid !== undefined) {
       registerCollectSpace(registryPath, { name: spaceName, pid: child.pid, startedAt: Date.now() });
     }
-    child.stdin?.on("error", () => undefined);
-    const filter = platforms !== undefined && platforms.length > 0 ? platforms.join(",") : "";
-    const prelude = [
-      `var OIL_COLLECT_PLATFORMS = ${JSON.stringify(filter)};`,
-      targets !== undefined && targets.length > 0
-        ? `var OIL_COLLECT_TARGETS = ${JSON.stringify(targets)};`
-        : "",
-      `var OIL_COLLECT_SPACE = ${JSON.stringify(spaceName)};`,
-      `var OIL_COLLECT_KEEP = ${JSON.stringify(options.keepSpace === true ? "1" : "0")};`,
-      `var OIL_COLLECT_CLEANUP_STALE = ${JSON.stringify(options.cleanupStale === false ? "0" : "1")};`,
-      `var OIL_COLLECT_CLEANUP_NAMES = ${JSON.stringify(cleanupNames.join(","))};`,
-      options.cleanupPrefixes !== undefined && options.cleanupPrefixes.length > 0
-        ? `var OIL_COLLECT_CLEANUP_PREFIXES = ${JSON.stringify(options.cleanupPrefixes.join(","))};`
-        : "",
-      options.maxPages !== undefined ? `var OIL_COLLECT_MAX_PAGES = ${JSON.stringify(String(options.maxPages))};` : "",
-      options.xhsScrollSteps !== undefined ? `var OIL_COLLECT_XHS_SCROLL = ${JSON.stringify(String(options.xhsScrollSteps))};` : "",
-    ].filter(Boolean).join("\n");
-    child.stdin?.end(`${prelude}\n${source}`);
     let stdout = "";
     let stderr = "";
     child.stdout?.on("data", (chunk: Buffer | string) => {
@@ -134,21 +118,18 @@ export async function runCollectPublish(
     child.once("error", (cause) => {
       signal.removeEventListener("abort", onAbort);
       unregisterCollectSpace(registryPath, spaceName);
-      const code = (cause as NodeJS.ErrnoException).code;
-      reject(code === "ENOENT" ? new Error("ego-browser not found; install Ego Lite") : cause);
+      reject(cause);
     });
     child.once("exit", (code) => {
       signal.removeEventListener("abort", onAbort);
       const raw = `${stdout}\n${stderr}`;
       if (code !== 0 && raw.trim() === "") {
-        reject(new Error(`ego-browser exited ${code}`));
+        reject(new Error(`Patchright collector exited ${code}`));
         return;
       }
       try {
         const result = parseCollectOutput(raw);
-        if (options.keepSpace === true || result.spaceClosed !== false) {
-          unregisterCollectSpace(registryPath, spaceName);
-        }
+        unregisterCollectSpace(registryPath, spaceName);
         resolve(result);
       } catch (cause) {
         const detail = raw.trim() === "" ? "" : `: ${raw.trim().slice(-500)}`;

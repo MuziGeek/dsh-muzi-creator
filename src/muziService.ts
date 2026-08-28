@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { constants } from "node:fs";
-import { access, lstat, mkdir, readFile, readdir, realpath, rename, stat, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
@@ -48,7 +48,9 @@ interface StoredDocument {
 
 interface StoredPublication {
   status?: unknown;
+  remoteId?: unknown;
   url?: unknown;
+  scheduledAt?: unknown;
   publishedAt?: unknown;
   source?: unknown;
 }
@@ -167,10 +169,37 @@ async function atomicWrite(path: string, text: string): Promise<void> {
   await rename(temporary, path);
 }
 
+async function acquireManifestLock(root: string): Promise<() => Promise<void>> {
+  const lockPath = join(root, ".muzi-project-write.lock");
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try {
+      await mkdir(lockPath);
+      try {
+        await writeFile(join(lockPath, "owner.json"), `${JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() })}\n`, "utf8");
+      } catch (cause) {
+        await rm(lockPath, { recursive: true, force: true });
+        throw cause;
+      }
+      return () => rm(lockPath, { recursive: true, force: true });
+    } catch (cause) {
+      if ((cause as NodeJS.ErrnoException).code !== "EEXIST") throw cause;
+      const info = await stat(lockPath).catch(() => undefined);
+      if (info !== undefined && Date.now() - info.mtimeMs > 60_000) {
+        await rm(lockPath, { recursive: true, force: true });
+        continue;
+      }
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 25));
+    }
+  }
+  throw new Error("project manifest is busy");
+}
+
 function emptyPublications(): Record<MuziPublishTarget, StoredPublication> {
   return Object.fromEntries(TARGETS.map((target) => [target, {
     status: "unpublished",
+    remoteId: null,
     url: null,
+    scheduledAt: null,
     publishedAt: null,
     source: null,
   }])) as Record<MuziPublishTarget, StoredPublication>;
@@ -319,12 +348,16 @@ export class MuziCreatorService {
       const statusValue = stored.status === "platform_draft" || stored.status === "published"
         ? stored.status
         : "unpublished";
+      const remoteId = typeof stored.remoteId === "string" && stored.remoteId.trim() !== "" ? stored.remoteId : null;
       const url = typeof stored.url === "string" && /^https?:\/\//.test(stored.url) ? stored.url : null;
+      const scheduledAt = typeof stored.scheduledAt === "string" && !Number.isNaN(Date.parse(stored.scheduledAt))
+        ? stored.scheduledAt
+        : null;
       const publishedAt = typeof stored.publishedAt === "string" && !Number.isNaN(Date.parse(stored.publishedAt))
         ? stored.publishedAt
         : null;
-      const source = stored.source === "manual" || stored.source === "sync" ? stored.source : null;
-      publications[target] = { status: statusValue, url, publishedAt, source };
+      const source = stored.source === "manual" || stored.source === "sync" || stored.source === "publisher" ? stored.source : null;
+      publications[target] = { status: statusValue, remoteId, url, scheduledAt, publishedAt, source };
     }
     const references = atlasReferences(manifest.atlasReferences);
     const updatedAt = asString(manifest.updated);
@@ -365,6 +398,10 @@ export class MuziCreatorService {
 
   async getProject(request: MuziProjectGetRequest): Promise<MuziProjectDetail> {
     return this.detail(await this.locate(request.id));
+  }
+
+  async projectRootPath(id: string): Promise<string> {
+    return (await this.locate(id)).root;
   }
 
   async getProjectCover(request: MuziProjectGetRequest): Promise<CoverThumbResult> {
@@ -507,11 +544,34 @@ export class MuziCreatorService {
     const publications = { ...(located.manifest.publications ?? {}) };
     publications[request.target] = {
       status: request.status,
+      remoteId: request.remoteId ?? null,
       url: request.url ?? null,
+      scheduledAt: request.scheduledAt ?? null,
       publishedAt: request.publishedAt ?? null,
       source: request.source,
     };
     return this.patchManifest(located, request.expectedRevision, { publications });
+  }
+
+  async patchPublicationStates(
+    id: string,
+    expectedRevision: number,
+    updates: Partial<Record<MuziPublishTarget, MuziPublicationState>>,
+  ): Promise<MuziProjectDetail> {
+    const located = await this.locate(id);
+    if (located.archive) throw new Error("archived projects are read-only");
+    const publications = { ...(located.manifest.publications ?? {}) };
+    for (const [target, update] of Object.entries(updates) as Array<[MuziPublishTarget, MuziPublicationState]>) {
+      publications[target] = {
+        status: update.status,
+        remoteId: update.remoteId,
+        url: update.url,
+        scheduledAt: update.scheduledAt,
+        publishedAt: update.publishedAt,
+        source: update.source,
+      };
+    }
+    return this.patchManifest(located, expectedRevision, { publications });
   }
 
   async archiveProject(request: MuziArchiveRequest): Promise<MuziProjectDetail> {
@@ -533,15 +593,25 @@ export class MuziCreatorService {
     expectedRevision: number,
     patch: Partial<ProjectManifest>,
   ): Promise<MuziProjectDetail> {
-    const revision = asRevision(located.manifest.revision);
-    if (revision !== expectedRevision) throw new Error(`revision conflict: expected ${expectedRevision}, current ${revision}`);
-    await atomicWrite(join(located.root, "project.yml"), stringify({
-      ...located.manifest,
-      ...patch,
-      schema: "muzi.creator/2",
-      updated: new Date().toISOString(),
-      revision: revision + 1,
-    }));
+    const release = await acquireManifestLock(located.root);
+    try {
+      const manifestPath = join(located.root, "project.yml");
+      const currentValue = parse(await readFile(manifestPath, "utf8")) as unknown;
+      if (!isRecord(currentValue)) throw new Error("project manifest is invalid");
+      const current = currentValue as ProjectManifest;
+      if (asString(current.id) !== asString(located.manifest.id)) throw new Error("project identity changed before update");
+      const revision = asRevision(current.revision);
+      if (revision !== expectedRevision) throw new Error(`revision conflict: expected ${expectedRevision}, current ${revision}`);
+      await atomicWrite(manifestPath, stringify({
+        ...current,
+        ...patch,
+        schema: "muzi.creator/2",
+        updated: new Date().toISOString(),
+        revision: revision + 1,
+      }));
+    } finally {
+      await release();
+    }
     return this.getProject({ id: asString(located.manifest.id) });
   }
 

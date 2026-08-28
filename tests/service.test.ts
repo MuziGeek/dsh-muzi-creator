@@ -211,7 +211,7 @@ describe("OilCreatorService.openSubtitlePreview", () => {
   });
 });
 
-async function syncService(profile: CreatorProfile): Promise<OilCreatorService> {
+async function syncService(profile: CreatorProfile, externalActionsEnabled = true): Promise<OilCreatorService> {
   const dataDir = await mkdtemp(join(tmpdir(), "oil-service-sync-"));
   const overlay = emptyOverlay();
   overlay.profile = profile;
@@ -219,10 +219,12 @@ async function syncService(profile: CreatorProfile): Promise<OilCreatorService> 
   const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
   const probe = service as unknown as {
     dataDir: string;
+    externalActionsEnabled: boolean;
     scanned: () => Promise<{ items: ContentSummary[] }>;
     invalidateCatalog: () => void;
   };
   probe.dataDir = dataDir;
+  probe.externalActionsEnabled = externalActionsEnabled;
   probe.scanned = async () => ({ items: [] });
   probe.invalidateCatalog = () => undefined;
   return service;
@@ -232,6 +234,12 @@ describe("OilCreatorService.syncPublish", () => {
   beforeEach(() => {
     collect.calls.length = 0;
     collect.run.mockClear();
+  });
+
+  it("keeps direct UI synchronization disabled by default", async () => {
+    const service = await syncService({ enabledPlatforms: ["douyin"] }, false);
+    await expect(service.syncPublish({}, new AbortController().signal)).rejects.toThrow("默认关闭");
+    expect(collect.calls).toEqual([]);
   });
 
   it("passes the enabled platforms to the collector by default", async () => {

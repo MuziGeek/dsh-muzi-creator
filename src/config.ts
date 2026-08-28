@@ -11,6 +11,7 @@ export interface Config {
   dataDir: string;
   subtitleSkillDir: string;
   coverSkillDir: string;
+  videoPublisherSkillDir?: string;
   previewMaxBytes: number;
   searchResultLimit: number;
   graphNodeLimit: number;
@@ -133,6 +134,7 @@ export const Config: Schema<Config> = Schema.object({
   dataDir: Schema.string().default(defaultDataDir()),
   subtitleSkillDir: Schema.string().default(""),
   coverSkillDir: Schema.string().default(""),
+  videoPublisherSkillDir: Schema.string().default(""),
   previewMaxBytes: Schema.number().min(4096).max(1048576).default(262144),
   searchResultLimit: Schema.number().min(1).max(100).default(30),
   graphNodeLimit: Schema.number().min(10).max(2000).default(500),

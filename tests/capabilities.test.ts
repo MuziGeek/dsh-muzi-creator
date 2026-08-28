@@ -41,10 +41,10 @@ describe("creator setup inspection", () => {
       join(subtitleRoot, "scripts", "prepare_subtitles.py"),
       join(subtitleRoot, "scripts", "review_subtitles.py"),
       join(coverRoot, "scripts", "generate_oil_cover.py"),
-      join(bin, "ego-browser"),
+      join(bin, "chrome"),
     ];
     await Promise.all(files.map((path) => writeFile(path, "")));
-    await chmod(join(bin, "ego-browser"), 0o755);
+    await chmod(join(bin, "chrome"), 0o755);
 
     const result = await inspectCreatorSetup({
       libraryRoot,
@@ -53,14 +53,14 @@ describe("creator setup inspection", () => {
       coverSkillDir: coverRoot,
       settings: settings(libraryRoot),
       platform: "linux",
-      env: { PATH: bin },
+      env: { PATH: bin, VIDEO_PUBLISHER_CHROME: join(bin, "chrome") },
       findSkillDir: (name) => join(root, "skills", name),
     });
 
     expect(result.capabilities.library.state).toBe("ready");
     expect(result.capabilities.subtitleSkill.state).toBe("ready");
     expect(result.capabilities.coverSkill.state).toBe("ready");
-    expect(result.capabilities.publishSync.path).toBe(join(bin, "ego-browser"));
+    expect(result.capabilities.publishSync.path).toBe(join(bin, "chrome"));
     expect(result.capabilities.screenStudio.state).toBe("unsupported");
     expect(result.capabilities.editingSkill.state).toBe("ready");
     expect(result.capabilities.editingSkill.path).toBe(join(root, "skills", "screen-studio-editor"));
@@ -183,7 +183,7 @@ describe("inspectCreatorSetup windows and mac paths", () => {
       writeFile(join(subtitleRoot, "scripts", "prepare_subtitles.py"), ""),
       writeFile(join(subtitleRoot, "scripts", "review_subtitles.py"), ""),
       writeFile(join(coverRoot, "scripts", "generate_oil_cover.py"), ""),
-      writeFile(join(bin, "ego-browser.EXE"), ""),
+      writeFile(join(bin, "chrome.exe"), ""),
     ]);
 
     const result = await inspectCreatorSetup({
@@ -193,7 +193,7 @@ describe("inspectCreatorSetup windows and mac paths", () => {
       coverSkillDir: coverRoot,
       settings: settings(libraryRoot),
       platform: "win32",
-      env: { Path: bin, PATHEXT: ".EXE" },
+      env: { Path: bin, PATHEXT: ".EXE", VIDEO_PUBLISHER_CHROME: join(bin, "chrome.exe") },
       home: root,
       findSkillDir: () => undefined,
     });
@@ -204,7 +204,7 @@ describe("inspectCreatorSetup windows and mac paths", () => {
     expect(result.capabilities.screenStudio.state).toBe("unsupported");
   });
 
-  it("does not treat an Ego app without the CLI as ready", async () => {
+  it("does not treat an Ego app as the Windows browser runtime", async () => {
     const home = await mkdtemp(join(tmpdir(), "oil-ego-app-"));
     const app = join(home, "Applications", "ego lite.app");
     await mkdir(app, { recursive: true });
@@ -220,7 +220,7 @@ describe("inspectCreatorSetup windows and mac paths", () => {
       findSkillDir: () => undefined,
     });
     expect(result.capabilities.publishSync.state).toBe("missing");
-    expect(result.capabilities.publishSync.path).toBe(app);
-    expect(result.capabilities.publishSync.detail).toContain("PATH");
+    expect(result.capabilities.publishSync.path).toBeUndefined();
+    expect(result.capabilities.publishSync.detail).toContain("Chrome");
   });
 });

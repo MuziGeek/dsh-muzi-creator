@@ -22,6 +22,9 @@ import type {
   MuziProjectStage,
   MuziPublicationStatus,
   MuziPublishTarget,
+  MuziVideoPlatform,
+  VideoPublishMode,
+  VideoPublishStatusResult,
   PendingKnowledgeFile,
 } from "../muziTypes.ts";
 import type { ContentDetail } from "../types.ts";
@@ -69,10 +72,53 @@ const DOCUMENTS: Array<{ key: MuziDocumentKey; label: string }> = [
 const TARGETS: Array<{ key: MuziPublishTarget; label: string; icon: PlatformId }> = [
   { key: "bilibili", label: "B站", icon: "bilibili" },
   { key: "douyin", label: "抖音", icon: "douyin" },
-  { key: "wechat", label: "公众号", icon: "article" },
+  { key: "wechat", label: "视频号", icon: "wechat" },
   { key: "xiaohongshu", label: "小红书", icon: "xhs" },
-  { key: "blog", label: "博客", icon: "wechat" },
+  { key: "blog", label: "博客", icon: "article" },
 ];
+const VIDEO_TARGETS = TARGETS.filter((item): item is { key: MuziVideoPlatform; label: string; icon: PlatformId } => item.key !== "blog");
+const VIDEO_MODE_LABELS: Record<VideoPublishMode, string> = {
+  prepare_only: "仅准备",
+  publish_now: "立即发布",
+  schedule: "定时发布",
+};
+const VIDEO_STATE_LABELS: Record<string, string> = {
+  NEW: "未开始",
+  PREPARING: "准备中",
+  READY_DRAFT: "草稿已备",
+  READY_TO_PUBLISH: "待立即发布",
+  READY_TO_SCHEDULE: "待定时提交",
+  PUBLISHED_CONFIRMED: "发布已确认",
+  SCHEDULE_CONFIRMED: "排程已确认",
+  COMMIT_UNKNOWN: "提交结果未知",
+  BLOCKED: "已阻塞",
+};
+
+function metricText(value: number | null, delta: number | null): string {
+  if (value === null) return "—";
+  return delta === null || delta === 0 ? String(value) : `${value} (${delta > 0 ? "+" : ""}${delta})`;
+}
+
+interface PublishIntentDraft {
+  enabled: boolean;
+  accountProfile: string;
+  mode: VideoPublishMode;
+  scheduledAt: string;
+}
+
+function defaultPublishIntents(): Record<MuziVideoPlatform, PublishIntentDraft> {
+  return Object.fromEntries(VIDEO_TARGETS.map((item) => [item.key, {
+    enabled: true,
+    accountProfile: "default",
+    mode: "prepare_only",
+    scheduledAt: "",
+  }])) as Record<MuziVideoPlatform, PublishIntentDraft>;
+}
+
+function shanghaiRfc3339(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error("请选择有效的中国标准时间");
+  return `${value}:00+08:00`;
+}
 const STAGE_LABELS: Record<MuziProjectStage, string> = {
   idea: "灵感",
   research: "研究中",
@@ -267,6 +313,10 @@ export function MuziInspector({
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [notice, setNotice] = useState<string | null>(null);
+  const [videoPublish, setVideoPublish] = useState<VideoPublishStatusResult | null>(null);
+  const [publishIntents, setPublishIntents] = useState<Record<MuziVideoPlatform, PublishIntentDraft>>(defaultPublishIntents);
+  const [publishBusy, setPublishBusy] = useState<"prepare" | "commit" | "sync" | null>(null);
+  const [originalRightsConfirmed, setOriginalRightsConfirmed] = useState(false);
   const [width, setWidth] = useState(getInspectorWidth);
   const viewportWidth = useViewportWidth();
   const sidebarWidth = useSidebarChromeWidth();
@@ -290,6 +340,10 @@ export function MuziInspector({
     setPage(null);
     setPending(null);
     setKnowledgePreview(null);
+    setVideoPublish(null);
+    setPublishIntents(defaultPublishIntents());
+    setPublishBusy(null);
+    setOriginalRightsConfirmed(false);
     setTab("overview");
     const load = isKnowledgePreviewSelection(selectedId)
       ? muziFace.getKnowledgePreview().then((value) => { if (!cancelled) setKnowledgePreview(value); })
@@ -301,6 +355,17 @@ export function MuziInspector({
     void load.catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "读取失败"); });
     return () => { cancelled = true; };
   }, [selectedId, epoch]);
+
+  useEffect(() => {
+    if (project === null) return;
+    let cancelled = false;
+    void muziFace.getVideoPublishStatus(project.id).then((value) => {
+      if (!cancelled) setVideoPublish(value);
+    }, (cause: unknown) => {
+      if (!cancelled) setNotice(cause instanceof Error ? cause.message : "视频发布状态不可用");
+    });
+    return () => { cancelled = true; };
+  }, [muziFace, project?.id]);
 
   useEffect(() => {
     const folderName = project?.folderName;
@@ -401,6 +466,100 @@ export function MuziInspector({
 
   const openProduction = (): void => { setTab("production"); };
 
+  const updatePublishIntent = (platform: MuziVideoPlatform, patch: Partial<PublishIntentDraft>): void => {
+    setPublishIntents((current) => ({ ...current, [platform]: { ...current[platform], ...patch } }));
+  };
+
+  const refreshVideoPublish = async (taskId?: string): Promise<void> => {
+    if (project === null) return;
+    const latestProject = await muziFace.getProject(project.id);
+    setProject(latestProject);
+    setVideoPublish(await muziFace.getVideoPublishStatus(project.id, taskId));
+  };
+
+  const prepareVideoPublish = async (): Promise<void> => {
+    if (project === null) return;
+    const enabled = VIDEO_TARGETS.filter((item) => publishIntents[item.key].enabled);
+    if (enabled.length === 0) { setNotice("请至少选择一个视频平台"); return; }
+    try {
+      const intents = enabled.map((item) => {
+        const draft = publishIntents[item.key];
+        return {
+          platform: item.key,
+          accountProfile: draft.accountProfile.trim() || "default",
+          mode: draft.mode,
+          ...(draft.mode === "schedule" ? { scheduledAt: shanghaiRfc3339(draft.scheduledAt) } : {}),
+        };
+      });
+      const summary = intents.map((intent) => `${VIDEO_TARGETS.find((item) => item.key === intent.platform)?.label} · ${intent.accountProfile} · ${VIDEO_MODE_LABELS[intent.mode]}${intent.scheduledAt ? ` · ${intent.scheduledAt.replace("T", " ").replace(":00+08:00", " 中国标准时间")}` : ""}`).join("\n");
+      if (!window.confirm(`将打开外部创作者后台并上传、填写以下页面；最终发布控件仍会锁定：\n\n${summary}\n\n是否继续？`)) return;
+      setPublishBusy("prepare");
+      const task = await muziFace.prepareVideoPublish({
+        id: project.id,
+        expectedRevision: project.revision,
+        intents,
+        confirmed: true,
+        originalRightsConfirmed,
+      });
+      setVideoPublish({ id: project.id, task, metrics: videoPublish?.metrics ?? {} });
+      setNotice(task.ok ? "页面准备完成；需要提交的平台仍需逐个平台确认" : "部分平台未准备完成，请查看阻塞原因");
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : "视频页面准备失败");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
+  const commitVideoPublish = async (platform: MuziVideoPlatform): Promise<void> => {
+    if (project === null || videoPublish?.task === null || videoPublish?.task === undefined) return;
+    const row = videoPublish.task.platforms[platform];
+    if (row === undefined || row.authorizationDigest === null) return;
+    const label = VIDEO_TARGETS.find((item) => item.key === platform)?.label ?? platform;
+    const approval = row.approvalSummary;
+    if (approval === null || approval === undefined) {
+      setNotice(`${label} 缺少可复核的授权摘要，请重新准备。`);
+      return;
+    }
+    const action = approval.mode === "schedule" ? "定时发布" : "立即发布";
+    const time = approval.mode === "schedule" && approval.scheduledAt !== null
+      ? `\n时间：${approval.scheduledAt.replace("T", " ").replace(":00+08:00", " 中国标准时间")}`
+      : "";
+    if (!window.confirm(`平台：${label}\n账号：${approval.accountProfile}\n内容：${approval.title}\n动作：${action}${time}\n\n此确认只允许一次最终操作，是否继续？`)) return;
+    try {
+      setPublishBusy("commit");
+      const committed = await muziFace.commitVideoPublish({
+        id: project.id,
+        expectedRevision: project.revision,
+        taskId: videoPublish.task.taskId,
+        platform,
+        authorizationDigest: row.authorizationDigest,
+        confirmed: true,
+      });
+      await refreshVideoPublish(videoPublish.task.taskId);
+      setNotice(committed.ok ? "平台最终操作已完成并取得结果证据" : "最终操作结果未知；不会自动重试");
+    } catch (cause) {
+      await muziFace.getVideoPublishStatus(project.id, videoPublish.task.taskId).then(setVideoPublish, () => undefined);
+      setNotice(cause instanceof Error ? cause.message : "最终操作结果未知；不会自动重试");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
+  const syncVideoMetrics = async (): Promise<void> => {
+    if (project === null) return;
+    if (!window.confirm("将读取当前项目已发布或已排程平台的播放量、点赞和评论。是否同步？")) return;
+    try {
+      setPublishBusy("sync");
+      const result = await muziFace.syncVideoMetrics({ id: project.id, expectedRevision: project.revision, confirmed: true });
+      await refreshVideoPublish(videoPublish?.task?.taskId);
+      setNotice(result.cached ? "已读取 90 秒缓存数据" : "播放数据同步完成");
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : "播放数据同步失败");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
   const shownWidth = expanded ? layout.width : 0;
   return (
     <div data-plugin="dsh-oil-creator" data-surface="muzi-inspector" className={`${expanded ? "open" : ""}${layout.mode === "full" ? " full" : ""}${dragging ? " dragging" : ""}`} style={{ width: shownWidth }}>
@@ -468,19 +627,65 @@ export function MuziInspector({
                     </Card>;
                   })}</div>
                 </section>
-                <section className="muziStatusSection">
-                  <div className="sectionHeading"><div><h3>发布渠道</h3><p>仅展示已记录的平台事实</p></div></div>
-                  <div className="publicationList">{TARGETS.map((item) => {
-                    const state = project.publications[item.key];
-                    return <div className="publicationRow" key={item.key}>
-                      <span className="publicationIdentity"><PlatformMark id={item.icon} size={16} /><span>{item.label}</span></span>
-                      <div>
-                        <StatusBadge status={state.status} label={PUBLICATION_STATUS_LABELS[state.status]} />
-                        {state.source !== null && <small>{state.source === "manual" ? "人工记录" : "同步记录"}</small>}
-                        {state.url !== null && <a href={state.url} target="_blank" rel="noreferrer">打开链接</a>}
+                <section className="muziStatusSection videoPublishSection">
+                  <div className="sectionHeading videoPublishHeading">
+                    <div><h3>视频发布</h3><p>默认仅准备；最终发布与定时提交逐个平台确认，时间均为中国标准时间</p></div>
+                    <div className="videoPublishActions">
+                      <AnimalButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { void syncVideoMetrics(); }}>{publishBusy === "sync" ? "同步中…" : "同步播放数据"}</AnimalButton>
+                      <AnimalButton type="primary" size="small" disabled={publishBusy !== null} onClick={() => { void prepareVideoPublish(); }}>{publishBusy === "prepare" ? "准备中…" : "准备所选平台"}</AnimalButton>
+                    </div>
+                  </div>
+                  <label className="originalRightsCheck">
+                    <input type="checkbox" checked={originalRightsConfirmed} onChange={(event) => { setOriginalRightsConfirmed(event.currentTarget.checked); }} />
+                    <span>本次素材拥有所需原创或发布权利（仅用于本次准备，不保存发布授权）</span>
+                  </label>
+                  <div className="videoPublishList">{VIDEO_TARGETS.map((item) => {
+                    const fact = project.publications[item.key];
+                    const draft = publishIntents[item.key];
+                    const task = videoPublish?.task?.platforms[item.key];
+                    const metric = videoPublish?.metrics[item.key];
+                    const commitReady = task?.commitEnabled === true && task.authorizationDigest !== null && task.approvalSummary !== null && (task.status === "READY_TO_PUBLISH" || task.status === "READY_TO_SCHEDULE");
+                    return <div className="videoPublishRow" key={item.key}>
+                      <div className="videoPublishPrimary">
+                        <label className="videoPlatformToggle">
+                          <input type="checkbox" checked={draft.enabled} onChange={(event) => { updatePublishIntent(item.key, { enabled: event.currentTarget.checked }); }} />
+                          <span className="publicationIdentity"><PlatformMark id={item.icon} size={17} /><strong>{item.label}</strong></span>
+                        </label>
+                        <div className="videoPublishControls">
+                          <label><span>账号</span><input aria-label={`${item.label}账号`} value={draft.accountProfile} disabled={!draft.enabled || publishBusy !== null} onChange={(event) => { updatePublishIntent(item.key, { accountProfile: event.currentTarget.value }); }} /></label>
+                          <label><span>模式</span><select aria-label={`${item.label}发布模式`} value={draft.mode} disabled={!draft.enabled || publishBusy !== null} onChange={(event) => { updatePublishIntent(item.key, { mode: event.currentTarget.value as VideoPublishMode }); }}>
+                            <option value="prepare_only">仅准备</option>
+                            <option value="publish_now">立即发布</option>
+                            <option value="schedule">定时发布</option>
+                          </select></label>
+                          {draft.mode === "schedule" && <label className="scheduleInput"><span>中国标准时间</span><input type="datetime-local" aria-label={`${item.label}定时时间`} value={draft.scheduledAt} disabled={!draft.enabled || publishBusy !== null} onChange={(event) => { updatePublishIntent(item.key, { scheduledAt: event.currentTarget.value }); }} /></label>}
+                        </div>
                       </div>
+                      <div className="videoPublishStatusLine">
+                        <StatusBadge status={task?.status ?? fact.status} label={task === undefined ? PUBLICATION_STATUS_LABELS[fact.status] : (VIDEO_STATE_LABELS[task.status] ?? task.status)} />
+                        {fact.source !== null && <small>{fact.source === "manual" ? "人工记录" : fact.source === "publisher" ? "发布器记录" : "同步记录"}</small>}
+                        {fact.scheduledAt !== null && <small>排程 {formatProjectDate(fact.scheduledAt)}</small>}
+                        {fact.url !== null && <a href={fact.url} target="_blank" rel="noreferrer">打开作品</a>}
+                        {task !== undefined && task.mode !== "prepare_only" && <AnimalButton type="primary" size="small" disabled={!commitReady || publishBusy !== null} onClick={() => { void commitVideoPublish(item.key); }}>{task.mode === "schedule" ? "确认定时提交" : "确认立即发布"}</AnimalButton>}
+                      </div>
+                      {task?.commitBlocker !== null && task?.commitBlocker !== undefined && <p className="videoPublishBlocker">{task.commitBlocker.message}</p>}
+                      {metric !== undefined && <dl className="videoMetricLine">
+                        <div><dt>播放</dt><dd>{metricText(metric.views, metric.delta.views)}</dd></div>
+                        <div><dt>点赞</dt><dd>{metricText(metric.likes, metric.delta.likes)}</dd></div>
+                        <div><dt>评论</dt><dd>{metricText(metric.comments, metric.delta.comments)}</dd></div>
+                        <div><dt>同步</dt><dd>{formatProjectDate(metric.observedAt)}</dd></div>
+                      </dl>}
                     </div>;
                   })}</div>
+                  <div className="publicationList blogPublicationFact">
+                    {(() => {
+                      const state = project.publications.blog;
+                      return <div className="publicationRow">
+                        <span className="publicationIdentity"><PlatformMark id="article" size={16} /><span>博客（不进入视频发布链路）</span></span>
+                        <div><StatusBadge status={state.status} label={PUBLICATION_STATUS_LABELS[state.status]} />{state.url !== null && <a href={state.url} target="_blank" rel="noreferrer">打开链接</a>}</div>
+                      </div>;
+                    })()}
+                  </div>
                 </section>
               </div>
             )}

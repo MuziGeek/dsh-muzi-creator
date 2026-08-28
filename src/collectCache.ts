@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { parseCollectOutput, type CollectResult } from "./collectPublish.ts";
@@ -10,6 +10,7 @@ export interface CollectCacheRecord {
   fetchedAt: number;
   result: CollectResult;
   scope: CollectCacheScope;
+  contextKey?: string;
 }
 
 export function collectCachePath(dataDir: string): string {
@@ -39,6 +40,7 @@ export async function loadCollectCache(dataDir: string): Promise<CollectCacheRec
       fetchedAt: record.fetchedAt,
       result,
       scope: decodeCollectCacheScope(record.scope),
+      ...(typeof record.contextKey === "string" && record.contextKey !== "" ? { contextKey: record.contextKey } : {}),
     };
   } catch {
     return undefined;
@@ -52,14 +54,17 @@ export function cacheIsFresh(fetchedAt: number, now = Date.now(), ttlMs = COLLEC
 export async function saveCollectCache(
   dataDir: string,
   result: CollectResult,
-  options: { now?: number; scope?: CollectCacheScope } = {},
+  options: { now?: number; scope?: CollectCacheScope; contextKey?: string } = {},
 ): Promise<void> {
   const path = collectCachePath(dataDir);
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify({
+  const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(temporary, `${JSON.stringify({
     schemaVersion: 2,
     fetchedAt: options.now ?? Date.now(),
     scope: options.scope ?? "partial",
+    ...(options.contextKey === undefined ? {} : { contextKey: options.contextKey }),
     collected: result.collected,
   }, null, 2)}\n`, "utf8");
+  await rename(temporary, path);
 }

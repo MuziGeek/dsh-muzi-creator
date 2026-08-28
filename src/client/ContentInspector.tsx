@@ -521,6 +521,7 @@ export function ContentInspector({
 
   const onSyncPublish = (): void => {
     if (detail === undefined) return;
+    if (!window.confirm(t("inspector.publish.syncConfirm" as CreatorKey))) return;
     setActionError(undefined);
     setBusy("sync");
     void syncPublish({ id: detail.id }).then((result) => {

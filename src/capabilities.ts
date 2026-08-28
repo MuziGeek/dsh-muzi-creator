@@ -6,7 +6,6 @@ import { delimiter, join } from "node:path";
 import { skillDirCandidates } from "./config.ts";
 import { resolveCoverSkill } from "./generate.ts";
 import {
-  egoInstallCandidates,
   extraBinDirs,
   pathEnvValue,
 } from "./runtimePaths.ts";
@@ -155,32 +154,40 @@ export async function findExecutable(
   return undefined;
 }
 
-async function findEgo(
+function chromeInstallCandidates(
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,
   home: string,
-): Promise<{ path: string; kind: "cli" | "app" } | undefined> {
-  const cli = await findExecutable("ego-browser", env, platform, home);
-  if (cli !== undefined) return { path: cli, kind: "cli" };
-  for (const path of egoInstallCandidates(platform, home, env)) {
-    if (await access(path).then(() => true, () => false)) return { path, kind: "app" };
+): string[] {
+  if (platform === "win32") {
+    return [
+      env.VIDEO_PUBLISHER_CHROME,
+      env.PROGRAMFILES && join(env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
+      env["PROGRAMFILES(X86)"] && join(env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
+      env.LOCALAPPDATA && join(env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+    ].filter((value): value is string => typeof value === "string" && value !== "");
+  }
+  if (platform === "darwin") {
+    return [env.VIDEO_PUBLISHER_CHROME, join(home, "Applications", "Google Chrome.app", "Contents", "MacOS", "Google Chrome"), "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+      .filter((value): value is string => typeof value === "string" && value !== "");
+  }
+  return [env.VIDEO_PUBLISHER_CHROME, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium", "/usr/bin/chromium-browser"]
+    .filter((value): value is string => typeof value === "string" && value !== "");
+}
+
+async function findChrome(platform: NodeJS.Platform, env: NodeJS.ProcessEnv, home: string): Promise<string | undefined> {
+  for (const path of chromeInstallCandidates(platform, env, home)) {
+    const info = await stat(path).catch(() => undefined);
+    if (info?.isFile()) return path;
   }
   return undefined;
 }
 
-function egoCapability(found: { path: string; kind: "cli" | "app" } | undefined): CreatorCapability {
+function patchrightCapability(found: string | undefined): CreatorCapability {
   if (found === undefined) {
-    return capability("missing", false, "未发现 Ego Browser；自动发布和发布数据回收不可用。");
+    return capability("missing", false, "未发现 Google Chrome；Windows Patchright 页面准备和发布数据同步不可用。");
   }
-  if (found.kind === "app") {
-    return capability(
-      "missing",
-      false,
-      "已发现 Ego Lite 应用，但 PATH 里没有 ego-browser 命令；把 CLI 加到 PATH 后再试。",
-      found.path,
-    );
-  }
-  return capability("ready", false, "已发现 Ego Browser，可自动发布和回收发布数据。", found.path);
+  return capability("ready", false, "已发现 Google Chrome；Patchright 使用独立账号目录，真实发布和数据同步仍需逐平台验收及当次批准。", found);
 }
 
 function recommendationsOf(capabilities: CreatorCapabilities): string[] {
@@ -201,11 +208,7 @@ function recommendationsOf(capabilities: CreatorCapabilities): string[] {
   if (capabilities.coverSkill.state !== "ready") recommendations.push("封面：git clone https://github.com/oil-oil/oil-cover ~/.agents/skills/oil-cover");
   if (capabilities.coverCredential.state !== "ready") recommendations.push("封面 Key：到 ZenMux（https://zenmux.ai）控制台申请 ZENMUX_API_KEY，在设置页填写。");
   if (capabilities.publishSync.state !== "ready") {
-    recommendations.push(
-      capabilities.publishSync.detail.includes("PATH")
-        ? "自动发布和数据回收：已装 Ego Lite，还需要把 ego-browser 加到 PATH。"
-        : "自动发布和数据回收：安装 Ego Browser（https://lite.ego.app）并保证 PATH 里有 ego-browser，再登录各平台后台。",
-    );
+    recommendations.push("自动发布和数据回收：安装 Google Chrome，或通过 VIDEO_PUBLISHER_CHROME 指定 chrome.exe。");
   }
   if (capabilities.editingSkill.state !== "ready") recommendations.push("自动剪辑：git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor");
   if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher");
@@ -227,7 +230,7 @@ export async function inspectCreatorSetup(
     subtitleCredential: credentialCapability(options.settings.secrets.subtitle, "字幕"),
     coverSkill: await coverCapability(options.coverSkillDir, platform),
     coverCredential: credentialCapability(options.settings.secrets.cover, "封面"),
-    publishSync: egoCapability(await findEgo(platform, env, home)),
+    publishSync: patchrightCapability(await findChrome(platform, env, home)),
     editingSkill: skillCapability(findSkillDir, "screen-studio-editor"),
     publishSkill: skillCapability(findSkillDir, "video-publisher"),
     articleSkill: skillCapability(findSkillDir, "oil-video-article"),

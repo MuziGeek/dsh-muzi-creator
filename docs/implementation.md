@@ -23,8 +23,8 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 5. **字幕**：用百炼 Key 转录；`oil-subtitle` 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；人在 skill 自带的预览编辑器里改稿，确认后再烧进视频。
 6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
 7. **标签与发布包**：`publish-package.json` 给四个视频平台，只需要标题和 tags，不写平台长文案。`enabledPlatforms` 默认启用小红书、抖音、B 站、视频号四个平台，关闭的平台不参与 AI 发布和数据同步。公众号文章是旁边的 Markdown，不是第五个视频平台，走 `oil-video-article`，成稿在 `公众号文章/`。
-8. **发布**：`video-publisher` 只为 `enabledPlatforms` 中的平台准备草稿，做到最终发布按钮前，人自己点发布。插件记录每平台未发布 / 草稿已备 / 已发布。
-9. **回收**：用 Ego Lite 打开已登录的创作者后台，只翻 `enabledPlatforms` 中平台的已发布列表，按标题或已存 id 对到本地文件夹，写下播放 / 赞 / 评论。不是公开站爬虫；平台上有、本地没有文件夹的不会自动建条目。
+8. **发布**：`muzi.creator/2` 项目通过 DSH 调用 `video-publisher` 的 Windows Patchright 控制面；每个平台独立选择仅准备、立即发布或原生定时发布。默认仅准备，最终动作逐平台确认。
+9. **回收**：手动触发 Patchright 打开独立账号目录中的创作者后台，按远端 ID、规范化 URL、唯一精确标题依次匹配，追加播放 / 赞 / 评论快照。不是公开站爬虫；歧义或分页不完整时不写新事实。
 
 一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
 
@@ -42,7 +42,7 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 | 已发布数据 | 检查器「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
 | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
 | 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
-| 剪辑、多平台上传 | 还没从插件里调度，对话里继续用原来的 skill |
+| 剪辑、多平台上传 | 剪辑仍从对话调用 Skill；`muzi.creator/2` 项目已接入 Windows 四平台准备、逐平台提交和状态查询 |
 
 上面这张表是工作台已经具备的能力：能看列表、绑定工程、启动字幕和封面脚本、标记发布状态。对照「最终要做成什么样」那 9 步，整条创作路径还没有全部接到插件里。现在有的是一条片子的工作台和几个可点的执行入口，不是点一次就从选题走到待发布。
 
@@ -53,9 +53,17 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 3. **字幕校对**：生成完不会自动改专有名词；预览还要人自己看。
 4. **封面主标题和错别字**：按钮不会先让 Agent 提炼标题，也不会验字。
 5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
-6. **四平台上传**：不会调度 `video-publisher`，只记状态。
+6. **旧片库四平台上传**：`oil_*` 片库仍只记状态；`muzi.creator/2` 项目由新的 `muzi_creator_*` 工具调度 `video-publisher`。
 7. **公众号成稿**：不会跑 `oil-video-article`。
 8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
+
+## Muzi Creator Windows 发布控制面
+
+`VideoPublisherService` 是 DSH 与项目本地 `video-publisher` Skill 的唯一桥。它只允许 `publish-package.json` 位于当前 Creator 项目内，准备和提交前都校验 `revision`。准备可包含四个平台，状态分别为 `READY_DRAFT`、`READY_TO_PUBLISH` 或 `READY_TO_SCHEDULE`；提交一次只接受一个平台。Skill 把项目、素材散列、账号、标题/标签/原创声明、模式、准确时间和最终页面证据绑定为 10 分钟一次性摘要。最终点击前先写 `COMMIT_UNKNOWN`，因此点击后结果不可靠时不会自动重试。
+
+Windows 的 `publish_now`、`schedule`、`metrics` 按平台分别受 `~/.video-publisher/acceptance.json` 控制。自动测试通过不等于真实账号可用；只有带时间和证据的 Windows 真实验收才打开对应能力。旧 Ego 验收不能沿用。原生定时失败直接返回 `SCHEDULE_UNAVAILABLE`，不降级为立即发布。
+
+项目发布事实保持 `muzi.creator/2`：旧项目缺少 `remoteId` 或 `scheduledAt` 时按 `null` 读取。仅在平台明确保存草稿、确认排程或确认发布后更新事实；每次写入重新读取 revision，冲突即停止。指标快照追加到 `creator-metrics.jsonl`，90 秒缓存不追加重复快照，登录失效、页面变化、分页不完整或标题歧义不覆盖旧数据。
 
 工作阶段（`workflow`）由文件和 overlay 推出来，不是单独手填一张总表：
 
@@ -83,9 +91,9 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 
 对话里的插件工具：
 
-`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`
+`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`，以及 `muzi_creator_prepare_video_publish`、`muzi_creator_commit_video_publish`、`muzi_creator_video_publish_status`、`muzi_creator_sync_video_metrics`。
 
-`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Ego Browser 缺失时自动发布和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Ego Browser。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
+`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Chrome 缺失时页面准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Chrome。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 
 检查器中间栏可以拉到约 800px，走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
 
@@ -99,18 +107,21 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 | 成片、字幕、封面、发布包、公众号文章 | `~/Movies/视频项目/<日期_标题>/` |
 | 字幕和封面 Key | Harness 官方凭据（字幕用 `DASHSCOPE_API_KEY`、封面用 `ZENMUX_API_KEY`），与 `dsh-vision` 共用 |
 | 列表选中项、侧栏宽度 | 浏览器本地 UI 状态 |
+| Windows 发布任务与一次性授权 | `~/.video-publisher/v3-tasks/<task-id>/`；授权 10 分钟有效且只能使用一次 |
+| 四平台独立登录态与账号锁 | `~/.video-publisher/chrome-profiles/`、`~/.video-publisher/account-locks/` |
+| `muzi.creator/2` 指标历史 | DSH `dataDir/creator-metrics.jsonl`，追加式快照；缺失指标保存为 `null` |
 
-发布状态两层：文件夹里的 `{标题}.auto-publish.json` 推断草稿；overlay 里的手写状态盖过它。Ego 同步成功后，对应平台写成 `published`，并带上 `url` / `views` / `likes` / `comments` / `syncedAt`，来源记为 `sync`。
+旧片库发布状态仍是两层：文件夹里的 `{标题}.auto-publish.json` 推断草稿；overlay 里的手写状态盖过它。Patchright 同步成功后，对应平台写成 `published`，并带上 `url` / `views` / `likes` / `comments` / `syncedAt`，来源记为 `sync`。`muzi.creator/2` 另用向后兼容的 `remoteId`、`scheduledAt` 和 `source: publisher`，不把每次指标值反复写回 `project.yml`。
 
 采集本身是机械脚本，不经过模型判断：
 
 ```text
-ego-browser nodejs < scripts/collect-publish.mjs
+node scripts/collect-publish.mjs
 ```
 
-采集脚本每次开一个新的 `oil-collect-*` 空间，跑完就关掉，并清掉登记表里已死进程留下的旧空间，以及历史遗留名 `oil-collect-publish`。它不会按前缀扫掉其他还在跑的 `oil-collect-*`。`pnpm build` 用原地覆写把 `scripts/collect-publish.mjs` 写进 `lib/`，避免 `cp` 断开 profile 里 `file:` 依赖的硬链接。翻页范围：小红书 `note/user/posted`（列表滚到底）、抖音 `work_list`（`max_cursor`）、B 站 `/x/web/archives`（`pn`）、视频号 `post/post_list`（`currentPage`）。对上之后把 `remoteId` 写进 overlay，下一次优先按这个 id 对齐，不再只靠标题。
+采集脚本使用固定版本 Patchright 连接本机 Chrome；每个平台和账号使用独立持久化目录，且与发布共用账号级互斥锁。`pnpm build` 用原地覆写把 `scripts/collect-publish.mjs` 写进 `lib/`，避免 `cp` 断开 profile 里 `file:` 依赖的硬链接。翻页范围：小红书 `note/user/posted`（列表滚到底）、抖音 `work_list`（`max_cursor`）、B 站 `/x/web/archives`（`pn`）、视频号 `post/post_list`（`currentPage`）。达到页数/滚动上限却没有完整结果时返回 `PAGINATION_INCOMPLETE`，不覆盖已有指标。
 
-90 秒内再点同步会直接用 `~/.dsh-oil-creator/collect-cache.json`。超过这个时间再跑 Ego。可用 `OIL_COLLECT_KEEP=1` 留下页面，`OIL_COLLECT_SPACE` 指定空间名，`OIL_COLLECT_PLATFORMS=wechat,douyin` 只跑其中几个。工作台按钮和 `oil_sync_publish` 走同一条脚本。
+90 秒内再点同步会使用 `~/.dsh-oil-creator/collect-cache.json`，但缓存必须同时匹配平台、账号、远端身份/URL 和精确标题；不同项目或账号不会复用。超过这个时间再跑 Patchright；显式 `force` 跳过缓存。可用 `OIL_COLLECT_PLATFORMS=wechat,douyin` 只跑其中几个，`OIL_COLLECT_ACCOUNTS` 指定平台账号。工作台按钮和同步工具走同一条脚本。
 
 文件夹约定：`YYYY-MM-DD_可读标题`。发布包规范名是 `publish-package.json`。带字幕的成片文件名含 `_subtitled`。
 
@@ -142,7 +153,7 @@ ego-browser nodejs < scripts/collect-publish.mjs
 | 封面 | `oil-cover` | `~/.agents/skills/oil-cover` | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
 | 发布文案语气 | `oil-tone` | `~/.agents/skills/oil-tone` | 不执行；写标题简介时读档案 | 成稿必须过 `tone_lint.py` 再通读 |
 | 公众号图文 | `oil-video-article` | `~/.agents/skills/oil-video-article` | 识别 `公众号文章/` | 从无头像屏幕轨截图、按 oil-tone 写文章 |
-| 四平台视频草稿 | `video-publisher` | `~/.agents/skills/video-publisher` | 读 `auto-publish.json` 显示状态 | Ego 上传、停在最终发布按钮前、人点发布 |
+| 四平台视频发布 | `video-publisher` | `~/.agents/skills/video-publisher` | Windows 下调度准备、逐平台最终动作、状态和指标同步 | Patchright 上传并保持最终保护；真实能力逐平台验收，每次最终动作由人批准 |
 
 字幕脚本入口以 oil-subtitle 为准：`bailian_transcribe.py` → `review_subtitles.py` → `prepare_subtitles.py` → `preview_editor.py`，用户确认后再 `burn_subtitles.py`（有审过的 SRT 用 `--srt-input`）。不要在预览前烧录。封面脚本是 `generate_oil_cover.py`，主标题由调用方按 oil-cover 提炼后传入 `--title`，Key 用环境变量 `ZENMUX_API_KEY`。不要改 skill 仓库里的用户路径和密钥。
 

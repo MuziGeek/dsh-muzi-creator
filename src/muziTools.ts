@@ -1,6 +1,14 @@
 import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
 
-import type { AtlasReference, MuziDocumentKey, MuziDocumentStatus, MuziProjectStage } from "./muziTypes.ts";
+import type {
+  AtlasReference,
+  MuziDocumentKey,
+  MuziDocumentStatus,
+  MuziProjectStage,
+  MuziVideoPlatform,
+  PlatformPublishIntent,
+  VideoPublishMode,
+} from "./muziTypes.ts";
 import type { OilCreatorService } from "./service.ts";
 
 interface ToolsContext {
@@ -11,6 +19,8 @@ const JSON_VALUE = { type: "json" } as const;
 const DOCUMENTS = ["mother", "video", "wechat", "xiaohongshu", "blog"] as const;
 const DOCUMENT_STATUSES = ["not_started", "draft", "review", "ready"] as const;
 const STAGES = ["idea", "research", "mother_draft", "adaptation", "review", "ready", "archived"] as const;
+const VIDEO_PLATFORMS = ["xiaohongshu", "douyin", "bilibili", "wechat"] as const;
+const VIDEO_PUBLISH_MODES = ["prepare_only", "publish_now", "schedule"] as const;
 
 function signalOf(exec: { signal: AbortSignal }): AbortSignal {
   return exec.signal;
@@ -54,6 +64,28 @@ function atlasReferences(value: unknown): AtlasReference[] {
       sha256: reference.sha256,
       attachedAt: reference.attachedAt,
     };
+  });
+}
+
+function videoPublishIntents(value: unknown): PlatformPublishIntent[] {
+  if (!Array.isArray(value) || value.length === 0) throw new Error("intents must be a non-empty array");
+  const seen = new Set<MuziVideoPlatform>();
+  return value.map((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) throw new Error("publish intent is invalid");
+    const row = item as Record<string, unknown>;
+    const platform = oneOf<MuziVideoPlatform>(row.platform, VIDEO_PLATFORMS, "platform");
+    if (seen.has(platform)) throw new Error(`duplicate publish intent: ${platform}`);
+    seen.add(platform);
+    const mode = oneOf<VideoPublishMode>(row.mode, VIDEO_PUBLISH_MODES, "mode");
+    if (typeof row.accountProfile !== "string" || row.accountProfile.trim() === "") throw new Error("accountProfile is required");
+    const intent: PlatformPublishIntent = { platform, accountProfile: row.accountProfile.trim(), mode };
+    if (mode === "schedule") {
+      if (typeof row.scheduledAt !== "string") throw new Error("scheduledAt is required for schedule mode");
+      intent.scheduledAt = row.scheduledAt;
+    } else if (row.scheduledAt !== undefined) {
+      throw new Error("scheduledAt is allowed only for schedule mode");
+    }
+    return intent;
   });
 }
 
@@ -191,6 +223,122 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       if (typeof args.id !== "string" || typeof args.expectedRevision !== "number") throw new Error("id and expectedRevision are required");
       const nextStage = oneOf<MuziProjectStage>(args.stage, STAGES, "stage");
       return service.setMuziProjectStatus({ id: args.id, stage: nextStage, expectedRevision: args.expectedRevision }, signalOf(exec)).then(asJson);
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "muzi_creator_prepare_video_publish",
+    description: "Prepare one or more Xiaohongshu, Douyin, Bilibili, or WeChat Channels pages on Windows. Uploads and fills the pages but centrally blocks every final publish control. Each platform intent independently chooses prepare_only, publish_now, or schedule. This is an external action and requires current-run approval.",
+    parameters: {
+      id: { type: "string", required: true },
+      expectedRevision: { type: "number", required: true },
+      packagePath: { type: "string", description: "Optional publish-package path inside this Creator project; auto-detected when omitted." },
+      intents: { type: "json", required: true, description: "Array of {platform, accountProfile, mode, scheduledAt?}. scheduledAt must include +08:00." },
+      confirmed: { type: "boolean", required: true },
+      originalRightsConfirmed: { type: "boolean", description: "Current-run confirmation only; never persisted as publishing authority." },
+    },
+    output: { schema: JSON_VALUE, render: (_args, value) => render("Video publish preparation", (value as { taskId?: string }).taskId ?? "prepared") },
+    presentCall: (args) => card("Prepare external video pages (final submit locked)", args),
+    execute: (args, exec) => {
+      if (typeof args.id !== "string" || typeof args.expectedRevision !== "number") throw new Error("id and expectedRevision are required");
+      return service.prepareMuziVideoPublish({
+        id: args.id,
+        expectedRevision: args.expectedRevision,
+        intents: videoPublishIntents(args.intents),
+        confirmed: args.confirmed === true,
+        ...(typeof args.packagePath === "string" ? { packagePath: args.packagePath } : {}),
+        ...(typeof args.originalRightsConfirmed === "boolean" ? { originalRightsConfirmed: args.originalRightsConfirmed } : {}),
+      }, signalOf(exec)).then(asJson);
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "muzi_creator_commit_video_publish",
+    description: "Consume one 10-minute, one-use authorization and perform exactly one platform final action. The displayed account, title, mode, and time must match the prepared task. Never retries COMMIT_UNKNOWN.",
+    parameters: {
+      id: { type: "string", required: true },
+      expectedRevision: { type: "number", required: true },
+      taskId: { type: "string", required: true },
+      platform: { type: "string", required: true, enum: VIDEO_PLATFORMS },
+      authorizationDigest: { type: "string", required: true },
+      accountProfile: { type: "string", required: true, description: "Account shown to the user for this confirmation." },
+      title: { type: "string", required: true, description: "Exact prepared platform title shown to the user." },
+      mode: { type: "string", required: true, enum: ["publish_now", "schedule"] },
+      scheduledAt: { type: "string", description: "Exact +08:00 time shown to the user for schedule mode." },
+      confirmed: { type: "boolean", required: true },
+    },
+    output: { schema: JSON_VALUE, render: (_args, value) => render("Video final action", (value as { status?: string }).status ?? "completed") },
+    presentCall: (args) => card("Confirm one platform final video action", args),
+    execute: async (args, exec) => {
+      if (typeof args.id !== "string" || typeof args.expectedRevision !== "number" || typeof args.taskId !== "string" || typeof args.authorizationDigest !== "string") {
+        throw new Error("id, expectedRevision, taskId and authorizationDigest are required");
+      }
+      const platform = oneOf<MuziVideoPlatform>(args.platform, VIDEO_PLATFORMS, "platform");
+      const mode = oneOf<VideoPublishMode>(args.mode, ["publish_now", "schedule"] as const, "mode");
+      const [status] = await Promise.all([
+        service.getMuziVideoPublishStatus({ id: args.id, taskId: args.taskId }, signalOf(exec)),
+        service.getMuziProject({ id: args.id }, signalOf(exec)),
+      ]);
+      const prepared = status.task?.platforms[platform];
+      const approval = prepared?.approvalSummary;
+      if (prepared === undefined || approval === null || approval === undefined
+        || approval.platform !== platform || approval.accountProfile !== args.accountProfile
+        || approval.mode !== mode || approval.title !== args.title
+        || (approval.scheduledAt ?? undefined) !== (typeof args.scheduledAt === "string" ? args.scheduledAt : undefined)) {
+        throw new Error("displayed approval summary does not match the prepared task");
+      }
+      return service.commitMuziVideoPublish({
+        id: args.id,
+        expectedRevision: args.expectedRevision,
+        taskId: args.taskId,
+        platform,
+        authorizationDigest: args.authorizationDigest,
+        confirmed: args.confirmed === true,
+      }, signalOf(exec)).then(asJson);
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "muzi_creator_video_publish_status",
+    description: "Read the current Windows video-publish task, blockers, one-use authorization state, evidence paths, and latest metric snapshots. This never opens an external page.",
+    parameters: {
+      id: { type: "string", required: true },
+      taskId: { type: "string" },
+    },
+    output: { schema: JSON_VALUE, render: (_args, value) => render("Video publish status", (value as { task?: { status?: string } }).task?.status ?? "no task") },
+    presentCall: (args) => card("Read video publish status", args),
+    execute: (args, exec) => {
+      if (typeof args.id !== "string") throw new Error("id is required");
+      return service.getMuziVideoPublishStatus({ id: args.id, ...(typeof args.taskId === "string" ? { taskId: args.taskId } : {}) }, signalOf(exec)).then(asJson);
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "muzi_creator_sync_video_metrics",
+    description: "Manually read views, likes, and comments for this Creator project from selected published platform pages. Uses a 90-second cache unless force=true; missing values remain null and ambiguous titles are never bound automatically.",
+    parameters: {
+      id: { type: "string", required: true },
+      expectedRevision: { type: "number", required: true },
+      platforms: { type: "json", description: "Optional array of video platforms; defaults to this project's published or scheduled platforms." },
+      force: { type: "boolean" },
+      confirmed: { type: "boolean", required: true },
+    },
+    output: { schema: JSON_VALUE, render: (_args, value) => render("Video metrics", `${(value as { platforms?: unknown[] }).platforms?.length ?? 0} platforms`) },
+    presentCall: (args) => card("Sync external video metrics", args),
+    execute: (args, exec) => {
+      if (typeof args.id !== "string" || typeof args.expectedRevision !== "number") throw new Error("id and expectedRevision are required");
+      const platforms = args.platforms === undefined
+        ? undefined
+        : Array.isArray(args.platforms)
+          ? args.platforms.map((value) => oneOf<MuziVideoPlatform>(value, VIDEO_PLATFORMS, "platform"))
+          : (() => { throw new Error("platforms must be an array"); })();
+      return service.syncMuziVideoMetrics({
+        id: args.id,
+        expectedRevision: args.expectedRevision,
+        confirmed: args.confirmed === true,
+        ...(platforms === undefined ? {} : { platforms }),
+        ...(typeof args.force === "boolean" ? { force: args.force } : {}),
+      }, signalOf(exec)).then(asJson);
     },
   }));
 }
