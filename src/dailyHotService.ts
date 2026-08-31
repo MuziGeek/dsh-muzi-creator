@@ -13,7 +13,7 @@ export const AI_HOT_ORIGIN = "https://aihot.virxact.com";
 export const DAILY_HOT_CACHE_TTL_MS = 15 * 60 * 1000;
 export const DAILY_HOT_REQUEST_TIMEOUT_MS = 12_000;
 
-/** Built-in attention policy shared with the Muzi Workbench reference implementation. */
+/** Built-in attention policy for the read-only AIHOT view. */
 export const DEFAULT_DAILY_HOT_ATTENTION_STRATEGY: Readonly<DailyHotAttentionStrategy> = Object.freeze({
   mustReadLimit: 3,
   browseLimit: 8,

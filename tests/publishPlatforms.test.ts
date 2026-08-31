@@ -5,7 +5,7 @@ import {
   selectEnabledPublishPlatforms,
 } from "../src/client/publishPlatforms.ts";
 
-describe("content inspector enabled platform contract", () => {
+describe("enabled publish platform contract", () => {
   it("filters platform definitions through enabledPlatforms", () => {
     expect(selectEnabledPublishPlatforms(["wechat", "douyin"]).map((platform) => platform.key))
       .toEqual(["douyin", "wechat"]);

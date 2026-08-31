@@ -38,7 +38,7 @@ The product name is Muzi Creator. The sidebar uses the existing Muzi avatar and 
 
 - The incumbent interface and tokens live under `src/client/`.
 - The Muzi avatar is `src/client/assets/muzi-creator-icon.webp`.
-- The reference Muzi Workbench AIHOT aggregation policy is implemented in its `shared/ai-hot.mjs` module.
+- The built-in AIHOT attention policy is implemented by the plugin's daily-hot service.
 
 ## Product Principles
 

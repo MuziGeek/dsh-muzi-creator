@@ -27,7 +27,7 @@ const REQUIRED_FILES = [
   "tests/guide.test.ts",
   "tests/platforms.test.ts",
   "tests/creatorSettings.test.ts",
-  "tests/contentInspector.test.ts",
+  "tests/publishPlatforms.test.ts",
   "tests/settingsHost.test.ts",
   "tests/settingsSlot.test.ts",
   "README.md",

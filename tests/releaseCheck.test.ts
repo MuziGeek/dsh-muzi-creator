@@ -30,7 +30,7 @@ const REQUIRED_CHAIN_FILES = [
   "tests/guide.test.ts",
   "tests/platforms.test.ts",
   "tests/creatorSettings.test.ts",
-  "tests/contentInspector.test.ts",
+  "tests/publishPlatforms.test.ts",
   "tests/settingsHost.test.ts",
   "tests/settingsSlot.test.ts",
 ];
@@ -40,7 +40,7 @@ function git(repository: string, ...args: string[]) {
 }
 
 function createRepository() {
-  const repository = mkdtempSync(join(tmpdir(), "dsh-oil-creator-release-"));
+  const repository = mkdtempSync(join(tmpdir(), "dsh-muzi-creator-release-"));
   const files = new Map<string, string>([
     ["package.json", JSON.stringify({
       name: "dsh-muzi-creator",

@@ -1,6 +1,6 @@
-# 内容工作台：现阶段实现
+# Muzi Creator：单插件架构与现阶段实现
 
-`dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的一个插件。它把 oil 从选题到发布的本地工作收进同一块界面：左侧内容列表、中间一条片子的检查器、右边继续对话。
+`dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的单个运行插件。它把选题、创作、知识、热点、项目进度和受控发布入口放进同一界面，同时保留 Agent 对话。
 
 安装：`npx @deepseek-ai/dsh plugin --profile web add github:MuziGeek/dsh-muzi-creator`（本地开发用目录路径）
 
@@ -10,7 +10,13 @@
 
 Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最终 `assets/readme/hero.svg`，不包含 `assets/readme/source/` 下的源素材。
 
-本文写当前设计，不是变更记录。实现新功能时先读这里，再打开对应 skill 或官方文档。
+本文写当前设计，不是变更记录。实现新功能时先读这里，再打开对应 Skill 或官方文档。
+
+## 单插件架构边界
+
+DeepSeek Harness 负责 Agent、会话、工具、一次性审批和 Workspace。Muzi Creator 只负责挂载导航与界面，并把外部事实转换为可展示或可审批的操作：Creator Studio 保存项目和创作内容，Muzi Atlas 只读提供知识，AIHOT 只读提供热点，各 Git 仓库与 `.trellis/tasks` 保存项目进度，`video-publisher` 保存平台账号、浏览器任务和验收事实。
+
+创作、知识、热点、Trellis 和发布适配是同一个 npm 包中的逻辑模块，不是独立安装插件。当前 Profile 不包含组合套件或额外 Muzi 壳，也不依赖其他产品。插件不得复制这些来源的权威数据，只保存自身兼容配置、界面状态和受控操作所需的本地投影。
 
 ## 最终要做成什么样
 
@@ -131,7 +137,7 @@ node scripts/collect-publish.mjs
 
 先官方约定，再打开对应 skill。不要重新发明目录、密钥或烧录参数。
 
-### DeepSeek Harness（仓库 `~/Desktop/project/deepseek-harness`）
+### DeepSeek Harness 源码仓库
 
 | 题目 | 读什么 |
 | --- | --- |

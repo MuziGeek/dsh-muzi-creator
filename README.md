@@ -1,7 +1,7 @@
 > Muzi Creator 是基于 [Oil Creator](https://github.com/oil-oil/dsh-oil-creator) 的私有改造版，继续保留原项目的 MIT License。它把 Oil 的本地视频工作流扩展为 llm-wiki 正式知识 → 母内容/视频稿 → 多渠道稿件的创作工作台。
 
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="dsh-oil-creator：让 AI 和本地内容目录一起工作">
+  <img src="./assets/readme/hero.svg" width="100%" alt="dsh-muzi-creator：让 AI 和本地内容目录一起工作">
 </p>
 
 <p align="center">
