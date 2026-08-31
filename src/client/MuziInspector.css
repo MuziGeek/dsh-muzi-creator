@@ -124,6 +124,14 @@
 [data-plugin="dsh-oil-creator"] .publicationRow a:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
 [data-plugin="dsh-oil-creator"] .videoPublishHeading { align-items: flex-start; }
 [data-plugin="dsh-oil-creator"] .videoPublishActions { display: flex; flex: none; gap: 8px; }
+[data-plugin="dsh-oil-creator"] .videoAcceptance { display: grid; gap: 9px; margin: 10px 0; padding: 12px 13px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-md); background: color-mix(in srgb, var(--muzi-surface) 82%, var(--animal-primary-color-bg)); }
+[data-plugin="dsh-oil-creator"] .videoAcceptance p { margin: 3px 0 0; color: var(--animal-text-color-secondary); font-size: 11px; line-height: 17px; }
+[data-plugin="dsh-oil-creator"] .videoAcceptanceControls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+[data-plugin="dsh-oil-creator"] .videoAcceptanceControls label { display: grid; gap: 4px; min-width: 0; }
+[data-plugin="dsh-oil-creator"] .videoAcceptanceControls label > span { color: var(--animal-text-color-secondary); font-size: 10px; line-height: 14px; }
+[data-plugin="dsh-oil-creator"] .videoAcceptanceControls input, [data-plugin="dsh-oil-creator"] .videoAcceptanceControls select { width: 100%; min-width: 0; height: 32px; padding: 0 9px; border: 1px solid var(--animal-border-color-light); border-radius: var(--animal-border-radius-sm); background: var(--muzi-surface); color: var(--animal-text-color); font: inherit; box-sizing: border-box; }
+[data-plugin="dsh-oil-creator"] .videoAcceptanceStatus { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--animal-text-color-secondary); font-size: 11px; }
+[data-plugin="dsh-oil-creator"] .videoAcceptanceStatus > button:first-of-type { margin-left: auto; }
 [data-plugin="dsh-oil-creator"] .originalRightsCheck { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-sm); background: var(--animal-bg-color-secondary); color: var(--animal-text-color-secondary); font-size: 11px; line-height: 17px; }
 [data-plugin="dsh-oil-creator"] .originalRightsCheck input, [data-plugin="dsh-oil-creator"] .videoPlatformToggle > input { margin: 2px 0 0; accent-color: var(--animal-primary-color); }
 [data-plugin="dsh-oil-creator"] .videoPublishList { overflow: hidden; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-md); background: var(--muzi-surface); }
@@ -273,6 +281,9 @@
   [data-plugin="dsh-oil-creator"] .videoPublishHeading { gap: 12px; }
   [data-plugin="dsh-oil-creator"] .videoPublishActions { width: 100%; }
   [data-plugin="dsh-oil-creator"] .videoPublishActions button { flex: 1; }
+  [data-plugin="dsh-oil-creator"] .videoAcceptanceControls { grid-template-columns: 1fr; }
+  [data-plugin="dsh-oil-creator"] .videoAcceptanceStatus button { width: 100%; }
+  [data-plugin="dsh-oil-creator"] .videoAcceptanceStatus > button:first-of-type { margin-left: 0; }
   [data-plugin="dsh-oil-creator"] .videoPublishPrimary { grid-template-columns: 1fr; align-items: stretch; }
   [data-plugin="dsh-oil-creator"] .videoPublishControls { grid-template-columns: 1fr; }
   [data-plugin="dsh-oil-creator"] .videoPublishControls .scheduleInput { grid-column: auto; }

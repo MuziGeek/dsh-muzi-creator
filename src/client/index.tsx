@@ -56,7 +56,12 @@ import type {
   VideoPublishPrepareRequest,
   VideoPublishStatusResult,
   VideoPublishTaskResult,
+  VideoAcceptanceBeginRequest,
+  VideoAcceptanceFinalizeRequest,
+  VideoAcceptanceFinalizeResult,
+  VideoAcceptanceSessionResult,
 } from "../muziTypes.ts";
+import type { VideoPublishCapabilitiesResult } from "../videoCapabilities.ts";
 import type {
   ArchiveTrellisTaskRequest,
   GetTrellisProjectRequest,
@@ -156,6 +161,9 @@ interface OilCreatorRemote {
   saveMuziDocument: (request: MuziDocumentSaveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   setMuziProjectStatus: (request: MuziProjectStatusRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   setMuziPublication: (request: MuziPublicationSetRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
+  getMuziVideoPublishCapabilities: (request: Record<string, never>) => Promise<RemoteAnswer<VideoPublishCapabilitiesResult>>;
+  beginMuziVideoAcceptance: (request: VideoAcceptanceBeginRequest) => Promise<RemoteAnswer<VideoAcceptanceSessionResult>>;
+  finalizeMuziVideoAcceptance: (request: VideoAcceptanceFinalizeRequest) => Promise<RemoteAnswer<VideoAcceptanceFinalizeResult>>;
   prepareMuziVideoPublish: (request: VideoPublishPrepareRequest) => Promise<RemoteAnswer<VideoPublishTaskResult>>;
   commitMuziVideoPublish: (request: VideoPublishCommitRequest) => Promise<RemoteAnswer<VideoPublishTaskResult>>;
   getMuziVideoPublishStatus: (request: { id: string; taskId?: string }) => Promise<RemoteAnswer<VideoPublishStatusResult>>;
@@ -462,6 +470,21 @@ export function apply(ctx: ClientContext): void {
       const next = unwrap(await remote.setMuziPublication(request), "publication failed");
       bumpLibrary();
       return next;
+    },
+    getVideoPublishCapabilities: async () => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.getMuziVideoPublishCapabilities({}), "video publish capabilities failed");
+    },
+    beginVideoAcceptance: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.beginMuziVideoAcceptance(request), "video acceptance start failed");
+    },
+    finalizeVideoAcceptance: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      return unwrap(await remote.finalizeMuziVideoAcceptance(request), "video acceptance finalization failed");
     },
     prepareVideoPublish: async (request) => {
       const remote = remoteOf();

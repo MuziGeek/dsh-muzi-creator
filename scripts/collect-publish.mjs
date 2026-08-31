@@ -1,7 +1,8 @@
 // Windows Patchright collector. Run: node scripts/collect-publish.mjs
 // Optional: OIL_COLLECT_PLATFORMS, OIL_COLLECT_TARGETS, OIL_COLLECT_SPACE,
 // OIL_COLLECT_KEEP, OIL_COLLECT_CLEANUP_STALE, OIL_COLLECT_CLEANUP_NAMES,
-// OIL_COLLECT_CLEANUP_PREFIXES, OIL_COLLECT_MAX_PAGES, OIL_COLLECT_XHS_SCROLL.
+// OIL_COLLECT_CLEANUP_PREFIXES, OIL_COLLECT_MAX_PAGES, OIL_COLLECT_XHS_SCROLL,
+// OIL_COLLECT_ACCOUNTS, OIL_COLLECT_METRICS_GRANTS.
 // Login state is isolated by platform/account under ~/.video-publisher/chrome-profiles.
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -16,6 +17,14 @@ const platformKey = (platform) => platform === "wechat" ? "wechat_channels" : pl
 const accountProfiles = (() => {
   try {
     const value = JSON.parse(process.env.OIL_COLLECT_ACCOUNTS || "{}");
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch {
+    return {};
+  }
+})();
+const metricsGrants = (() => {
+  try {
+    const value = JSON.parse(process.env.OIL_COLLECT_METRICS_GRANTS || "{}");
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   } catch {
     return {};
@@ -65,18 +74,6 @@ function acquireAccount(platform, account) {
     }
   }
   throw new Error(`Could not acquire account lock for ${platform}/${account}`);
-}
-
-function acceptedForMetrics(platform) {
-  const filePath = path.resolve(process.env.VIDEO_PUBLISHER_ACCEPTANCE || path.join(os.homedir(), ".video-publisher", "acceptance.json"));
-  try {
-    const acceptance = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    if (acceptance?.schemaVersion !== 1 || !acceptance.platforms || typeof acceptance.platforms !== "object") return false;
-    const row = acceptance.platforms?.[platform]?.metrics;
-    return row?.accepted === true && typeof row.evidence === "string" && row.evidence.trim() !== "" && Number.isFinite(Date.parse(row.acceptedAt));
-  } catch {
-    return false;
-  }
 }
 
 function chromeExecutable() {
@@ -156,8 +153,11 @@ async function connectPlatform(platform) {
   const key = platformKey(platform);
   if (activePlatform === key && activePage && !activePage.isClosed()) return;
   await disconnectActive();
-  if (!acceptedForMetrics(key)) throw Object.assign(new Error(`${key} metrics has not passed Windows live acceptance`), { code: "LIVE_ACCEPTANCE_REQUIRED" });
   const account = String(accountProfiles[platform] || accountProfiles[key] || "default").trim() || "default";
+  const grantedAccount = String(metricsGrants[platform] || metricsGrants[key] || "").trim();
+  if (grantedAccount === "" || grantedAccount !== account) {
+    throw Object.assign(new Error(`${key}/${account} has no current account-bound metrics grant`), { code: "METRICS_GRANT_REQUIRED" });
+  }
   releaseAccount = acquireAccount(key, account);
   const profileRoot = path.resolve(process.env.VIDEO_PUBLISHER_PROFILE_ROOT || path.join(os.homedir(), ".video-publisher", "chrome-profiles"));
   const profileDir = path.join(profileRoot, profileKey(key, account));

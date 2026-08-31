@@ -201,6 +201,7 @@ export interface VideoAcceptanceSessionResult {
   platform: MuziVideoPlatform;
   accountProfile: string;
   capability: AcceptanceCapability;
+  adapterVersion: string;
   bindingSha256: string;
   account: { label: string; verified: boolean; evidenceSha256: string };
   durableAcceptanceWritten: false;
@@ -221,7 +222,9 @@ export interface VideoAcceptanceFinalizeRequest {
 export interface VideoAcceptanceFinalizeResult {
   ok: boolean;
   platform: MuziVideoPlatform;
-  capability: "prepare_only";
+  accountProfile: string;
+  capability: AcceptanceCapability;
+  adapterVersion: string;
   acceptedAt: string;
   evidencePath: string;
   sessionId: string;
@@ -263,9 +266,11 @@ export interface VideoMetricsSyncRequest {
   id: string;
   expectedRevision: number;
   platforms?: MuziVideoPlatform[];
+  accountProfiles?: Partial<Record<MuziVideoPlatform, string>>;
   force?: boolean;
   confirmed: boolean;
   acceptanceSessionId?: string;
+  acceptanceAccountProfile?: string;
 }
 
 export interface VideoMetricsSyncResult {
@@ -274,6 +279,7 @@ export interface VideoMetricsSyncResult {
   cached: boolean;
   observedAt: string;
   platforms: VideoMetricPlatformResult[];
+  acceptanceSessionStatus?: "METRICS_COLLECTED";
 }
 
 export interface VideoPublishStatusResult {

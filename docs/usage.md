@@ -58,7 +58,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
 
 长任务都是先启动，再看文件夹里有没有产物，不要把一次启动当成已经完成。
 
-`muzi.creator/2` 项目另有四个受控工具：`muzi_creator_prepare_video_publish` 批量准备页面但不提交；`muzi_creator_commit_video_publish` 一次只提交一个平台；`muzi_creator_video_publish_status` 只读查看任务与阻塞；`muzi_creator_sync_video_metrics` 手动同步当前项目。发布模式可按平台混用“仅准备 / 立即发布 / 定时发布”，默认仅准备。立即或定时提交的确认会显示平台、账号、发布包标题、动作和中国标准时间。
+`muzi.creator/2` 项目另有一个只读能力工具和四个受控工具：`muzi_creator_video_publish_capabilities` 读取已登记账号及其服务端验收状态；`muzi_creator_prepare_video_publish` 批量准备页面但不提交；`muzi_creator_commit_video_publish` 一次只提交一个平台；`muzi_creator_video_publish_status` 只读查看任务与阻塞；`muzi_creator_sync_video_metrics` 手动同步当前项目。生产 UI 不再接受任意账号 profile：账号下拉框、发布模式和播放数据同步都由能力快照决定，账号停用、未验收或查询失败时一律禁用。能力验收一次只绑定一个平台、账号和能力，并严格按“开始验收 → 执行验收准备/提交/同步 → 核对证据 → 完成验收”推进；只核验账号不会出现完成按钮。发布模式可按平台混用“仅准备 / 立即发布 / 定时发布”，默认仅准备。立即或定时提交的确认会显示平台、账号、发布包标题、动作和中国标准时间。
 
 ## 新做一条片子
 

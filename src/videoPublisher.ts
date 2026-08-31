@@ -13,6 +13,10 @@ import { filterCollected } from "./collectPublish.ts";
 import type { Config } from "./config.ts";
 import { expandHomePath, skillDirCandidates } from "./config.ts";
 import {
+  normalizeVideoPublishCapabilities,
+  type VideoPublishCapabilitiesResult,
+} from "./videoCapabilities.ts";
+import {
   appendMetricSnapshots,
   latestMetricRows,
   matchMetricPost,
@@ -168,7 +172,7 @@ function publisherError(value: unknown, fallback: string): Error {
   return new Error(fallback);
 }
 
-async function runPublisher(skillDir: string, command: "prepare" | "commit" | "status" | "begin-acceptance" | "finalize-acceptance", request: unknown, signal: AbortSignal): Promise<unknown> {
+async function runPublisher(skillDir: string, command: "prepare" | "commit" | "status" | "begin-acceptance" | "acceptance-status" | "record-metrics-acceptance" | "finalize-acceptance", request: unknown, signal: AbortSignal): Promise<unknown> {
   const script = join(skillDir, "scripts", "v3", "publisher.mjs");
   const info = await stat(script).catch(() => undefined);
   if (info === undefined || !info.isFile()) throw new Error(`video-publisher Windows runtime is missing: ${script}`);
@@ -200,6 +204,45 @@ async function runPublisher(skillDir: string, command: "prepare" | "commit" | "s
   });
 }
 
+async function readPublisherCapabilities(skillDir: string, signal: AbortSignal): Promise<VideoPublishCapabilitiesResult> {
+  const script = join(skillDir, "scripts", "v3", "publisher.mjs");
+  const info = await stat(script).catch(() => undefined);
+  if (info === undefined || !info.isFile()) {
+    return normalizeVideoPublishCapabilities(undefined, new Date().toISOString());
+  }
+  try {
+    const raw = await new Promise<unknown>((resolvePromise, reject) => {
+      if (signal.aborted) { reject(signal.reason ?? new Error("aborted")); return; }
+      const child = spawn(process.execPath, [script, "capabilities"], { stdio: ["ignore", "pipe", "pipe"], env: process.env });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk: Buffer | string) => { stdout += String(chunk); });
+      child.stderr.on("data", (chunk: Buffer | string) => { stderr += String(chunk); });
+      const abort = (): void => { child.kill("SIGTERM"); };
+      signal.addEventListener("abort", abort, { once: true });
+      child.once("error", reject);
+      child.once("exit", (code) => {
+        signal.removeEventListener("abort", abort);
+        try {
+          if (code !== 0) throw new Error(`video-publisher capabilities exited ${code}`);
+          resolvePromise(parseLastJson(`${stdout}\n${stderr}`));
+        } catch (cause) {
+          reject(cause);
+        }
+      });
+    });
+    return normalizeVideoPublishCapabilities(raw);
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : "发布能力查询失败";
+    return {
+      schema: "muzi.video-publisher.capabilities/1",
+      generatedAt: new Date().toISOString(),
+      accounts: [],
+      unavailableReason: `发布能力不可用：${message}`,
+    };
+  }
+}
+
 function nullableString(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
@@ -223,6 +266,7 @@ function mapAcceptanceSession(raw: unknown): VideoAcceptanceSessionResult {
   const accountValue = account as Record<string, unknown>;
   const sessionId = requiredString(value.sessionId, "acceptance session id is invalid");
   const bindingSha256 = requiredString(value.bindingSha256, "acceptance binding digest is invalid");
+  const adapterVersion = requiredString(value.adapterVersion, "acceptance adapter version is invalid");
   const evidenceSha256 = requiredString(accountValue.evidenceSha256, "acceptance account evidence digest is invalid");
   if (!/^vas-[a-f0-9]{24}$/.test(sessionId) || !/^[a-f0-9]{64}$/.test(bindingSha256) || !/^[a-f0-9]{64}$/.test(evidenceSha256)
     || accountValue.verified !== true || value.durableAcceptanceWritten !== false || value.ordinaryAuthorizationIssued !== false) {
@@ -235,6 +279,7 @@ function mapAcceptanceSession(raw: unknown): VideoAcceptanceSessionResult {
     platform,
     accountProfile: requiredString(value.accountProfile, "acceptance account profile is invalid"),
     capability: capability as VideoAcceptanceSessionResult["capability"],
+    adapterVersion,
     bindingSha256,
     account: { label: requiredString(accountValue.label, "acceptance account label is invalid"), verified: true, evidenceSha256 },
     durableAcceptanceWritten: false,
@@ -247,14 +292,17 @@ function mapAcceptanceFinalize(raw: unknown): VideoAcceptanceFinalizeResult {
   const value = raw as Record<string, unknown>;
   const platform = FROM_SKILL_PLATFORM[requiredString(value.platform, "acceptance platform is invalid")];
   const sessionId = requiredString(value.sessionId, "acceptance session id is invalid");
-  if (value.ok !== true || platform === undefined || value.capability !== "prepare_only"
+  const adapterVersion = requiredString(value.adapterVersion, "acceptance adapter version is invalid");
+  if (value.ok !== true || platform === undefined || !["prepare_only", "publish_now", "schedule", "metrics"].includes(String(value.capability))
     || value.commitEnabled !== false || value.authorizationDigest !== null || !/^vas-[a-f0-9]{24}$/.test(sessionId)) {
     throw new Error("video acceptance finalization result is invalid");
   }
   return {
     ok: true,
     platform,
-    capability: "prepare_only",
+    accountProfile: requiredString(value.accountProfile, "acceptance account profile is invalid"),
+    capability: value.capability as VideoAcceptanceFinalizeResult["capability"],
+    adapterVersion,
     acceptedAt: requiredString(value.acceptedAt, "acceptance timestamp is invalid"),
     evidencePath: requiredString(value.evidencePath, "acceptance evidence path is invalid"),
     sessionId,
@@ -401,6 +449,36 @@ function asMetricPosts(page: CollectedPlatform): MetricPost[] {
   }));
 }
 
+async function writeMetricsAcceptanceEvidence(
+  sessionId: string,
+  platform: MuziVideoPlatform,
+  accountProfile: string,
+  page: CollectedPlatform,
+  observedAt: string,
+): Promise<{ path: string; sha256: string }> {
+  if (!/^vas-[a-f0-9]{24}$/.test(sessionId)) throw new Error("metrics acceptance session id is invalid");
+  const root = resolve(process.env.VIDEO_PUBLISHER_ACCEPTANCE_EVIDENCE_ROOT || join(homedir(), ".video-publisher", "acceptance-evidence"));
+  const directory = resolve(root, sessionId, TO_SKILL_PLATFORM[platform]);
+  if (!isChild(root, directory)) throw new Error("metrics acceptance evidence path is unsafe");
+  const target = join(directory, "metrics.json");
+  const payload = {
+    schema: "video-publisher.metrics-acceptance-evidence/1",
+    sessionId,
+    platform: TO_SKILL_PLATFORM[platform],
+    accountProfile,
+    completed: true,
+    paginationComplete: true,
+    recordCount: page.items.length,
+    observedAt,
+  };
+  const serialized = `${JSON.stringify(payload, null, 2)}\n`;
+  const temporary = `${target}.${process.pid}.tmp`;
+  await mkdir(directory, { recursive: true });
+  await writeFile(temporary, serialized, "utf8");
+  await rename(temporary, target);
+  return { path: target, sha256: createHash("sha256").update(serialized).digest("hex") };
+}
+
 export class VideoPublisherService {
   readonly dataDir: string;
   readonly skillDir: string;
@@ -459,6 +537,12 @@ export class VideoPublisherService {
     return task;
   }
 
+  /** Read-only bridge. Failure is represented as an empty, unavailable snapshot. */
+  async capabilities(signal: AbortSignal): Promise<VideoPublishCapabilitiesResult> {
+    signal.throwIfAborted();
+    return readPublisherCapabilities(this.skillDir, signal);
+  }
+
   async commit(request: VideoPublishCommitRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
     signal.throwIfAborted();
     if (request.confirmed !== true) throw new Error("current-run final submission approval is required");
@@ -476,7 +560,10 @@ export class VideoPublisherService {
     const task = mapTask(raw.task ?? raw);
     const row = task.platforms[request.platform];
     if (row === undefined) throw new Error("committed platform is missing from task result");
-    if (row.status === "SCHEDULE_CONFIRMED") {
+    // A controlled acceptance remains bound to the original project revision
+    // until finalize-acceptance verifies and durably records the evidence.
+    // Project publication facts are written only after that finalization.
+    if (request.acceptanceSessionId === undefined && row.status === "SCHEDULE_CONFIRMED") {
       await this.muzi.patchPublicationStates(request.id, request.expectedRevision, {
         [request.platform]: {
           status: "platform_draft",
@@ -487,7 +574,7 @@ export class VideoPublisherService {
           source: "publisher",
         },
       });
-    } else if (row.status === "PUBLISHED_CONFIRMED") {
+    } else if (request.acceptanceSessionId === undefined && row.status === "PUBLISHED_CONFIRMED") {
       await this.muzi.patchPublicationStates(request.id, request.expectedRevision, {
         [request.platform]: {
           status: "published",
@@ -540,7 +627,39 @@ export class VideoPublisherService {
       acceptanceSessionId: request.acceptanceSessionId,
       confirmed: true,
     }, signal);
-    return mapAcceptanceFinalize(raw);
+    const result = mapAcceptanceFinalize(raw);
+    if (request.capability === "publish_now" || request.capability === "schedule") {
+      if (request.taskId === undefined) throw new Error("finalized publish acceptance is missing its task id");
+      const status = await this.status({ id: request.id, taskId: request.taskId }, signal);
+      const row = status.task?.platforms[request.platform];
+      if (row === undefined) throw new Error("finalized publish acceptance is missing its platform result");
+      if (request.capability === "schedule" && row.status === "SCHEDULE_CONFIRMED") {
+        await this.muzi.patchPublicationStates(request.id, request.expectedRevision, {
+          [request.platform]: {
+            status: "platform_draft",
+            remoteId: row.remoteId,
+            url: row.url,
+            scheduledAt: row.scheduledAt,
+            publishedAt: null,
+            source: "publisher",
+          },
+        });
+      } else if (request.capability === "publish_now" && row.status === "PUBLISHED_CONFIRMED") {
+        await this.muzi.patchPublicationStates(request.id, request.expectedRevision, {
+          [request.platform]: {
+            status: "published",
+            remoteId: row.remoteId,
+            url: row.url,
+            scheduledAt: null,
+            publishedAt: row.confirmedAt,
+            source: "publisher",
+          },
+        });
+      } else {
+        throw new Error("finalized acceptance result does not match the requested publication capability");
+      }
+    }
+    return result;
   }
 
   async status(request: VideoPublishStatusRequest, signal: AbortSignal): Promise<VideoPublishStatusResult> {
@@ -561,12 +680,6 @@ export class VideoPublisherService {
   async syncMetrics(request: VideoMetricsSyncRequest, signal: AbortSignal): Promise<VideoMetricsSyncResult> {
     signal.throwIfAborted();
     if (request.confirmed !== true) throw new Error("current-run approval is required before reading external creator pages");
-    if (request.acceptanceSessionId !== undefined) {
-      // This rollout intentionally leaves metrics disabled. Rejecting an
-      // acceptance session is safer than silently treating it as a durable
-      // metrics approval.
-      throw Object.assign(new Error("metrics acceptance is not enabled in the prepare-only rollout"), { code: "ACCEPTANCE_CAPABILITY_DISABLED" });
-    }
     const project = await this.muzi.getProject({ id: request.id });
     if (project.revision !== request.expectedRevision) throw new Error(`revision conflict: expected ${request.expectedRevision}, current ${project.revision}`);
     const requested = request.platforms?.length
@@ -578,6 +691,9 @@ export class VideoPublisherService {
     const platforms = [...new Set(requested)];
     const observedAt = new Date().toISOString();
     if (platforms.length === 0) return { id: request.id, revision: project.revision, cached: false, observedAt, platforms: [] };
+    if (request.acceptanceSessionId !== undefined && (platforms.length !== 1 || request.acceptanceAccountProfile === undefined)) {
+      throw Object.assign(new Error("播放数据验收必须绑定一个平台和一个账号"), { code: "ACCEPTANCE_SESSION_MISMATCH" });
+    }
     const currentStatus = await this.status({ id: request.id }, signal);
     const titleByPlatform = Object.fromEntries(platforms.map((platform) => [
       platform,
@@ -592,7 +708,26 @@ export class VideoPublisherService {
         ...(publication.url === null ? {} : { urls: [publication.url] }),
       };
     });
-    const accounts = accountsFromTask(currentStatus.task);
+    const accounts = request.acceptanceSessionId === undefined
+      ? { ...accountsFromTask(currentStatus.task), ...request.accountProfiles }
+      : { [platforms[0]!]: request.acceptanceAccountProfile! };
+    const missingAccount = platforms.find((platform) => accounts[platform] === undefined);
+    if (missingAccount !== undefined) throw new Error(`${missingAccount} 缺少已核验的账号绑定，不能同步播放数据`);
+    let acceptancePaths: { packagePath: string; manifestPath: string } | undefined;
+    if (request.acceptanceSessionId !== undefined) {
+      const platform = platforms[0]!;
+      acceptancePaths = await this.packagePath(request.id, undefined);
+      await runPublisher(this.skillDir, "acceptance-status", {
+        projectId: request.id,
+        revision: request.expectedRevision,
+        packagePath: acceptancePaths.packagePath,
+        projectManifestPath: acceptancePaths.manifestPath,
+        acceptanceSessionId: request.acceptanceSessionId,
+        platform: TO_SKILL_PLATFORM[platform],
+        accountProfile: request.acceptanceAccountProfile,
+        capability: "metrics",
+      }, signal);
+    }
     const contextKey = metricsCacheKey(platforms, targets, accounts);
     const cached = await loadCollectCache(this.dataDir);
     const cachedSlice = cached === undefined ? undefined : filterCollected(cached.result, platforms);
@@ -601,7 +736,7 @@ export class VideoPublisherService {
       && platforms.every((platform) => cachedSlice.collected.some((page) => page.platform === platform));
     let result: CollectResult;
     let fromCache = false;
-    if (request.force !== true && cached !== undefined && cacheIsFresh(cached.fetchedAt) && cacheComplete) {
+    if (request.acceptanceSessionId === undefined && request.force !== true && cached !== undefined && cacheIsFresh(cached.fetchedAt) && cacheComplete) {
       result = cachedSlice;
       fromCache = true;
     } else {
@@ -609,6 +744,7 @@ export class VideoPublisherService {
         platforms,
         targets,
         accounts,
+        metricsGrants: accounts,
       });
       await saveCollectCache(this.dataDir, result, { scope: "partial", contextKey });
     }
@@ -659,10 +795,37 @@ export class VideoPublisherService {
       }
     }
     if (!fromCache) await appendMetricSnapshots(this.dataDir, newSnapshots);
+    let acceptanceSessionStatus: "METRICS_COLLECTED" | undefined;
+    if (request.acceptanceSessionId !== undefined) {
+      const platform = platforms[0];
+      if (platform === undefined) {
+        throw Object.assign(new Error("播放数据验收必须明确指定一个平台"), { code: "ACCEPTANCE_FINALIZE_PRECONDITION" });
+      }
+      const page = result.collected.find((item) => item.platform === platform);
+      const platformResult = platformResults.find((item) => item.platform === platform);
+      const accountProfile = accounts[platform];
+      if (page === undefined || accountProfile === undefined || platformResult?.status !== "SYNCED"
+        || page.loginRequired === true || page.error !== undefined || page.items.length < 1) {
+        throw Object.assign(new Error("播放数据验收没有取得完整、非缓存的账号采集证据"), { code: "ACCEPTANCE_FINALIZE_PRECONDITION" });
+      }
+      const evidence = await writeMetricsAcceptanceEvidence(request.acceptanceSessionId, platform, accountProfile, page, observedAt);
+      const paths = acceptancePaths ?? await this.packagePath(request.id, undefined);
+      await runPublisher(this.skillDir, "record-metrics-acceptance", {
+        projectId: request.id,
+        revision: request.expectedRevision,
+        packagePath: paths.packagePath,
+        projectManifestPath: paths.manifestPath,
+        acceptanceSessionId: request.acceptanceSessionId,
+        evidencePath: evidence.path,
+        evidenceSha256: evidence.sha256,
+        confirmed: true,
+      }, signal);
+      acceptanceSessionStatus = "METRICS_COLLECTED";
+    }
     let revision = project.revision;
-    if (Object.keys(publicationUpdates).length > 0) {
+    if (request.acceptanceSessionId === undefined && Object.keys(publicationUpdates).length > 0) {
       revision = (await this.muzi.patchPublicationStates(request.id, project.revision, publicationUpdates)).revision;
     }
-    return { id: request.id, revision, cached: fromCache, observedAt, platforms: platformResults };
+    return { id: request.id, revision, cached: fromCache, observedAt, platforms: platformResults, ...(acceptanceSessionStatus === undefined ? {} : { acceptanceSessionStatus }) };
   }
 }

@@ -10,6 +10,31 @@ export const muziPublicationSourceSchema = z.enum(["manual", "sync", "publisher"
 export const muziVideoPlatformSchema = z.enum(["bilibili", "douyin", "wechat", "xiaohongshu"]);
 export const videoPublishModeSchema = z.enum(["prepare_only", "publish_now", "schedule"]);
 export const acceptanceCapabilitySchema = z.enum(["prepare_only", "publish_now", "schedule", "metrics"]);
+const videoCapabilityStateSchema = z.object({
+  accepted: z.boolean(),
+  enabled: z.boolean(),
+  reason: z.string().nullable(),
+  acceptedAt: z.string().datetime().nullable(),
+  adapterVersion: z.string().nullable(),
+});
+const videoPublishAccountCapabilitiesSchema = z.object({
+  platform: muziVideoPlatformSchema,
+  accountProfile: z.string().min(1),
+  displayName: z.string().min(1),
+  enabled: z.boolean(),
+  capabilities: z.object({
+    prepare_only: videoCapabilityStateSchema,
+    publish_now: videoCapabilityStateSchema,
+    schedule: videoCapabilityStateSchema,
+    metrics: videoCapabilityStateSchema,
+  }),
+});
+export const videoPublishCapabilitiesResultSchema = z.object({
+  schema: z.literal("muzi.video-publisher.capabilities/1"),
+  generatedAt: z.string().datetime(),
+  accounts: z.array(videoPublishAccountCapabilitiesSchema),
+  unavailableReason: z.string().nullable(),
+});
 
 export const atlasReferenceSchema = z.object({
   locator: z.string().regex(/^atlas:\/\/wiki\/(?:entities|topics|sources|comparisons|synthesis|queries)\/[^?#]+\.md$/),
@@ -203,6 +228,7 @@ export const videoAcceptanceSessionResultSchema = z.object({
   platform: muziVideoPlatformSchema,
   accountProfile: z.string().min(1),
   capability: acceptanceCapabilitySchema,
+  adapterVersion: z.string().min(1),
   bindingSha256: z.string().regex(/^[a-f0-9]{64}$/),
   account: z.object({ label: z.string().min(1), verified: z.literal(true), evidenceSha256: z.string().regex(/^[a-f0-9]{64}$/) }),
   durableAcceptanceWritten: z.literal(false),
@@ -221,7 +247,9 @@ export const videoAcceptanceFinalizeRequestSchema = z.object({
 export const videoAcceptanceFinalizeResultSchema = z.object({
   ok: z.literal(true),
   platform: muziVideoPlatformSchema,
-  capability: z.literal("prepare_only"),
+  accountProfile: z.string().min(1),
+  capability: acceptanceCapabilitySchema,
+  adapterVersion: z.string().min(1),
   acceptedAt: z.string().datetime(),
   evidencePath: z.string().min(1),
   sessionId: z.string().regex(/^vas-[a-f0-9]{24}$/),
@@ -256,9 +284,23 @@ export const videoMetricsSyncRequestSchema = z.object({
   id: z.string().regex(/^mc_[a-f0-9]{24}$/),
   expectedRevision: z.number().int().nonnegative(),
   platforms: z.array(muziVideoPlatformSchema).max(4).optional(),
+  accountProfiles: z.partialRecord(muziVideoPlatformSchema, z.string().trim().min(1).max(80)).optional(),
   force: z.boolean().optional(),
   confirmed: z.boolean(),
   acceptanceSessionId: z.string().regex(/^vas-[a-f0-9]{24}$/).optional(),
+  acceptanceAccountProfile: z.string().trim().min(1).max(80).optional(),
+}).superRefine((value, context) => {
+  const hasSession = value.acceptanceSessionId !== undefined;
+  const hasAccount = value.acceptanceAccountProfile !== undefined;
+  if (hasSession !== hasAccount) {
+    context.addIssue({ code: "custom", path: [hasSession ? "acceptanceAccountProfile" : "acceptanceSessionId"], message: "acceptance session and account profile must be supplied together" });
+  }
+  if (hasSession && value.platforms?.length !== 1) {
+    context.addIssue({ code: "custom", path: ["platforms"], message: "metrics acceptance requires exactly one platform" });
+  }
+  if (hasSession && value.accountProfiles !== undefined) {
+    context.addIssue({ code: "custom", path: ["accountProfiles"], message: "metrics acceptance uses only acceptanceAccountProfile" });
+  }
 });
 export const videoMetricsSyncResultSchema = z.object({
   id: z.string().regex(/^mc_[a-f0-9]{24}$/),
@@ -266,6 +308,7 @@ export const videoMetricsSyncResultSchema = z.object({
   cached: z.boolean(),
   observedAt: z.string().datetime(),
   platforms: z.array(videoMetricPlatformResultSchema),
+  acceptanceSessionStatus: z.literal("METRICS_COLLECTED").optional(),
 });
 export const videoPublishStatusResultSchema = z.object({
   id: z.string().regex(/^mc_[a-f0-9]{24}$/),

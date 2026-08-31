@@ -4,6 +4,7 @@ import { externalActionKind } from "../src/externalActions.ts";
 
 describe("explicit external action classification", () => {
   it("classifies only declared external tools", () => {
+    expect(externalActionKind("muzi_creator_video_publish_capabilities")).toBeNull();
     expect(externalActionKind("muzi_creator_begin_video_acceptance")).toBe("acceptance");
     expect(externalActionKind("muzi_creator_finalize_video_acceptance")).toBe("acceptance");
     expect(externalActionKind("muzi_creator_prepare_video_publish")).toBe("prepare");

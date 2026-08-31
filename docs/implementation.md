@@ -61,7 +61,9 @@ Harness 从 GitHub 安装时生成的构建包显式包含 README 引用的最�
 
 `VideoPublisherService` 是 DSH 与项目本地 `video-publisher` Skill 的唯一桥。它只允许 `publish-package.json` 位于当前 Creator 项目内，准备和提交前都校验 `revision`。准备可包含四个平台，状态分别为 `READY_DRAFT`、`READY_TO_PUBLISH` 或 `READY_TO_SCHEDULE`；提交一次只接受一个平台。Skill 把项目、素材散列、账号、标题/标签/原创声明、模式、准确时间和最终页面证据绑定为 10 分钟一次性摘要。最终点击前先写 `COMMIT_UNKNOWN`，因此点击后结果不可靠时不会自动重试。
 
-Windows 的 `publish_now`、`schedule`、`metrics` 按平台分别受 `~/.video-publisher/acceptance.json` 控制。自动测试通过不等于真实账号可用；只有带时间和证据的 Windows 真实验收才打开对应能力。旧 Ego 验收不能沿用。原生定时失败直接返回 `SCHEDULE_UNAVAILABLE`，不降级为立即发布。
+Windows 的 `prepare_only`、`publish_now`、`schedule`、`metrics` 按账号分别受 `~/.video-publisher/acceptance.json` 控制。DSH 只读调用 `publisher.mjs capabilities`，集中校验 `muzi.video-publisher.capabilities/1`：账号、启用状态、每项能力、验收时间和适配器信息有任何缺失、格式错误或重复都 fail closed。自动测试通过不等于真实账号可用；只有带时间和服务端证据的 Windows 真实验收才打开对应能力。旧 Ego 验收不能沿用。原生定时失败直接返回 `SCHEDULE_UNAVAILABLE`，不降级为立即发布。
+
+验收控制面分为四步：只读开始并核验账号、执行该能力的单一路径、核对结构化结果证据、最终写入该账号的单项能力。账号核验本身不能直接完成验收。`prepare_only` 必须取得 `READY_DRAFT` 与 guard 证据；立即/定时必须在独立确认后取得可靠远端结果；指标必须强制跳过缓存并完成分页。指标子进程不再自行读取旧 acceptance 文件，而是只接受 DSH 在完成账号检查后传入的本次精确账号 grant。
 
 项目发布事实保持 `muzi.creator/2`：旧项目缺少 `remoteId` 或 `scheduledAt` 时按 `null` 读取。仅在平台明确保存草稿、确认排程或确认发布后更新事实；每次写入重新读取 revision，冲突即停止。指标快照追加到 `creator-metrics.jsonl`，90 秒缓存不追加重复快照，登录失效、页面变化、分页不完整或标题歧义不覆盖旧数据。
 
@@ -91,7 +93,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 
 对话里的插件工具：
 
-`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`，以及 `muzi_creator_prepare_video_publish`、`muzi_creator_commit_video_publish`、`muzi_creator_video_publish_status`、`muzi_creator_sync_video_metrics`。
+`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`，以及只读的 `muzi_creator_video_publish_capabilities`、`muzi_creator_prepare_video_publish`、`muzi_creator_begin_video_acceptance`、`muzi_creator_finalize_video_acceptance`、`muzi_creator_commit_video_publish`、`muzi_creator_video_publish_status`、`muzi_creator_sync_video_metrics`。
 
 `oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Chrome 缺失时页面准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Chrome。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 

@@ -229,6 +229,15 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
   }));
 
   ctx.tools.register(defineTool({
+    name: "muzi_creator_video_publish_capabilities",
+    description: "Read the locally registered video-publisher accounts and their server-evidenced prepare, publish, schedule, and metrics capabilities. Missing or malformed capability data is reported unavailable and never enables an action.",
+    parameters: {},
+    output: { schema: JSON_VALUE, render: (_args, value) => render("Video publish capabilities", `${(value as { accounts?: unknown[] }).accounts?.length ?? 0} accounts`) },
+    presentCall: () => card("Read video publishing capabilities", {}),
+    execute: (_args, exec) => service.getMuziVideoPublishCapabilities({}, signalOf(exec)).then(asJson),
+  }));
+
+  ctx.tools.register(defineTool({
     name: "muzi_creator_begin_video_acceptance",
     description: "Open only the isolated Windows creator page for one platform acceptance capability, verify the user-supplied account label, and create a maximum 30-minute bound acceptance session. It never uploads, writes durable acceptance, or issues normal publication authority. Login, SMS, captcha, risk control, or uncertain identity stops the request.",
     parameters: {
@@ -250,9 +259,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       }
       const platform = oneOf<MuziVideoPlatform>(args.platform, VIDEO_PLATFORMS, "platform");
       const capability = oneOf<AcceptanceCapability>(args.capability, ACCEPTANCE_CAPABILITIES, "capability");
-      if (capability !== "prepare_only") throw new Error("this controlled rollout can begin only prepare_only acceptance");
       const scheduledAt = typeof args.scheduledAt === "string" ? args.scheduledAt : undefined;
-      if (scheduledAt !== undefined) throw new Error("scheduledAt is not available during the prepare-only acceptance rollout");
       return service.beginMuziVideoAcceptance({
         id: args.id,
         expectedRevision: args.expectedRevision,
@@ -345,7 +352,7 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
 
   ctx.tools.register(defineTool({
     name: "muzi_creator_finalize_video_acceptance",
-    description: "After the user reviews the saved local evidence and guarded platform draft, finalize one acceptance session. This rollout permits only Xiaohongshu-style prepare_only records; it cannot enable immediate publishing, scheduling, or metrics.",
+    description: "After the user reviews the saved local evidence and guarded platform page, finalize exactly one bound acceptance session. Finalization records account capability evidence only; it never grants a final publication authorization.",
     parameters: {
       id: { type: "string", required: true },
       expectedRevision: { type: "number", required: true },
@@ -364,7 +371,6 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       }
       const platform = oneOf<MuziVideoPlatform>(args.platform, VIDEO_PLATFORMS, "platform");
       const capability = oneOf<AcceptanceCapability>(args.capability, ACCEPTANCE_CAPABILITIES, "capability");
-      if (capability !== "prepare_only") throw new Error("this controlled rollout can finalize only prepare_only acceptance");
       return service.finalizeMuziVideoAcceptance({
         id: args.id,
         expectedRevision: args.expectedRevision,
@@ -400,9 +406,11 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
       id: { type: "string", required: true },
       expectedRevision: { type: "number", required: true },
       platforms: { type: "json", description: "Optional array of video platforms; defaults to this project's published or scheduled platforms." },
+      accountProfiles: { type: "json", description: "Optional platform-to-registered-account map. Required when the project has no current publish task account binding." },
       force: { type: "boolean" },
       confirmed: { type: "boolean", required: true },
-      acceptanceSessionId: { type: "string", description: "Reserved for a later metrics acceptance rollout; currently rejected." },
+      acceptanceSessionId: { type: "string", description: "Optional bound metrics acceptance session when the publisher requires it." },
+      acceptanceAccountProfile: { type: "string", description: "Required with acceptanceSessionId; the registered isolated account bound to this metrics acceptance." },
     },
     output: { schema: JSON_VALUE, render: (_args, value) => render("Video metrics", `${(value as { platforms?: unknown[] }).platforms?.length ?? 0} platforms`) },
     presentCall: (args) => card("Sync external video metrics", args),
@@ -413,13 +421,23 @@ export function registerMuziTools(ctx: ToolsContext, service: OilCreatorService)
         : Array.isArray(args.platforms)
           ? args.platforms.map((value) => oneOf<MuziVideoPlatform>(value, VIDEO_PLATFORMS, "platform"))
           : (() => { throw new Error("platforms must be an array"); })();
+      const accountProfiles = args.accountProfiles === undefined
+        ? undefined
+        : typeof args.accountProfiles === "object" && args.accountProfiles !== null && !Array.isArray(args.accountProfiles)
+          ? Object.fromEntries(Object.entries(args.accountProfiles).map(([key, value]) => [
+            oneOf<MuziVideoPlatform>(key, VIDEO_PLATFORMS, "accountProfiles platform"),
+            typeof value === "string" && value.trim() !== "" ? value.trim() : (() => { throw new Error("accountProfiles values must be non-empty strings"); })(),
+          ])) as Partial<Record<MuziVideoPlatform, string>>
+          : (() => { throw new Error("accountProfiles must be an object"); })();
       return service.syncMuziVideoMetrics({
         id: args.id,
         expectedRevision: args.expectedRevision,
         confirmed: args.confirmed === true,
         ...(platforms === undefined ? {} : { platforms }),
+        ...(accountProfiles === undefined ? {} : { accountProfiles }),
         ...(typeof args.force === "boolean" ? { force: args.force } : {}),
         ...(typeof args.acceptanceSessionId === "string" ? { acceptanceSessionId: args.acceptanceSessionId } : {}),
+        ...(typeof args.acceptanceAccountProfile === "string" ? { acceptanceAccountProfile: args.acceptanceAccountProfile.trim() } : {}),
       }, signalOf(exec)).then(asJson);
     },
   }));

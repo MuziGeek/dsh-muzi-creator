@@ -23,10 +23,17 @@ import type {
   MuziPublicationStatus,
   MuziPublishTarget,
   MuziVideoPlatform,
+  AcceptanceCapability,
+  VideoAcceptanceSessionResult,
   VideoPublishMode,
   VideoPublishStatusResult,
   PendingKnowledgeFile,
 } from "../muziTypes.ts";
+import {
+  capabilityEnabled,
+  type VideoPublishAccountCapabilities,
+  type VideoPublishCapabilitiesResult,
+} from "../videoCapabilities.ts";
 import type { ContentDetail } from "../types.ts";
 import type { CreatorViewFace, MuziViewFace } from "./face.ts";
 import {
@@ -82,6 +89,12 @@ const VIDEO_MODE_LABELS: Record<VideoPublishMode, string> = {
   publish_now: "立即发布",
   schedule: "定时发布",
 };
+const VIDEO_CAPABILITY_LABELS: Record<AcceptanceCapability, string> = {
+  prepare_only: "仅准备",
+  publish_now: "立即发布",
+  schedule: "定时发布",
+  metrics: "播放数据同步",
+};
 const VIDEO_STATE_LABELS: Record<string, string> = {
   NEW: "未开始",
   PREPARING: "准备中",
@@ -109,10 +122,22 @@ interface PublishIntentDraft {
 function defaultPublishIntents(): Record<MuziVideoPlatform, PublishIntentDraft> {
   return Object.fromEntries(VIDEO_TARGETS.map((item) => [item.key, {
     enabled: true,
-    accountProfile: "default",
+    accountProfile: "",
     mode: "prepare_only",
     scheduledAt: "",
   }])) as Record<MuziVideoPlatform, PublishIntentDraft>;
+}
+
+function accountFor(
+  snapshot: VideoPublishCapabilitiesResult | null,
+  platform: MuziVideoPlatform,
+  accountProfile: string,
+): VideoPublishAccountCapabilities | undefined {
+  return snapshot?.accounts.find((item) => item.platform === platform && item.accountProfile === accountProfile);
+}
+
+function capabilityReason(account: VideoPublishAccountCapabilities | undefined, capability: AcceptanceCapability): string {
+  return account?.capabilities[capability].reason ?? "账号未登记或能力尚未验收";
 }
 
 function shanghaiRfc3339(value: string): string {
@@ -314,9 +339,17 @@ export function MuziInspector({
   const [tab, setTab] = useState<Tab>("overview");
   const [notice, setNotice] = useState<string | null>(null);
   const [videoPublish, setVideoPublish] = useState<VideoPublishStatusResult | null>(null);
+  const [videoCapabilities, setVideoCapabilities] = useState<VideoPublishCapabilitiesResult | null>(null);
   const [publishIntents, setPublishIntents] = useState<Record<MuziVideoPlatform, PublishIntentDraft>>(defaultPublishIntents);
-  const [publishBusy, setPublishBusy] = useState<"prepare" | "commit" | "sync" | null>(null);
+  const [publishBusy, setPublishBusy] = useState<"prepare" | "commit" | "sync" | "acceptance" | null>(null);
   const [originalRightsConfirmed, setOriginalRightsConfirmed] = useState(false);
+  const [acceptancePlatform, setAcceptancePlatform] = useState<MuziVideoPlatform>("xiaohongshu");
+  const [acceptanceAccountProfile, setAcceptanceAccountProfile] = useState("");
+  const [acceptanceCapability, setAcceptanceCapability] = useState<AcceptanceCapability>("prepare_only");
+  const [acceptanceScheduledAt, setAcceptanceScheduledAt] = useState("");
+  const [acceptanceSession, setAcceptanceSession] = useState<VideoAcceptanceSessionResult | null>(null);
+  const [acceptanceMetricsCollectedSessionId, setAcceptanceMetricsCollectedSessionId] = useState<string | null>(null);
+  const [acceptanceBlocker, setAcceptanceBlocker] = useState<string | null>(null);
   const [width, setWidth] = useState(getInspectorWidth);
   const viewportWidth = useViewportWidth();
   const sidebarWidth = useSidebarChromeWidth();
@@ -341,9 +374,13 @@ export function MuziInspector({
     setPending(null);
     setKnowledgePreview(null);
     setVideoPublish(null);
+    setVideoCapabilities(null);
     setPublishIntents(defaultPublishIntents());
     setPublishBusy(null);
     setOriginalRightsConfirmed(false);
+    setAcceptanceSession(null);
+    setAcceptanceMetricsCollectedSessionId(null);
+    setAcceptanceBlocker(null);
     setTab("overview");
     const load = isKnowledgePreviewSelection(selectedId)
       ? muziFace.getKnowledgePreview().then((value) => { if (!cancelled) setKnowledgePreview(value); })
@@ -363,6 +400,38 @@ export function MuziInspector({
       if (!cancelled) setVideoPublish(value);
     }, (cause: unknown) => {
       if (!cancelled) setNotice(cause instanceof Error ? cause.message : "视频发布状态不可用");
+    });
+    return () => { cancelled = true; };
+  }, [muziFace, project?.id]);
+
+  useEffect(() => {
+    if (project === null) return;
+    let cancelled = false;
+    void muziFace.getVideoPublishCapabilities().then((value) => {
+      if (cancelled) return;
+      setVideoCapabilities(value);
+      setPublishIntents((current) => Object.fromEntries(VIDEO_TARGETS.map((item) => {
+        const existing = accountFor(value, item.key, current[item.key].accountProfile);
+        const selected = existing?.enabled === true
+          ? existing.accountProfile
+          : value.accounts.find((account) => account.platform === item.key && account.enabled)?.accountProfile ?? "";
+        const selectedAccount = accountFor(value, item.key, selected);
+        const prepareAvailable = capabilityEnabled(selectedAccount, "prepare_only");
+        const previouslyBound = current[item.key].accountProfile !== "";
+        return [item.key, {
+          ...current[item.key],
+          accountProfile: selected,
+          enabled: prepareAvailable && (previouslyBound ? current[item.key].enabled : true),
+        }];
+      })) as Record<MuziVideoPlatform, PublishIntentDraft>);
+      const preferred = value.accounts.find((account) => account.platform === acceptancePlatform && account.enabled)
+        ?? value.accounts.find((account) => account.enabled);
+      if (preferred !== undefined) {
+        setAcceptancePlatform(preferred.platform);
+        setAcceptanceAccountProfile(preferred.accountProfile);
+      }
+    }, (cause: unknown) => {
+      if (!cancelled) setVideoCapabilities({ schema: "muzi.video-publisher.capabilities/1", generatedAt: new Date().toISOString(), accounts: [], unavailableReason: cause instanceof Error ? cause.message : "发布能力不可用" });
     });
     return () => { cancelled = true; };
   }, [muziFace, project?.id]);
@@ -477,6 +546,24 @@ export function MuziInspector({
     setVideoPublish(await muziFace.getVideoPublishStatus(project.id, taskId));
   };
 
+  const refreshVideoCapabilities = async (): Promise<VideoPublishCapabilitiesResult> => {
+    const next = await muziFace.getVideoPublishCapabilities();
+    setVideoCapabilities(next);
+    return next;
+  };
+
+  const selectPublishAccount = (platform: MuziVideoPlatform, accountProfile: string): void => {
+    const account = accountFor(videoCapabilities, platform, accountProfile);
+    const nextMode: VideoPublishMode = capabilityEnabled(account, "prepare_only")
+      ? "prepare_only"
+      : capabilityEnabled(account, "publish_now")
+        ? "publish_now"
+        : capabilityEnabled(account, "schedule")
+          ? "schedule"
+          : "prepare_only";
+    updatePublishIntent(platform, { accountProfile, mode: nextMode });
+  };
+
   const prepareVideoPublish = async (): Promise<void> => {
     if (project === null) return;
     const enabled = VIDEO_TARGETS.filter((item) => publishIntents[item.key].enabled);
@@ -484,9 +571,13 @@ export function MuziInspector({
     try {
       const intents = enabled.map((item) => {
         const draft = publishIntents[item.key];
+        const account = accountFor(videoCapabilities, item.key, draft.accountProfile);
+        if (!capabilityEnabled(account, draft.mode)) {
+          throw new Error(`${item.label} 无法准备：${capabilityReason(account, draft.mode)}`);
+        }
         return {
           platform: item.key,
-          accountProfile: draft.accountProfile.trim() || "default",
+          accountProfile: draft.accountProfile,
           mode: draft.mode,
           ...(draft.mode === "schedule" ? { scheduledAt: shanghaiRfc3339(draft.scheduledAt) } : {}),
         };
@@ -520,6 +611,12 @@ export function MuziInspector({
       setNotice(`${label} 缺少可复核的授权摘要，请重新准备。`);
       return;
     }
+    const capability = row.mode === "schedule" ? "schedule" : "publish_now";
+    const account = accountFor(videoCapabilities, platform, row.accountProfile);
+    if (!capabilityEnabled(account, capability)) {
+      setNotice(`${label} 无法提交：${capabilityReason(account, capability)}`);
+      return;
+    }
     const action = approval.mode === "schedule" ? "定时发布" : "立即发布";
     const time = approval.mode === "schedule" && approval.scheduledAt !== null
       ? `\n时间：${approval.scheduledAt.replace("T", " ").replace(":00+08:00", " 中国标准时间")}`
@@ -547,10 +644,13 @@ export function MuziInspector({
 
   const syncVideoMetrics = async (): Promise<void> => {
     if (project === null) return;
-    if (!window.confirm("将读取当前项目已发布或已排程平台的播放量、点赞和评论。是否同步？")) return;
+    const platforms = metricTargets.map((item) => item.key);
+    const accountProfiles = Object.fromEntries(metricTargets.map((item) => [item.key, publishIntents[item.key].accountProfile])) as Partial<Record<MuziVideoPlatform, string>>;
+    const summary = metricTargets.map((item) => `${item.label} · ${accountProfiles[item.key]}`).join("\n");
+    if (!window.confirm(`将使用以下隔离账号读取播放量、点赞和评论：\n\n${summary}\n\n90 秒内重复同步默认使用缓存。是否继续？`)) return;
     try {
       setPublishBusy("sync");
-      const result = await muziFace.syncVideoMetrics({ id: project.id, expectedRevision: project.revision, confirmed: true });
+      const result = await muziFace.syncVideoMetrics({ id: project.id, expectedRevision: project.revision, platforms, accountProfiles, confirmed: true });
       await refreshVideoPublish(videoPublish?.task?.taskId);
       setNotice(result.cached ? "已读取 90 秒缓存数据" : "播放数据同步完成");
     } catch (cause) {
@@ -560,6 +660,265 @@ export function MuziInspector({
     }
   };
 
+  const beginVideoAcceptance = async (): Promise<void> => {
+    if (project === null) return;
+    const account = accountFor(videoCapabilities, acceptancePlatform, acceptanceAccountProfile);
+    if (account === undefined || !account.enabled) { setAcceptanceBlocker("请选择已登记且已启用的账号"); return; }
+    let scheduledAt: string | undefined;
+    try {
+      scheduledAt = acceptanceCapability === "schedule" ? shanghaiRfc3339(acceptanceScheduledAt) : undefined;
+    } catch (cause) {
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "验收时间无效");
+      return;
+    }
+    if (!window.confirm(`将打开 ${VIDEO_TARGETS.find((item) => item.key === acceptancePlatform)?.label ?? acceptancePlatform} 的隔离验收页面，核验账号“${account.displayName}”的 ${VIDEO_CAPABILITY_LABELS[acceptanceCapability]} 能力；不会上传或提交内容。是否继续？`)) return;
+    try {
+      setPublishBusy("acceptance");
+      setAcceptanceBlocker(null);
+      const session = await muziFace.beginVideoAcceptance({
+        id: project.id,
+        expectedRevision: project.revision,
+        platform: acceptancePlatform,
+        accountProfile: account.accountProfile,
+        capability: acceptanceCapability,
+        expectedAccountLabel: account.displayName,
+        confirmed: true,
+        ...(scheduledAt === undefined ? {} : { scheduledAt }),
+      });
+      setAcceptanceSession(session);
+      setAcceptanceMetricsCollectedSessionId(null);
+      setAcceptanceBlocker(null);
+    } catch (cause) {
+      setAcceptanceSession(null);
+      setAcceptanceMetricsCollectedSessionId(null);
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "无法开始能力验收");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
+  const prepareVideoAcceptance = async (): Promise<void> => {
+    if (project === null || acceptanceSession === null || acceptanceSession.capability === "metrics") return;
+    if (Date.parse(acceptanceSession.expiresAt) <= Date.now()) {
+      setAcceptanceBlocker("验收会话已过期，请重新开始");
+      return;
+    }
+    if (!originalRightsConfirmed) {
+      setAcceptanceBlocker("请先确认本次测试素材拥有所需原创或发布权利");
+      return;
+    }
+    let scheduledAt: string | undefined;
+    try {
+      scheduledAt = acceptanceSession.capability === "schedule" ? shanghaiRfc3339(acceptanceScheduledAt) : undefined;
+    } catch (cause) {
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "验收时间无效");
+      return;
+    }
+    const label = VIDEO_TARGETS.find((item) => item.key === acceptanceSession.platform)?.label ?? acceptanceSession.platform;
+    if (!window.confirm(`验收平台：${label}\n账号：${acceptanceSession.account.label}\n能力：${VIDEO_CAPABILITY_LABELS[acceptanceSession.capability]}\n\n将上传并填写测试内容，最终控件保持锁定；本步骤不会发布或提交排程。是否继续？`)) return;
+    try {
+      setPublishBusy("acceptance");
+      setAcceptanceBlocker(null);
+      const task = await muziFace.prepareVideoPublish({
+        id: project.id,
+        expectedRevision: project.revision,
+        intents: [{
+          platform: acceptanceSession.platform,
+          accountProfile: acceptanceSession.accountProfile,
+          mode: acceptanceSession.capability,
+          ...(scheduledAt === undefined ? {} : { scheduledAt }),
+        }],
+        confirmed: true,
+        originalRightsConfirmed: true,
+        acceptanceSessionId: acceptanceSession.sessionId,
+      });
+      setVideoPublish({ id: project.id, task, metrics: videoPublish?.metrics ?? {} });
+      const row = task.platforms[acceptanceSession.platform];
+      if (row?.acceptanceSessionId !== acceptanceSession.sessionId || row.acceptanceEvidence == null) {
+        setAcceptanceBlocker(row?.commitBlocker?.message ?? "准备完成，但没有取得与本会话绑定的结构化验收证据");
+      } else {
+        setNotice(acceptanceSession.capability === "prepare_only"
+          ? "仅准备证据已取得；请核对页面和局部截图后完成验收"
+          : "页面准备证据已取得；最终动作仍需单独确认");
+      }
+    } catch (cause) {
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "验收准备失败");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
+  const commitVideoAcceptance = async (): Promise<void> => {
+    if (project === null || acceptanceSession === null || videoPublish?.task == null) return;
+    const row = videoPublish.task.platforms[acceptanceSession.platform];
+    const approval = row?.approvalSummary;
+    if (row === undefined || approval === null || approval === undefined || row.authorizationDigest === null
+      || row.acceptanceSessionId !== acceptanceSession.sessionId) {
+      setAcceptanceBlocker("本验收会话没有可用的一次性最终授权，请重新执行验收准备");
+      return;
+    }
+    const label = VIDEO_TARGETS.find((item) => item.key === acceptanceSession.platform)?.label ?? acceptanceSession.platform;
+    const action = approval.mode === "schedule" ? "定时发布" : "立即发布";
+    const time = approval.mode === "schedule" && approval.scheduledAt !== null
+      ? `\n时间：${approval.scheduledAt.replace("T", " ").replace(":00+08:00", " 中国标准时间")}`
+      : "";
+    if (!window.confirm(`平台：${label}\n账号：${approval.accountProfile}\n内容：${approval.title}\n动作：${action}${time}\n\n这是能力验收中的真实最终操作，只允许执行一次。是否继续？`)) return;
+    try {
+      setPublishBusy("acceptance");
+      setAcceptanceBlocker(null);
+      const task = await muziFace.commitVideoPublish({
+        id: project.id,
+        expectedRevision: project.revision,
+        taskId: videoPublish.task.taskId,
+        platform: acceptanceSession.platform,
+        authorizationDigest: row.authorizationDigest,
+        confirmed: true,
+        acceptanceSessionId: acceptanceSession.sessionId,
+      });
+      setVideoPublish({ id: project.id, task, metrics: videoPublish.metrics });
+      const committed = task.platforms[acceptanceSession.platform];
+      if (committed?.status === "COMMIT_UNKNOWN") {
+        setAcceptanceBlocker("最终动作已经触发但结果不明；系统不会自动重试，请先在平台侧人工核对");
+      } else {
+        setNotice("最终动作取得可靠结果证据；请人工复核后完成验收");
+      }
+    } catch (cause) {
+      await muziFace.getVideoPublishStatus(project.id, videoPublish.task.taskId).then(setVideoPublish, () => undefined);
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "最终操作结果未知；系统不会自动重试");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
+  const syncVideoAcceptanceMetrics = async (): Promise<void> => {
+    if (project === null || acceptanceSession === null || acceptanceSession.capability !== "metrics") return;
+    const label = VIDEO_TARGETS.find((item) => item.key === acceptanceSession.platform)?.label ?? acceptanceSession.platform;
+    if (!window.confirm(`验收平台：${label}\n账号：${acceptanceSession.account.label}\n动作：读取播放量、点赞和评论\n\n本次强制读取实时页面，不使用 90 秒缓存，也不会发布或修改内容。是否继续？`)) return;
+    try {
+      setPublishBusy("acceptance");
+      setAcceptanceBlocker(null);
+      const result = await muziFace.syncVideoMetrics({
+        id: project.id,
+        expectedRevision: project.revision,
+        platforms: [acceptanceSession.platform],
+        force: true,
+        confirmed: true,
+        acceptanceSessionId: acceptanceSession.sessionId,
+        acceptanceAccountProfile: acceptanceSession.accountProfile,
+      });
+      if (result.acceptanceSessionStatus !== "METRICS_COLLECTED") {
+        throw new Error("同步结束但没有取得完整的会话绑定指标证据");
+      }
+      setAcceptanceMetricsCollectedSessionId(acceptanceSession.sessionId);
+      await refreshVideoPublish(videoPublish?.task?.taskId);
+      setNotice("播放数据验收证据已取得；请核对结果后完成验收");
+    } catch (cause) {
+      setAcceptanceMetricsCollectedSessionId(null);
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "播放数据验收失败");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
+  const openVideoAcceptanceEvidence = async (): Promise<void> => {
+    const evidencePath = acceptanceTaskRow?.acceptanceEvidence?.path;
+    if (evidencePath === undefined) return;
+    try {
+      await oilFace.openPath(evidencePath);
+    } catch (cause) {
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "无法打开本地验收证据");
+    }
+  };
+
+  const finalizeVideoAcceptance = async (): Promise<void> => {
+    if (project === null || acceptanceSession === null) return;
+    if (!sessionCanFinalize) {
+      setAcceptanceBlocker("会话尚未取得该能力要求的完整结果证据，不能完成验收");
+      return;
+    }
+    const taskId = acceptanceSession.capability === "metrics" ? undefined : videoPublish?.task?.taskId;
+    if (acceptanceSession.capability !== "metrics" && taskId === undefined) {
+      setAcceptanceBlocker("验收任务标识缺失，不能完成验收");
+      return;
+    }
+    if (!window.confirm(`确认已复核 ${acceptanceSession.account.label} 的 ${VIDEO_CAPABILITY_LABELS[acceptanceSession.capability]} 结果及局部证据。完成后只启用该账号的这一项能力，不会创建发布授权。是否完成验收？`)) return;
+    try {
+      setPublishBusy("acceptance");
+      setAcceptanceBlocker(null);
+      await muziFace.finalizeVideoAcceptance({
+        id: project.id,
+        expectedRevision: project.revision,
+        platform: acceptanceSession.platform,
+        capability: acceptanceSession.capability,
+        acceptanceSessionId: acceptanceSession.sessionId,
+        ...(taskId === undefined ? {} : { taskId }),
+        confirmed: true,
+      });
+      await refreshVideoCapabilities();
+      await refreshVideoPublish(videoPublish?.task?.taskId);
+      setNotice("能力验收已完成，账号能力已刷新");
+      setAcceptanceSession(null);
+      setAcceptanceMetricsCollectedSessionId(null);
+    } catch (cause) {
+      setAcceptanceBlocker(cause instanceof Error ? cause.message : "无法完成能力验收");
+    } finally {
+      setPublishBusy(null);
+    }
+  };
+
+  const metricTargets = project === null ? [] : VIDEO_TARGETS.filter((item) => {
+    const publication = project.publications[item.key];
+    return publication.status === "published" || (publication.status === "platform_draft" && publication.scheduledAt !== null);
+  });
+  const metricCapabilityAvailable = metricTargets.length > 0 && metricTargets.every((item) => {
+    const accountProfile = publishIntents[item.key].accountProfile;
+    return accountProfile !== "" && capabilityEnabled(accountFor(videoCapabilities, item.key, accountProfile), "metrics");
+  });
+  const metricCapabilityBlocker = metricTargets.find((item) => {
+    const accountProfile = publishIntents[item.key].accountProfile;
+    return accountProfile === "" || !capabilityEnabled(accountFor(videoCapabilities, item.key, accountProfile), "metrics");
+  });
+  const metricCapabilityReason = videoCapabilities?.unavailableReason
+    ?? (metricCapabilityBlocker === undefined
+      ? null
+      : capabilityReason(accountFor(videoCapabilities, metricCapabilityBlocker.key, publishIntents[metricCapabilityBlocker.key].accountProfile), "metrics"))
+    ?? "需要已登记账号的播放数据同步能力验收";
+  const selectedAcceptanceAccounts = videoCapabilities?.accounts.filter((account) => account.platform === acceptancePlatform) ?? [];
+  const selectedAcceptanceAccount = accountFor(videoCapabilities, acceptancePlatform, acceptanceAccountProfile);
+  const acceptanceTaskRow = acceptanceSession === null ? undefined : videoPublish?.task?.platforms[acceptanceSession.platform];
+  const acceptanceTaskMatches = acceptanceSession !== null
+    && acceptanceTaskRow?.accountProfile === acceptanceSession.accountProfile
+    && acceptanceTaskRow.acceptanceSessionId === acceptanceSession.sessionId
+    && acceptanceTaskRow.acceptanceEvidence != null;
+  const acceptancePrepared = acceptanceTaskMatches && (
+    (acceptanceSession?.capability === "prepare_only" && acceptanceTaskRow?.status === "READY_DRAFT" && acceptanceTaskRow.commitEnabled === false && acceptanceTaskRow.authorizationDigest === null)
+    || (acceptanceSession?.capability === "publish_now" && acceptanceTaskRow?.status === "READY_TO_PUBLISH" && acceptanceTaskRow.commitEnabled === true && acceptanceTaskRow.authorizationDigest !== null)
+    || (acceptanceSession?.capability === "schedule" && acceptanceTaskRow?.status === "READY_TO_SCHEDULE" && acceptanceTaskRow.commitEnabled === true && acceptanceTaskRow.authorizationDigest !== null)
+  );
+  const acceptanceCommitted = acceptanceTaskMatches && (
+    (acceptanceSession?.capability === "publish_now" && acceptanceTaskRow?.status === "PUBLISHED_CONFIRMED" && acceptanceTaskRow.commitEnabled === false && acceptanceTaskRow.authorizationDigest === null)
+    || (acceptanceSession?.capability === "schedule" && acceptanceTaskRow?.status === "SCHEDULE_CONFIRMED" && acceptanceTaskRow.commitEnabled === false && acceptanceTaskRow.authorizationDigest === null)
+  );
+  const acceptanceMetricsCollected = acceptanceSession !== null
+    && acceptanceSession.capability === "metrics"
+    && acceptanceMetricsCollectedSessionId === acceptanceSession.sessionId;
+  const sessionCanFinalize = acceptanceSession !== null
+    && Date.parse(acceptanceSession.expiresAt) > Date.now()
+    && acceptanceSession.account.verified === true
+    && acceptanceSession.account.evidenceSha256 !== ""
+    && (acceptanceSession.capability === "prepare_only"
+      ? acceptancePrepared
+      : acceptanceSession.capability === "metrics"
+        ? acceptanceMetricsCollected
+        : acceptanceCommitted);
+  const sessionNeedsPrepare = acceptanceSession !== null
+    && acceptanceSession.capability !== "metrics"
+    && !acceptancePrepared
+    && !acceptanceCommitted;
+  const sessionNeedsCommit = acceptanceSession !== null
+    && (acceptanceSession.capability === "publish_now" || acceptanceSession.capability === "schedule")
+    && acceptancePrepared
+    && !acceptanceCommitted;
   const shownWidth = expanded ? layout.width : 0;
   return (
     <div data-plugin="dsh-oil-creator" data-surface="muzi-inspector" className={`${expanded ? "open" : ""}${layout.mode === "full" ? " full" : ""}${dragging ? " dragging" : ""}`} style={{ width: shownWidth }}>
@@ -631,10 +990,45 @@ export function MuziInspector({
                   <div className="sectionHeading videoPublishHeading">
                     <div><h3>视频发布</h3><p>默认仅准备；最终发布与定时提交逐个平台确认，时间均为中国标准时间</p></div>
                     <div className="videoPublishActions">
-                      <AnimalButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { void syncVideoMetrics(); }}>{publishBusy === "sync" ? "同步中…" : "同步播放数据"}</AnimalButton>
-                      <AnimalButton type="primary" size="small" disabled={publishBusy !== null} onClick={() => { void prepareVideoPublish(); }}>{publishBusy === "prepare" ? "准备中…" : "准备所选平台"}</AnimalButton>
+                      <AnimalButton type="default" size="small" title={metricCapabilityAvailable ? undefined : metricCapabilityReason} disabled={publishBusy !== null || !metricCapabilityAvailable} onClick={() => { void syncVideoMetrics(); }}>{publishBusy === "sync" ? "同步中…" : "同步播放数据"}</AnimalButton>
+                      <AnimalButton type="primary" size="small" disabled={publishBusy !== null || videoCapabilities?.unavailableReason !== null} onClick={() => { void prepareVideoPublish(); }}>{publishBusy === "prepare" ? "准备中…" : "准备所选平台"}</AnimalButton>
                     </div>
                   </div>
+                  <section className="videoAcceptance" aria-label="能力验收">
+                    <div><strong>能力验收</strong><p>选择已登记账号和一项能力；服务端返回可复核证据后，才会显示完成验收。</p></div>
+                    {videoCapabilities?.unavailableReason !== null && videoCapabilities?.unavailableReason !== undefined && <p className="videoPublishBlocker">{videoCapabilities.unavailableReason}</p>}
+                    <div className="videoAcceptanceControls">
+                      <label><span>平台</span><select value={acceptancePlatform} disabled={publishBusy !== null || videoCapabilities === null || acceptanceSession !== null} onChange={(event) => {
+                        const platform = event.currentTarget.value as MuziVideoPlatform;
+                        setAcceptancePlatform(platform);
+                        setAcceptanceAccountProfile(videoCapabilities?.accounts.find((account) => account.platform === platform && account.enabled)?.accountProfile ?? "");
+                        setAcceptanceSession(null);
+                        setAcceptanceMetricsCollectedSessionId(null);
+                        setAcceptanceBlocker(null);
+                      }}>{VIDEO_TARGETS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}</select></label>
+                      <label><span>已登记账号</span><select value={acceptanceAccountProfile} disabled={publishBusy !== null || selectedAcceptanceAccounts.length === 0 || acceptanceSession !== null} onChange={(event) => { setAcceptanceAccountProfile(event.currentTarget.value); setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); setAcceptanceBlocker(null); }}>
+                        {selectedAcceptanceAccounts.length === 0 && <option value="">暂无已登记账号</option>}
+                        {selectedAcceptanceAccounts.map((account) => <option key={account.accountProfile} value={account.accountProfile} disabled={!account.enabled}>{account.displayName}（{account.accountProfile}{account.enabled ? "" : "，已停用"}）</option>)}
+                      </select></label>
+                      <label><span>能力</span><select value={acceptanceCapability} disabled={publishBusy !== null || selectedAcceptanceAccount === undefined || acceptanceSession !== null} onChange={(event) => { setAcceptanceCapability(event.currentTarget.value as AcceptanceCapability); setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); setAcceptanceBlocker(null); }}>
+                        {Object.entries(VIDEO_CAPABILITY_LABELS).map(([capability, label]) => <option key={capability} value={capability}>{label}{capabilityEnabled(selectedAcceptanceAccount, capability as AcceptanceCapability) ? "（已验收）" : "（待验收）"}</option>)}
+                      </select></label>
+                      {acceptanceCapability === "schedule" && <label><span>中国标准时间</span><input type="datetime-local" value={acceptanceScheduledAt} disabled={publishBusy !== null || acceptanceSession !== null} onChange={(event) => { setAcceptanceScheduledAt(event.currentTarget.value); setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); }} /></label>}
+                    </div>
+                    <div className="videoAcceptanceStatus">
+                      {acceptanceSession === null
+                        ? <span>会话状态：未开始</span>
+                        : <span>会话状态：账号已核验，等待取得能力证据；{new Date(acceptanceSession.expiresAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })} 到期</span>}
+                      {acceptanceSession === null && <AnimalButton type="default" size="small" disabled={publishBusy !== null || selectedAcceptanceAccount?.enabled !== true} onClick={() => { void beginVideoAcceptance(); }}>{publishBusy === "acceptance" ? "处理中…" : "开始验收"}</AnimalButton>}
+                      {sessionNeedsPrepare && <AnimalButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { void prepareVideoAcceptance(); }}>{publishBusy === "acceptance" ? "处理中…" : "执行验收准备"}</AnimalButton>}
+                      {sessionNeedsCommit && <AnimalButton type="danger" size="small" disabled={publishBusy !== null} onClick={() => { void commitVideoAcceptance(); }}>{publishBusy === "acceptance" ? "处理中…" : acceptanceSession?.capability === "schedule" ? "执行验收定时提交" : "执行验收立即发布"}</AnimalButton>}
+                      {acceptanceSession?.capability === "metrics" && !acceptanceMetricsCollected && <AnimalButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { void syncVideoAcceptanceMetrics(); }}>{publishBusy === "acceptance" ? "处理中…" : "执行验收同步"}</AnimalButton>}
+                      {acceptanceTaskMatches && <AnimalButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { void openVideoAcceptanceEvidence(); }}>查看本地证据</AnimalButton>}
+                      {sessionCanFinalize && <AnimalButton type="primary" size="small" disabled={publishBusy !== null} onClick={() => { void finalizeVideoAcceptance(); }}>完成验收</AnimalButton>}
+                      {acceptanceSession !== null && <AnimalButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); setAcceptanceBlocker(null); }}>退出本地会话</AnimalButton>}
+                    </div>
+                    {acceptanceBlocker !== null && <p className="videoPublishBlocker">阻塞原因：{acceptanceBlocker}</p>}
+                  </section>
                   <label className="originalRightsCheck">
                     <input type="checkbox" checked={originalRightsConfirmed} onChange={(event) => { setOriginalRightsConfirmed(event.currentTarget.checked); }} />
                     <span>本次素材拥有所需原创或发布权利（仅用于本次准备，不保存发布授权）</span>
@@ -642,21 +1036,27 @@ export function MuziInspector({
                   <div className="videoPublishList">{VIDEO_TARGETS.map((item) => {
                     const fact = project.publications[item.key];
                     const draft = publishIntents[item.key];
+                    const account = accountFor(videoCapabilities, item.key, draft.accountProfile);
+                    const prepareAvailable = capabilityEnabled(account, "prepare_only");
+                    const modeAvailable = capabilityEnabled(account, draft.mode);
                     const task = videoPublish?.task?.platforms[item.key];
                     const metric = videoPublish?.metrics[item.key];
                     const commitReady = task?.commitEnabled === true && task.authorizationDigest !== null && task.approvalSummary !== null && (task.status === "READY_TO_PUBLISH" || task.status === "READY_TO_SCHEDULE");
                     return <div className="videoPublishRow" key={item.key}>
                       <div className="videoPublishPrimary">
                         <label className="videoPlatformToggle">
-                          <input type="checkbox" checked={draft.enabled} onChange={(event) => { updatePublishIntent(item.key, { enabled: event.currentTarget.checked }); }} />
+                          <input type="checkbox" checked={draft.enabled} disabled={publishBusy !== null || !prepareAvailable} title={prepareAvailable ? undefined : capabilityReason(account, "prepare_only")} onChange={(event) => { updatePublishIntent(item.key, { enabled: event.currentTarget.checked }); }} />
                           <span className="publicationIdentity"><PlatformMark id={item.icon} size={17} /><strong>{item.label}</strong></span>
                         </label>
                         <div className="videoPublishControls">
-                          <label><span>账号</span><input aria-label={`${item.label}账号`} value={draft.accountProfile} disabled={!draft.enabled || publishBusy !== null} onChange={(event) => { updatePublishIntent(item.key, { accountProfile: event.currentTarget.value }); }} /></label>
+                          <label><span>账号</span><select aria-label={`${item.label}账号`} value={draft.accountProfile} disabled={!draft.enabled || publishBusy !== null || videoCapabilities === null} onChange={(event) => { selectPublishAccount(item.key, event.currentTarget.value); }}>
+                            {videoCapabilities?.accounts.filter((candidate) => candidate.platform === item.key).length === 0 && <option value="">暂无已登记账号</option>}
+                            {videoCapabilities?.accounts.filter((candidate) => candidate.platform === item.key).map((candidate) => <option key={candidate.accountProfile} value={candidate.accountProfile} disabled={!candidate.enabled}>{candidate.displayName}（{candidate.accountProfile}{candidate.enabled ? "" : "，已停用"}）</option>)}
+                          </select></label>
                           <label><span>模式</span><select aria-label={`${item.label}发布模式`} value={draft.mode} disabled={!draft.enabled || publishBusy !== null} onChange={(event) => { updatePublishIntent(item.key, { mode: event.currentTarget.value as VideoPublishMode }); }}>
-                            <option value="prepare_only">仅准备</option>
-                            <option value="publish_now">立即发布</option>
-                            <option value="schedule">定时发布</option>
+                            <option value="prepare_only" disabled={!capabilityEnabled(account, "prepare_only")}>仅准备{!capabilityEnabled(account, "prepare_only") ? `（${capabilityReason(account, "prepare_only")}）` : ""}</option>
+                            <option value="publish_now" disabled={!capabilityEnabled(account, "publish_now")}>立即发布{!capabilityEnabled(account, "publish_now") ? `（${capabilityReason(account, "publish_now")}）` : ""}</option>
+                            <option value="schedule" disabled={!capabilityEnabled(account, "schedule")}>定时发布{!capabilityEnabled(account, "schedule") ? `（${capabilityReason(account, "schedule")}）` : ""}</option>
                           </select></label>
                           {draft.mode === "schedule" && <label className="scheduleInput"><span>中国标准时间</span><input type="datetime-local" aria-label={`${item.label}定时时间`} value={draft.scheduledAt} disabled={!draft.enabled || publishBusy !== null} onChange={(event) => { updatePublishIntent(item.key, { scheduledAt: event.currentTarget.value }); }} /></label>}
                         </div>
@@ -669,6 +1069,8 @@ export function MuziInspector({
                         {task !== undefined && task.mode !== "prepare_only" && <AnimalButton type="primary" size="small" disabled={!commitReady || publishBusy !== null} onClick={() => { void commitVideoPublish(item.key); }}>{task.mode === "schedule" ? "确认定时提交" : "确认立即发布"}</AnimalButton>}
                       </div>
                       {task?.commitBlocker !== null && task?.commitBlocker !== undefined && <p className="videoPublishBlocker">{task.commitBlocker.message}</p>}
+                      {!modeAvailable && <p className="videoPublishBlocker">{VIDEO_CAPABILITY_LABELS[draft.mode]}不可用：{capabilityReason(account, draft.mode)}</p>}
+                      {!capabilityEnabled(account, "metrics") && <p className="videoPublishBlocker">播放数据同步不可用：{capabilityReason(account, "metrics")}</p>}
                       {metric !== undefined && <dl className="videoMetricLine">
                         <div><dt>播放</dt><dd>{metricText(metric.views, metric.delta.views)}</dd></div>
                         <div><dt>点赞</dt><dd>{metricText(metric.likes, metric.delta.likes)}</dd></div>

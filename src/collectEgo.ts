@@ -50,6 +50,7 @@ export interface CollectRunOptions {
   xhsScrollSteps?: number;
   registryPath?: string;
   accounts?: Partial<Record<PublishPlatform, string>>;
+  metricsGrants?: Partial<Record<PublishPlatform, string>>;
 }
 
 export { defaultCollectSpaceName } from "./collectSpaces.ts";
@@ -96,6 +97,7 @@ export async function runCollectPublish(
     if (options.maxPages !== undefined) env.OIL_COLLECT_MAX_PAGES = String(options.maxPages);
     if (options.xhsScrollSteps !== undefined) env.OIL_COLLECT_XHS_SCROLL = String(options.xhsScrollSteps);
     if (options.accounts !== undefined) env.OIL_COLLECT_ACCOUNTS = JSON.stringify(options.accounts);
+    if (options.metricsGrants !== undefined) env.OIL_COLLECT_METRICS_GRANTS = JSON.stringify(options.metricsGrants);
     const child = spawn(process.execPath, [resolvedScript], {
       stdio: ["ignore", "pipe", "pipe"],
       env,

@@ -222,11 +222,29 @@ async function syncService(profile: CreatorProfile, externalActionsEnabled = tru
     externalActionsEnabled: boolean;
     scanned: () => Promise<{ items: ContentSummary[] }>;
     invalidateCatalog: () => void;
+    getMuziVideoPublishCapabilities: () => Promise<unknown>;
   };
   probe.dataDir = dataDir;
   probe.externalActionsEnabled = externalActionsEnabled;
   probe.scanned = async () => ({ items: [] });
   probe.invalidateCatalog = () => undefined;
+  probe.getMuziVideoPublishCapabilities = async () => ({
+    schema: "muzi.video-publisher.capabilities/1",
+    generatedAt: new Date().toISOString(),
+    unavailableReason: null,
+    accounts: profile.enabledPlatforms.map((platform) => ({
+      platform,
+      accountProfile: `${platform}-main`,
+      displayName: `${platform}-main`,
+      enabled: true,
+      capabilities: {
+        prepare_only: { accepted: false, enabled: false, reason: "not tested", acceptedAt: null, adapterVersion: null },
+        publish_now: { accepted: false, enabled: false, reason: "not tested", acceptedAt: null, adapterVersion: null },
+        schedule: { accepted: false, enabled: false, reason: "not tested", acceptedAt: null, adapterVersion: null },
+        metrics: { accepted: true, enabled: true, reason: null, acceptedAt: new Date().toISOString(), adapterVersion: `${platform}-metrics/1` },
+      },
+    })),
+  });
   return service;
 }
 
@@ -248,6 +266,10 @@ describe("OilCreatorService.syncPublish", () => {
     await service.syncPublish({}, new AbortController().signal);
 
     expect(collect.calls).toEqual([{ platforms: ["douyin", "wechat"] }]);
+    expect(collect.run.mock.calls[0]?.[2]).toMatchObject({
+      accounts: { douyin: "douyin-main", wechat: "wechat-main" },
+      metricsGrants: { douyin: "douyin-main", wechat: "wechat-main" },
+    });
   });
 
   it("rejects an explicitly requested disabled platform", async () => {

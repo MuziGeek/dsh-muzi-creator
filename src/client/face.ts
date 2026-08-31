@@ -37,6 +37,10 @@ import type {
   MuziWorkspaceRevision,
   VideoMetricsSyncRequest,
   VideoMetricsSyncResult,
+  VideoAcceptanceBeginRequest,
+  VideoAcceptanceFinalizeRequest,
+  VideoAcceptanceFinalizeResult,
+  VideoAcceptanceSessionResult,
   VideoPublishCommitRequest,
   VideoPublishPrepareRequest,
   VideoPublishStatusResult,
@@ -44,6 +48,7 @@ import type {
   PendingKnowledgeFile,
   PendingKnowledgeListResult,
 } from "../muziTypes.ts";
+import type { VideoPublishCapabilitiesResult } from "../videoCapabilities.ts";
 import type {
   TrellisArchivePreview,
   TrellisArchiveResult,
@@ -111,6 +116,9 @@ export interface MuziViewFace {
     url?: string;
     publishedAt?: string;
   }) => Promise<MuziProjectDetail>;
+  getVideoPublishCapabilities: () => Promise<VideoPublishCapabilitiesResult>;
+  beginVideoAcceptance: (request: VideoAcceptanceBeginRequest) => Promise<VideoAcceptanceSessionResult>;
+  finalizeVideoAcceptance: (request: VideoAcceptanceFinalizeRequest) => Promise<VideoAcceptanceFinalizeResult>;
   prepareVideoPublish: (request: VideoPublishPrepareRequest) => Promise<VideoPublishTaskResult>;
   commitVideoPublish: (request: VideoPublishCommitRequest) => Promise<VideoPublishTaskResult>;
   getVideoPublishStatus: (id: string, taskId?: string) => Promise<VideoPublishStatusResult>;

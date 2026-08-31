@@ -125,6 +125,8 @@ import type {
   MuziProjectListResult,
   MuziProjectStatusRequest,
   MuziPublicationSetRequest,
+  MuziVideoPlatform,
+  AcceptanceCapability,
   VideoMetricsSyncRequest,
   VideoMetricsSyncResult,
   VideoAcceptanceBeginRequest,
@@ -142,6 +144,7 @@ import type {
   PendingKnowledgeListResult,
   PendingKnowledgeReference,
 } from "./muziTypes.ts";
+import type { VideoPublishCapabilitiesResult } from "./videoCapabilities.ts";
 import type {
   BindStudioRequest,
   BurnJob,
@@ -284,9 +287,47 @@ export class OilCreatorService extends TypertRemoteService {
     return this.trellis.list(signal);
   }
 
+  private async requireVideoCapability(
+    platform: MuziVideoPlatform,
+    accountProfile: string,
+    capability: AcceptanceCapability,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const snapshot = await this.getMuziVideoPublishCapabilities({}, signal);
+    const account = snapshot.accounts.find((item) => item.platform === platform && item.accountProfile === accountProfile);
+    const state = account?.capabilities[capability];
+    if (state?.enabled === true) return;
+    const reason = snapshot.unavailableReason ?? state?.reason ?? "账号未登记或能力尚未验收";
+    throw Object.assign(new Error(`${platform} / ${accountProfile} 的 ${capability} 不可用：${reason}`), { code: "ACCEPTANCE_CAPABILITY_DISABLED" });
+  }
+
+  private async requireRegisteredVideoAccount(
+    platform: MuziVideoPlatform,
+    accountProfile: string,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const snapshot = await this.getMuziVideoPublishCapabilities({}, signal);
+    if (snapshot.accounts.some((item) => item.platform === platform && item.accountProfile === accountProfile && item.enabled)) return;
+    const reason = snapshot.unavailableReason ?? "账号未登记";
+    throw Object.assign(new Error(`${platform} / ${accountProfile} 不可用：${reason}`), { code: "ACCOUNT_NOT_REGISTERED" });
+  }
+
   async prepareMuziVideoPublish(request: VideoPublishPrepareRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
     if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    if (request.acceptanceSessionId !== undefined) {
+      if (request.intents.length !== 1) throw new Error("验收会话只能准备一个平台和一项能力");
+      const intent = request.intents[0]!;
+      await this.requireRegisteredVideoAccount(intent.platform, intent.accountProfile, signal);
+    } else {
+      await Promise.all(request.intents.map((intent) => this.requireVideoCapability(intent.platform, intent.accountProfile, intent.mode, signal)));
+    }
     return this.videoPublisher.prepare(request, signal);
+  }
+
+  async getMuziVideoPublishCapabilities(_request: Record<string, never>, signal: AbortSignal): Promise<VideoPublishCapabilitiesResult> {
+    // This command only reads the publisher's local acceptance registry. It is
+    // intentionally available while external actions remain disabled.
+    return this.videoPublisher.capabilities(signal);
   }
 
   async beginMuziVideoAcceptance(request: VideoAcceptanceBeginRequest, signal: AbortSignal): Promise<VideoAcceptanceSessionResult> {
@@ -301,6 +342,13 @@ export class OilCreatorService extends TypertRemoteService {
 
   async commitMuziVideoPublish(request: VideoPublishCommitRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
     if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    const status = await this.videoPublisher.status({ id: request.id, taskId: request.taskId }, signal);
+    const accountProfile = status.task?.platforms[request.platform]?.accountProfile;
+    if (accountProfile === undefined) throw new Error("无法确认待提交平台的账号绑定");
+    const capability = status.task?.platforms[request.platform]?.mode;
+    if (capability !== "publish_now" && capability !== "schedule") throw new Error("仅准备任务不可进入最终提交");
+    if (request.acceptanceSessionId !== undefined) await this.requireRegisteredVideoAccount(request.platform, accountProfile, signal);
+    else await this.requireVideoCapability(request.platform, accountProfile, capability, signal);
     return this.videoPublisher.commit(request, signal);
   }
 
@@ -310,6 +358,24 @@ export class OilCreatorService extends TypertRemoteService {
 
   async syncMuziVideoMetrics(request: VideoMetricsSyncRequest, signal: AbortSignal): Promise<VideoMetricsSyncResult> {
     if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
+    const status = await this.videoPublisher.status({ id: request.id }, signal);
+    const project = await this.muzi.getProject({ id: request.id });
+    const requested = request.platforms ?? (["xiaohongshu", "douyin", "bilibili", "wechat"] as MuziVideoPlatform[]).filter((platform) => {
+      const publication = project.publications[platform];
+      return publication.status === "published" || (publication.status === "platform_draft" && publication.scheduledAt !== null);
+    });
+    if (request.acceptanceSessionId !== undefined && (requested.length !== 1 || request.acceptanceAccountProfile === undefined)) {
+      throw new Error("播放数据验收会话必须绑定一个平台和一个已登记账号");
+    }
+    await Promise.all(requested.map((platform) => {
+      const accountProfile = request.acceptanceSessionId === undefined
+        ? request.accountProfiles?.[platform] ?? status.task?.platforms[platform]?.accountProfile
+        : request.acceptanceAccountProfile;
+      if (accountProfile === undefined) throw new Error(`${platform} 缺少可复核的账号绑定，不能同步播放数据`);
+      return request.acceptanceSessionId === undefined
+        ? this.requireVideoCapability(platform, accountProfile, "metrics", signal)
+        : this.requireRegisteredVideoAccount(platform, accountProfile, signal);
+    }));
     return this.videoPublisher.syncMetrics(request, signal);
   }
 
@@ -871,6 +937,19 @@ export class OilCreatorService extends TypertRemoteService {
       throw new Error(`content not found: ${scopedId}`);
     }
     if (platforms.length === 0) return { matched: 0, platforms: [] };
+    const capabilitySnapshot = await this.getMuziVideoPublishCapabilities({}, signal);
+    const metricAccounts = Object.fromEntries(platforms.map((platform) => {
+      const candidates = capabilitySnapshot.accounts.filter((account) => account.platform === platform && account.enabled && account.capabilities.metrics.enabled);
+      if (candidates.length === 0) {
+        throw new Error(`${platform} 没有已验收的播放数据同步账号`);
+      }
+      if (candidates.length > 1) {
+        throw new Error(`${platform} 有多个已验收账号；旧版片库同步无法安全选择，请使用 Muzi Creator 项目同步`);
+      }
+      return [platform, candidates[0]!.accountProfile];
+    })) as Partial<Record<MuziVideoPlatform, string>>;
+    const metricContextKey = JSON.stringify(platforms.map((platform) => [platform, metricAccounts[platform]]));
+    const accountBoundCache = cached?.contextKey === metricContextKey ? cached : undefined;
     const targets: CollectTarget[] | undefined = scopedId === undefined
       ? undefined
       : scoped.map((item) => {
@@ -888,43 +967,46 @@ export class OilCreatorService extends TypertRemoteService {
       });
     let collected: CollectResult;
     let fromCache = false;
-    const cachedSlice = cached === undefined ? undefined : filterCollected(cached.result, platforms);
+    const cachedSlice = accountBoundCache === undefined ? undefined : filterCollected(accountBoundCache.result, platforms);
     const cacheCoversPlatforms = cachedSlice !== undefined
       && platforms.every((platform) => cachedSlice.collected.some((page) => page.platform === platform));
     if (
       request.force !== true
-      && cached !== undefined
-      && cacheIsFresh(cached.fetchedAt)
+      && accountBoundCache !== undefined
+      && cacheIsFresh(accountBoundCache.fetchedAt)
       && cacheCoversPlatforms
-      && cacheCoversTargets(cachedSlice ?? cached.result, targets, cached.scope)
+      && cacheCoversTargets(cachedSlice ?? accountBoundCache.result, targets, accountBoundCache.scope)
     ) {
-      collected = cachedSlice ?? cached.result;
+      collected = cachedSlice ?? accountBoundCache.result;
       fromCache = true;
     } else {
       try {
         collected = await runCollectPublish(collectScriptPath(), signal, {
           ...(platforms === undefined ? {} : { platforms }),
           ...(targets === undefined ? {} : { targets }),
+          accounts: metricAccounts,
+          metricsGrants: metricAccounts,
           registryPath: collectRegistryPathForDataDir(this.dataDir),
         });
         const merged = scopedId === undefined
-          ? mergeCollected(cached?.result, collected, platforms)
-          : unionCollected(cached?.result, collected);
+          ? mergeCollected(accountBoundCache?.result, collected, platforms)
+          : unionCollected(accountBoundCache?.result, collected);
         await saveCollectCache(this.dataDir, merged, {
-          scope: nextCollectCacheScope(cached?.scope, scopedId !== undefined),
+          scope: nextCollectCacheScope(accountBoundCache?.scope, scopedId !== undefined),
+          contextKey: metricContextKey,
         });
         collected = filterCollected(merged, platforms);
       } catch (cause) {
         if (signal.aborted || (cause instanceof Error && cause.name === "AbortError")) throw cause;
         if (
-          cached === undefined
-          || !cacheIsFresh(cached.fetchedAt)
+          accountBoundCache === undefined
+          || !cacheIsFresh(accountBoundCache.fetchedAt)
           || !cacheCoversPlatforms
-          || !cacheCoversTargets(cachedSlice ?? cached.result, targets, cached.scope)
+          || !cacheCoversTargets(cachedSlice ?? accountBoundCache.result, targets, accountBoundCache.scope)
         ) {
           throw cause;
         }
-        collected = cachedSlice ?? cached.result;
+        collected = cachedSlice ?? accountBoundCache.result;
         fromCache = true;
       }
     }

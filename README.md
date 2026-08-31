@@ -153,7 +153,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-muzi-creator git
 | 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
 | Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
 | Creator 文档定位 | [Obsidian](https://obsidian.md/) | 配置宿主上的 `obsidianExecutable` 绝对路径后，内容详情可直接定位到对应 Markdown 文档 |
-| 多平台草稿、立即/定时发布与数据回收 | 本机 Chrome + 固定版本 Patchright + [video-publisher](https://github.com/oil-oil/video-publisher-skill) | Windows 使用独立账号目录；各平台能力须经真实账号验收，最终动作和同步均需当次批准 |
+| 多平台草稿、立即/定时发布与数据回收 | 本机 Chrome + 固定版本 Patchright + [video-publisher](https://github.com/oil-oil/video-publisher-skill) | Windows 使用独立账号目录；账号和模式只从只读能力快照选择，缺失、错误或未验收一律禁用，最终动作和同步仍需当次批准 |
 | 公众号图文 | [oil-video-article](https://github.com/oil-oil/oil-video-article) | 独立工作流，工作台负责展示已有文章 |
 
 字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
@@ -168,6 +168,7 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-muzi-creator git
 - Obsidian 定位路径（`obsidianExecutable`）必须是宿主机器上 Obsidian 可执行文件的绝对路径，用于在 Obsidian 中定位 Creator 文档；留空回退到 Cordis 配置值（如有）。
 - `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与 AI 发布或数据同步；全部关闭时不执行这两项操作。
 - `externalActionsEnabled` 默认关闭。打开它只允许请求进入 DSH 审批，不会保存发布授权；准备上传、每个平台最终提交和数据同步仍分别确认。
+- `muzi_creator_video_publish_capabilities` 只读运行 `publisher.mjs capabilities --json`，返回 `muzi.video-publisher.capabilities/1` 账号快照。快照必须为每个账号显式给出 `prepare_only`、`publish_now`、`schedule`、`metrics` 的验收、启用、原因、验收时间和适配器版本；任何字段缺失或解析错误都会 fail closed。
 - 脚本规则既可以在设置页修改，也可以让 AI 通过 `oil_script_rules` 记录和更新。
 - 页面填写的项目目录和 Obsidian 路径保存在兼容目录 `~/.dsh-oil-creator/overlay.json`，覆盖 Cordis 配置的初始值，不迁移既有本地数据。Cordis 高级配置仍保留 `libraryRoot`、`creatorRoot`、`atlasRoot`、`dataDir`、`subtitleSkillDir`、`coverSkillDir`、`obsidianExecutable` 和 `trellisProjectsRoot`，作为首次启动和自动发现无法覆盖特殊环境时的回退。知识预览通过 `graphNodeLimit` 和 `graphEdgeLimit` 控制只读星图上限，默认分别为 500 个节点和 5000 条关系。
 

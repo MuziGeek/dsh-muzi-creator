@@ -44,6 +44,16 @@ describe("Muzi Creator save tool", () => {
 });
 
 describe("Muzi Creator video acceptance tools", () => {
+  it("reads capabilities without requiring an external-action tool flow", async () => {
+    const tools: CapturedTool[] = [];
+    const getMuziVideoPublishCapabilities = vi.fn(async () => ({ schema: "muzi.video-publisher.capabilities/1", accounts: [] }));
+    const service = { getMuziVideoPublishCapabilities } as unknown as OilCreatorService;
+    registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
+    const tool = tools.find((item) => item.name === "muzi_creator_video_publish_capabilities")!;
+    await expect(tool.execute({}, { signal: new AbortController().signal })).resolves.toMatchObject({ accounts: [] });
+    expect(getMuziVideoPublishCapabilities).toHaveBeenCalledOnce();
+  });
+
   it("forwards a bound prepare-only acceptance request without treating it as publication authority", async () => {
     const tools: CapturedTool[] = [];
     const beginMuziVideoAcceptance = vi.fn(async () => ({
@@ -72,9 +82,9 @@ describe("Muzi Creator video acceptance tools", () => {
     }), expect.any(AbortSignal));
   });
 
-  it("blocks non-prepare-only finalization in this rollout before it reaches the service", async () => {
+  it("forwards a single non-prepare acceptance finalization to the service", async () => {
     const tools: CapturedTool[] = [];
-    const finalizeMuziVideoAcceptance = vi.fn();
+    const finalizeMuziVideoAcceptance = vi.fn(async () => ({ capability: "metrics" }));
     const service = { finalizeMuziVideoAcceptance } as unknown as OilCreatorService;
     registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
     const tool = tools.find((item) => item.name === "muzi_creator_finalize_video_acceptance")!;
@@ -85,13 +95,13 @@ describe("Muzi Creator video acceptance tools", () => {
       capability: "metrics",
       acceptanceSessionId: "vas-0123456789abcdef01234567",
       confirmed: true,
-    }, { signal: new AbortController().signal })).rejects.toThrow("prepare_only");
-    expect(finalizeMuziVideoAcceptance).not.toHaveBeenCalled();
+    }, { signal: new AbortController().signal })).resolves.toMatchObject({ capability: "metrics" });
+    expect(finalizeMuziVideoAcceptance).toHaveBeenCalledWith(expect.objectContaining({ capability: "metrics" }), expect.any(AbortSignal));
   });
 
-  it("blocks non-prepare-only acceptance sessions before opening an external page", async () => {
+  it("forwards a single non-prepare acceptance session before opening an external page", async () => {
     const tools: CapturedTool[] = [];
-    const beginMuziVideoAcceptance = vi.fn();
+    const beginMuziVideoAcceptance = vi.fn(async () => ({ sessionId: "vas-0123456789abcdef01234567" }));
     const service = { beginMuziVideoAcceptance } as unknown as OilCreatorService;
     registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
     const tool = tools.find((item) => item.name === "muzi_creator_begin_video_acceptance")!;
@@ -104,7 +114,30 @@ describe("Muzi Creator video acceptance tools", () => {
       scheduledAt: "2026-09-01T20:00:00+08:00",
       expectedAccountLabel: "验收账号",
       confirmed: true,
-    }, { signal: new AbortController().signal })).rejects.toThrow("prepare_only");
-    expect(beginMuziVideoAcceptance).not.toHaveBeenCalled();
+    }, { signal: new AbortController().signal })).resolves.toMatchObject({ sessionId: "vas-0123456789abcdef01234567" });
+    expect(beginMuziVideoAcceptance).toHaveBeenCalledWith(expect.objectContaining({ capability: "schedule", scheduledAt: "2026-09-01T20:00:00+08:00" }), expect.any(AbortSignal));
+  });
+
+  it("keeps metrics acceptance bound to one registered account", async () => {
+    const tools: CapturedTool[] = [];
+    const syncMuziVideoMetrics = vi.fn(async () => ({ acceptanceSessionStatus: "METRICS_COLLECTED", platforms: [] }));
+    const service = { syncMuziVideoMetrics } as unknown as OilCreatorService;
+    registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
+    const tool = tools.find((item) => item.name === "muzi_creator_sync_video_metrics")!;
+    await expect(tool.execute({
+      id: `mc_${"1".repeat(24)}`,
+      expectedRevision: 1,
+      platforms: ["xiaohongshu"],
+      force: true,
+      confirmed: true,
+      acceptanceSessionId: "vas-0123456789abcdef01234567",
+      acceptanceAccountProfile: "xiaohongshu-main",
+    }, { signal: new AbortController().signal })).resolves.toMatchObject({ acceptanceSessionStatus: "METRICS_COLLECTED" });
+    expect(syncMuziVideoMetrics).toHaveBeenCalledWith(expect.objectContaining({
+      platforms: ["xiaohongshu"],
+      force: true,
+      acceptanceSessionId: "vas-0123456789abcdef01234567",
+      acceptanceAccountProfile: "xiaohongshu-main",
+    }), expect.any(AbortSignal));
   });
 });
