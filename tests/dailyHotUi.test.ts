@@ -7,8 +7,10 @@ import {
   dailyHotItems,
   dailyHotItemTimestamp,
   dailyHotPrimaryLink,
+  dailyHotSummaryParagraphs,
   formatDailyHotCompactTime,
   formatDailyHotFullTime,
+  previewDailyHotSources,
 } from "../src/client/dailyHotUiModel.ts";
 import {
   getSelectedDailyHotItem,
@@ -87,6 +89,37 @@ describe("Daily Hot client model", () => {
     expect(formatDailyHotFullTime("invalid")).toBe("—");
   });
 
+  it("preserves summary text while grouping only natural long-text boundaries", () => {
+    expect(dailyHotSummaryParagraphs("第一段。\r\n\r\n第二段。 ")).toEqual(["第一段。", "第二段。"]);
+
+    const sentences = [
+      `第一句${"甲".repeat(88)}。`,
+      `第二句${"乙".repeat(88)}。`,
+      `第三句${"丙".repeat(88)}。`,
+    ];
+    const summary = sentences.join(" ");
+    const paragraphs = dailyHotSummaryParagraphs(summary);
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs.every((paragraph) => paragraph.length <= 220)).toBe(true);
+    expect(paragraphs.join(" ")).toBe(summary);
+
+    const withoutNaturalBoundary = "连续内容".repeat(70);
+    expect(dailyHotSummaryParagraphs(withoutNaturalBoundary)).toEqual([withoutNaturalBoundary]);
+  });
+
+  it("previews six source names without changing their order", () => {
+    const cases = [0, 6, 7, 14];
+    for (const count of cases) {
+      const sources = Array.from({ length: count }, (_, index) => `Source ${String(index + 1)}`);
+      const collapsed = previewDailyHotSources(sources, false);
+      const expanded = previewDailyHotSources(sources, true);
+      expect(collapsed.items).toEqual(sources.slice(0, 6));
+      expect(collapsed.remaining).toBe(Math.max(0, count - 6));
+      expect(expanded.items).toEqual(sources);
+      expect(expanded.remaining).toBe(Math.max(0, count - 6));
+    }
+  });
+
   it("keeps selection in memory and emits only real object changes", () => {
     const selected = item("selected");
     let notifications = 0;
@@ -106,6 +139,8 @@ describe("Daily Hot client model", () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort());
     expect(zh["tab.hot"]).toBe("热点");
     expect(en["tab.hot"]).toBe("Hot");
+    expect(zh["hot.sources.showMore"]).toBe("查看其余");
+    expect(en["hot.sources.hide"]).toBe("Show fewer sources");
   });
 });
 
@@ -143,7 +178,18 @@ describe("Daily Hot UI contract", () => {
     expect(inspector).toContain("applyConversationInset");
     expect(inspector).toContain("setInspectorWidth");
     expect(inspector).toContain('role="separator"');
+    expect(inspector).toContain("data-layout={layout.mode}");
+    expect(inspector).toContain('className="dailyHotDetailLayout"');
+    expect(inspector).toContain('className="dailyHotEvidenceRail"');
+    expect(inspector).toContain('className="dailyHotLatest"');
+    expect(inspector).toContain("dailyHotSummaryParagraphs");
+    expect(inspector).toContain("previewDailyHotSources");
+    expect(inspector).toContain("aria-expanded={sourcesExpanded}");
+    expect(inspector).toContain("aria-controls={sourceListId}");
+    expect(inspector).toContain("scrollRef.current?.scrollTo({ top: 0 })");
     expect(inspector.match(/target="_blank" rel="noreferrer"/g)).toHaveLength(2);
+    expect(css).toContain("@media (min-width: 1080px)");
+    expect(css).toContain("grid-template-columns: minmax(0, 1fr) 288px");
     expect(css).toContain("@media (max-width: 880px)");
     expect(css).toContain("width: 100% !important");
     expect(css).toContain("overflow: auto");
