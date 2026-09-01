@@ -1,0 +1,131 @@
+/*
+ * DSH Desktop 2.0.2 compatibility skin.
+ *
+ * The theme lifecycle activates it with data-muzi-host-skin="animal-island".
+ * Appearance rules exclude the plugin root and portal. The narrow-screen
+ * shell rule only positions the expanded plugin sidebar over the conversation.
+ */
+
+body[data-muzi-host-skin="animal-island"] {
+  min-inline-size: 0;
+  overflow-x: clip;
+}
+
+body[data-muzi-host-skin="animal-island"] :not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  font-family: var(--dsw-font-family, ui-sans-serif, system-ui, sans-serif);
+}
+
+body[data-muzi-host-skin="animal-island"] :where(button, input, select):not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  min-block-size: 2rem;
+  border-radius: 999px;
+}
+
+body[data-muzi-host-skin="animal-island"] textarea:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  min-block-size: 2.75rem;
+  max-inline-size: 100%;
+  border-radius: 1.125rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+body[data-muzi-host-skin="animal-island"] form:has(textarea):not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  border-radius: 1.5rem;
+}
+
+body[data-muzi-host-skin="animal-island"] [role="dialog"]:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *),
+body[data-muzi-host-skin="animal-island"] [aria-modal="true"]:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  max-inline-size: min(50rem, calc(100vw - 2rem));
+  border-radius: 1.5rem;
+  overflow-wrap: anywhere;
+}
+
+body[data-muzi-host-skin="animal-island"] [role="menu"]:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  max-inline-size: min(22rem, calc(100vw - 1rem));
+  border-radius: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+body[data-muzi-host-skin="animal-island"] [role="menuitem"]:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  min-block-size: 2rem;
+  border-radius: 1rem;
+  overflow-wrap: anywhere;
+}
+
+body[data-muzi-host-skin="animal-island"] [role="tooltip"]:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  max-inline-size: min(24rem, calc(100vw - 1rem));
+  border-radius: 1rem;
+  overflow-wrap: anywhere;
+}
+
+body[data-muzi-host-skin="animal-island"] :where([role="status"], [role="alert"]):not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  max-inline-size: min(28rem, calc(100vw - 1rem));
+  border-radius: 1.125rem;
+  overflow-wrap: anywhere;
+}
+
+body[data-muzi-host-skin="animal-island"] aside:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+body[data-muzi-host-skin="animal-island"] :where(button, input, select, textarea, [tabindex]):focus-visible:not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+body[data-muzi-host-skin="animal-island"] :where(p, li, dd, dt, pre, code, blockquote):not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+body[data-muzi-host-skin="animal-island"] :not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+  scrollbar-color: var(--dsw-alias-scrollbar-bg-l2) var(--dsw-alias-bg-base);
+  scrollbar-width: thin;
+}
+
+body[data-muzi-host-skin="animal-island"] :not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *)::-webkit-scrollbar {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+}
+
+body[data-muzi-host-skin="animal-island"] :not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *)::-webkit-scrollbar-thumb {
+  background: var(--dsw-alias-scrollbar-bg-l2);
+  border-radius: 999px;
+}
+
+@media (max-width: 640px) {
+  body[data-muzi-host-skin="animal-island"] [data-details-collapsed]:has([data-plugin="dsh-muzi-creator"][data-surface="sidebar"][data-sidebar-expanded="true"]) > :has(> [data-slot="conversation"]) {
+    position: absolute;
+    inset: 0;
+    min-inline-size: 0;
+  }
+
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"][data-sidebar-expanded="true"] {
+    position: fixed;
+    z-index: 30;
+    inset: 0 auto 0 0;
+    inline-size: min(22.5rem, 100vw);
+  }
+}
+
+@media (max-width: 390px) {
+  body[data-muzi-host-skin="animal-island"] :where([role="dialog"], [aria-modal="true"], [role="menu"], [role="tooltip"], [role="status"], [role="alert"]):not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+    max-inline-size: calc(100vw - 1rem);
+    border-radius: 1.125rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-muzi-host-skin="animal-island"] :not([data-plugin="dsh-muzi-creator"]):not([data-plugin="dsh-muzi-creator"] *):not([data-plugin-modal="dsh-muzi-creator"]):not([data-plugin-modal="dsh-muzi-creator"] *) {
+    scroll-behavior: auto;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}

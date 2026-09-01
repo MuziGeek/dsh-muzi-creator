@@ -150,6 +150,7 @@ export function OilSidebarRoot({
       ref={column}
       data-plugin="dsh-muzi-creator"
       data-surface="sidebar"
+      data-sidebar-expanded={wide || undefined}
       className={cx(
         !wide && "collapsed",
         !wide && everWide.current && "railIn",

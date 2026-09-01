@@ -1,6 +1,7 @@
 import type { ClientContext, SessionId, WorkspaceId } from "@deepseek-ai/dsh-client-runtime/client";
 import type { IConversation } from "@deepseek-ai/dsh-client-ui-conversation/client";
 import "animal-island-ui/style";
+import "./host-skin/dsh-2.0.2.css";
 import type {} from "@deepseek-ai/dsh-client-locale/client";
 import type {} from "@deepseek-ai/dsh-client-ui-layout/client";
 import type {} from "@deepseek-ai/dsh-api-remotes/client";
@@ -14,6 +15,7 @@ import { startLibraryLiveSync } from "./catalogSync.ts";
 import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 import { releaseShellChrome } from "./contentSelection.ts";
 import { registerMuziTriggers } from "./contentTriggers.ts";
+import { installMuziHostSkin } from "./host-skin/index.ts";
 import { stageSessionHandoff } from "./sessionHandoff.ts";
 import type {
   ContentDetail,
@@ -217,9 +219,10 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
   return answer.value;
 }
 
-export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection", "conversation"];
+export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection", "conversation", "theme"];
 
 export function apply(ctx: ClientContext): void {
+  installMuziHostSkin(ctx);
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-oil-creator: dictionaries");
   ctx.effect(() => {
     remountPluginCss();
