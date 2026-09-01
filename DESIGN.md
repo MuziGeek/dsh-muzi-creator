@@ -15,7 +15,7 @@ The package is `animal-island-ui@1.6.0`, licensed CC BY-NC 4.0 by guokaigdg. Muz
 | Content and knowledge cards | `Card` | Retain explicit keyboard semantics when a card selects content. |
 | Status, stage, file and source labels | `Tag` | Keep status meaning in text, not color alone. |
 | Search and controlled text fields | `Input` | Controlled value and change handler are required. |
-| Platform, account and mode choices | `Select` | Controlled `options`, `value`, and `onChange`; preserve disabled capability states. |
+| Platform, account and mode choices | `Select` | Controlled `options`, `value`, and `onChange`; unavailable choices stay visible as explanatory text but are excluded from the focusable option list. |
 | Enable/confirm choices | `Checkbox` / `Switch` | Preserve the external-action safety defaults. |
 | Actions | `Button` | Primary depth shadow is reserved for primary/danger actions. |
 | Loading | `Skeleton` / `Loading` | Do not replace meaningful error or unavailable states with an indefinite spinner. |
@@ -30,4 +30,4 @@ The workbench keeps a session/sidebar region, a content or knowledge region, and
 
 ## Host integration boundary
 
-The plugin owns its client surfaces under `data-plugin="dsh-muzi-creator"` and its own CSS files. DSH owns the conversation, settings host, approvals, and shell layout. The Lab creates a disposable Web profile under `.lab/dsh-home`, links only the current source checkout into that profile, and never copies a real DSH profile, credentials, or user content.
+The plugin owns its client surfaces under `data-plugin="dsh-muzi-creator"` and its own CSS files. The injected Hero mark carries the same ownership attribute; plugin CSS does not select the surrounding conversation DOM. DSH owns the conversation, settings host, approvals, and shell layout. The Lab creates a disposable Web profile under `.lab/dsh-home`, links only the current source checkout into that profile, and never copies a real DSH profile, credentials, or user content. Every Lab start verifies the generated manifest, patch, workspace file, confined writable paths, and checkout link before launching DSH.

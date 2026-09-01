@@ -31,6 +31,7 @@ const REQUIRED_FILES = [
   "tests/settingsHost.test.ts",
   "tests/settingsSlot.test.ts",
   "README.md",
+  "DESIGN.md",
   "assets/readme/hero.svg",
   "LICENSE",
 ];
@@ -173,7 +174,7 @@ function checkRelease(root) {
   }
 
   const packageFiles = new Set(manifest.files ?? []);
-  for (const file of [...RUNTIME_FILES, "cordis.patch.yml", "README.md", "assets/readme/hero.svg"]) {
+  for (const file of [...RUNTIME_FILES, "cordis.patch.yml", "README.md", "DESIGN.md", "assets/readme/hero.svg"]) {
     if (!packageFiles.has(file)) addFailure(`npm tarball 未声明 ${file}`);
   }
   if (manifest.main !== "./lib/index.js") addFailure("main 未指向预构建 lib/index.js");
@@ -215,7 +216,7 @@ function runReleasePipeline(root) {
   const packedFiles = new Set(
     metadata.flatMap((pack) => pack.files ?? []).map((file) => file.path),
   );
-  const missing = [...RUNTIME_FILES, "assets/readme/hero.svg"]
+  const missing = [...RUNTIME_FILES, "DESIGN.md", "assets/readme/hero.svg"]
     .filter((file) => !packedFiles.has(file));
   return missing.length > 0
     ? [`npm pack --dry-run 缺少运行或 Hero 文件：${missing.join(", ")}`]

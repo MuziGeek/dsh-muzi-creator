@@ -127,6 +127,30 @@ describe("isolated UI Lab", () => {
     expect(invocation.env.ZENMUX_API_KEY).toBe("");
   });
 
+  it("rejects a runtime patch that diverges from the generated isolated paths", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    const patch = await readFile(paths.profilePatch, "utf8");
+    const divergentPatch = patch.replace(
+      /^    libraryRoot: .*$/m,
+      `    libraryRoot: ${JSON.stringify(join(repositoryRoot, "outside"))}`,
+    );
+    expect(divergentPatch).not.toBe(patch);
+    expect(divergentPatch).toContain("externalActionsEnabled: false");
+    await writeFile(paths.profilePatch, divergentPatch, "utf8");
+
+    await expect(assertLabConfiguration(paths)).rejects.toThrow("profile patch 已偏离隔离配置");
+  });
+
+  it("rejects a plugin link that no longer targets the current checkout", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    const unexpectedPlugin = join(repositoryRoot, "unexpected-plugin");
+    await mkdir(unexpectedPlugin, { recursive: true });
+    await unlink(paths.pluginLink);
+    await symlink(unexpectedPlugin, paths.pluginLink, process.platform === "win32" ? "junction" : "dir");
+
+    await expect(assertLabConfiguration(paths)).rejects.toThrow("未指向当前源码 checkout");
+  });
+
   it("keeps Animal Island imports and plugin ownership centralized", async () => {
     const files = await sourceFiles(join(sourceRoot, "src", "client"));
     const contents = await Promise.all(files.map(async (path) => ({ path, text: await readFile(path, "utf8") })));
@@ -135,11 +159,17 @@ describe("isolated UI Lab", () => {
     ));
     const deepImports = contents.filter(({ text }) => /animal-island-ui\/(?:dist|src)\//.test(text));
     const pluginCss = await readFile(join(sourceRoot, "src", "client", "pluginCss.ts"), "utf8");
+    const islandCss = await readFile(join(sourceRoot, "src", "client", "IslandWorkbench.css"), "utf8");
+    const heroBrand = await readFile(join(sourceRoot, "src", "client", "heroBrand.tsx"), "utf8");
+    const packageManifest = JSON.parse(await readFile(join(sourceRoot, "package.json"), "utf8"));
     const ownedSurfaces = contents.filter(({ text }) => text.includes('data-plugin="dsh-muzi-creator"'));
 
     expect(styleImports).toEqual([join(sourceRoot, "src", "client", "index.tsx")]);
     expect(deepImports).toEqual([]);
     expect(pluginCss).toContain('const PLUGIN_ID = "dsh-muzi-creator"');
+    expect(islandCss).not.toContain('[data-slot="conversation"]');
+    expect(heroBrand).toContain('data-plugin="dsh-muzi-creator"');
+    expect(packageManifest.files).toContain("DESIGN.md");
     expect(ownedSurfaces.length).toBeGreaterThan(0);
   });
 

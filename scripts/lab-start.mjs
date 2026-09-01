@@ -1,8 +1,16 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
+import { access, lstat, readFile, realpath } from "node:fs/promises";
 import { delimiter, extname, join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { fileURLToPath } from "node:url";
+import {
+  createLabProfileManifest,
+  createLabProfilePatch,
+  createLabSafetyConfig,
+  LAB_PROFILE_WORKSPACE,
+  LAB_WRITABLE_PATH_KEYS,
+} from "./lab-config.mjs";
 import { confinedPath, labPaths } from "./lab-paths.mjs";
 
 async function executable(candidate) {
@@ -42,31 +50,47 @@ export function isolatedEnvironment(paths) {
 }
 
 export async function assertLabConfiguration(paths) {
+  for (const target of [paths.safetyManifest, paths.profileManifest, paths.profilePatch, paths.profileWorkspace]) {
+    await confinedPath(paths.lab, target);
+  }
   let safety;
   try {
     safety = JSON.parse(await readFile(paths.safetyManifest, "utf8"));
   } catch (error) {
     throw new Error(`Lab 配置不存在或不可读；请先运行 pnpm lab:config。${String(error)}`);
   }
-  if (safety.externalActionsEnabled !== false || Object.keys(safety.credentials ?? {}).length !== 0) {
-    throw new Error("Lab 安全配置无效：外部动作必须关闭且凭据必须为空。");
+  const expectedSafety = createLabSafetyConfig(paths);
+  if (!isDeepStrictEqual(safety, expectedSafety)) {
+    throw new Error("Lab 安全配置与当前隔离目录不一致；请重新运行 pnpm lab:config。");
   }
-  for (const key of [
-    "libraryRoot",
-    "creatorRoot",
-    "atlasRoot",
-    "trellisProjectsRoot",
-    "dataDir",
-    "subtitleSkillDir",
-    "coverSkillDir",
-    "videoPublisherSkillDir",
-  ]) {
-    if (typeof safety[key] !== "string") throw new Error(`Lab 安全配置缺少路径：${key}`);
+  for (const key of LAB_WRITABLE_PATH_KEYS) {
     await confinedPath(paths.lab, safety[key]);
   }
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(paths.profileManifest, "utf8"));
+  } catch (error) {
+    throw new Error(`Lab Web profile manifest 不可读。${String(error)}`);
+  }
+  if (!isDeepStrictEqual(manifest, createLabProfileManifest(paths))) {
+    throw new Error("Lab Web profile manifest 已偏离隔离配置；请重新运行 pnpm lab:config。");
+  }
   const patch = await readFile(paths.profilePatch, "utf8");
-  if (!patch.includes("externalActionsEnabled: false")) {
-    throw new Error("Lab Web profile 未关闭外部动作。");
+  if (patch !== createLabProfilePatch(expectedSafety)) {
+    throw new Error("Lab Web profile patch 已偏离隔离配置；请重新运行 pnpm lab:config。");
+  }
+  const workspace = await readFile(paths.profileWorkspace, "utf8");
+  if (workspace !== LAB_PROFILE_WORKSPACE) {
+    throw new Error("Lab Web profile workspace 已偏离隔离配置；请重新运行 pnpm lab:config。");
+  }
+  await confinedPath(paths.lab, paths.profileModules);
+  const pluginLink = await lstat(paths.pluginLink);
+  if (!pluginLink.isSymbolicLink()) {
+    throw new Error("Lab 插件入口必须是指向当前源码 checkout 的受控链接。");
+  }
+  const [linkedPlugin, repository] = await Promise.all([realpath(paths.pluginLink), realpath(paths.root)]);
+  if (linkedPlugin !== repository) {
+    throw new Error("Lab 插件入口未指向当前源码 checkout；请重新运行 pnpm lab:setup。");
   }
   return safety;
 }

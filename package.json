@@ -39,6 +39,7 @@
     "cordis.patch.yml",
     "scripts/collect-publish.mjs",
     "README.md",
+    "DESIGN.md",
     "NOTICE",
     "assets/readme/hero.svg",
     "docs/*.md",

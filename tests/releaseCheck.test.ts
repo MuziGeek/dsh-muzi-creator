@@ -61,6 +61,7 @@ function createRepository() {
         "lib/collect-publish.mjs",
         "cordis.patch.yml",
         "README.md",
+        "DESIGN.md",
         "assets/readme/hero.svg",
       ],
       dsh: { bundle: { patch: "./cordis.patch.yml" } },
@@ -89,6 +90,7 @@ function createRepository() {
     ["src/client/index.tsx", "export {};\n"],
     ...REQUIRED_CHAIN_FILES.map((file) => [file, "export {};\n"] as const),
     ["README.md", "# test\n"],
+    ["DESIGN.md", "# design\n"],
     ["assets/readme/hero.svg", "<svg />\n"],
     ["LICENSE", "MIT\n"],
   ]);

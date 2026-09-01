@@ -24,7 +24,7 @@ export interface CompatibleHeroBrandSlots {
  * @returns decorative brand avatar.
  */
 export function MuziHeroBrandMark({ size }: HeroBrandMarkOwnerProps) {
-  return <img className="muziHeroBrandMark" src={MUZI_ICON_SRC} width={size} height={size} alt="" aria-hidden="true" />;
+  return <img data-plugin="dsh-muzi-creator" className="muziHeroBrandMark" src={MUZI_ICON_SRC} width={size} height={size} alt="" aria-hidden="true" />;
 }
 
 /**
