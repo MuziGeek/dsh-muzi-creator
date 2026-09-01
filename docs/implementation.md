@@ -2,9 +2,11 @@
 
 ## UI Lab 与 Animal Island 约束
 
-界面 Lab 是项目内的隔离开发环境，并在 `.lab/dsh-home/profiles/web` 创建一次性 DSH Web profile。它合成 fixture、安全清单和一个只指向当前源码目录的受控插件联接点；每次启动前逐项核对实际加载的 manifest、patch、workspace、受限写入路径和源码链接，任一文件偏离生成值即拒绝启动。脚本拒绝路径逃逸及其他符号链接/联接点，凭据为空且 `externalActionsEnabled` 固定为 `false`。Lab 不安装软件、不发布、不同步、不归档。
+界面 Lab 是项目内的隔离开发环境，并在 `.lab/dsh-home/profiles/web` 创建一次性 DSH Web profile。Desktop 2.0.2 另用 `.lab/desktop-home/profiles/web` 与 `.lab/desktop-user-data`，不共享个人 DSH home 或 Electron user-data。两条 profile 都只含一个指向当前源码 checkout 的受控插件链接；每次启动前逐项核对 manifest、patch、workspace、受限写入路径、源码链接和 `lib/index.js`、`lib/client.js`、`lib/typert.host.js`、`lib/collect-publish.mjs` 构建产物，任一文件偏离生成值即拒绝启动。
 
-Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token；宿主 DSH 对话、设置、审批和 shell layout 仍由 Host 所有。组件映射与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
+Desktop 2.0.2 的私有 `<user-data>/profile-selection/state.json` 固定为 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`；`<user-data>/desktop-market/state.json` 固定请求 `disabled`；`<desktop-home>/settings.yaml` 固定 `dsh-desktop.mode: compatibility`。三项状态都在 Electron spawn 前重新读取、严格比对。启动参数显式包含 `--user-data-dir <.lab/desktop-user-data>`；子进程的 `DSH_HOME`、`HOME`、`USERPROFILE` 指向 `.lab/desktop-home`，应用数据、遥测、凭据与外部能力保持隔离。脚本拒绝路径逃逸及其他符号链接/联接点，凭据为空且 `externalActionsEnabled` 固定为 `false`。Lab 不安装软件、不发布、不同步、不归档；本地 `.tgz` 成品路径只可做 `.lab/packages/` 下的准备性校验，安装与 Desktop 实机启动仍是单独验收步骤。
+
+Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token；宿主 DSH 对话、设置、审批和 shell layout 仍由 Host 所有。Inspector 只控制自身 Overlay 的位置和宽度，不查询对话滚动容器，也不向对话 DOM 写入 padding 或 transition；宽屏内的 480 px 分栏由 Inspector 容器查询切换内部单列布局，不依赖窗口宽度。组件映射、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
 
 `dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的单个运行插件。它把选题、创作、知识、热点、项目进度和受控发布入口放进同一界面，同时保留 Agent 对话。
 
@@ -92,7 +94,7 @@ Windows 的 `prepare_only`、`publish_now`、`schedule`、`metrics` 按账号分
 保持 **一个** Harness 插件。官方要求：只有能力需要独立替换时才拆包，不要预防性拆分。见 DeepSeek Harness `docs/user/develop/practice/index.zh.md`。
 
 设置位 `settings.plugin.item` 的含义是「一个插件一张卡」，不是一个功能一张卡。
-Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留 rc.6 使用的 `id`。当前设置值仍统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源。
+Harness `0.1.1-rc.2` 从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留列表槽位使用的 `id` 兼容坐标。当前设置值仍统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源；两类槽位都由锁定的 rc.2 包执行测试。
 
 执行分工：
 
@@ -109,7 +111,7 @@ Harness rc.7 会先从 Host 的 `settings.describe` 取得插件命名空间，�
 
 `oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Chrome 缺失时页面准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Chrome。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 
-检查器中间栏可以拉到约 800px，走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
+检查器中间栏默认 640px，可在 480–800px 内拖动，并至少给右侧对话保留 440px；空间不足时自动全屏。它走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
 
 ## 状态存在哪里
 

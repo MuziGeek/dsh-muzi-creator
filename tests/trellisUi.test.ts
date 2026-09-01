@@ -147,7 +147,8 @@ describe("Trellis project UI behavior", () => {
       readFile(new URL("../src/client/TrellisProjectInspector.tsx", import.meta.url), "utf8"),
     ]);
     expect(css).toContain("@media (max-width: 880px)");
-    expect(css).toContain("width: 100% !important");
+    expect(css).toContain("[data-surface=\"trellis-inspector\"].full");
+    expect(css).not.toContain("!important");
     expect(inspector).toContain("IslandModal");
     expect(inspector).toContain("maskClosable={!busy}");
     expect(inspector).toContain("typewriter={false}");

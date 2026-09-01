@@ -16,15 +16,19 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 14px 16px;
-  border: 0;
-  min-height: 40px;
-  border-radius: var(--muzi-island-radius-lg);
-  background: none;
-  color: inherit;
-  font: inherit;
+  height: auto;
+  min-height: 64px;
+  padding: 10px 20px;
   text-align: left;
-  cursor: pointer;
+  white-space: normal;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .header > span {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .header:focus-visible {
@@ -69,10 +73,6 @@
   color: var(--muzi-island-text-muted);
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .chevron.open {
-  transform: rotate(180deg);
-}
-
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .body {
   margin: 0 16px;
   padding-bottom: 8px;
@@ -111,24 +111,10 @@
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .input {
   width: 100%;
   box-sizing: border-box;
-  padding: 6px 10px;
-  border: 1px solid var(--muzi-island-line);
-  border-radius: var(--muzi-island-radius-md);
-  background: var(--muzi-island-paper);
-  color: var(--muzi-island-text);
-  font: inherit;
-  font-size: 13px;
-  line-height: 20px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .input:focus {
-  outline: 2px solid var(--muzi-island-focus);
-  outline-offset: -1px;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .textarea {
   min-height: 64px;
-  resize: vertical;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .pathRow {
@@ -211,6 +197,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .capabilityName {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -224,6 +211,21 @@
 }
 
 @media (max-width: 430px) {
+  [data-plugin="dsh-muzi-creator"][data-surface="settings-card"].open {
+    position: fixed;
+    z-index: 5;
+    inset: 12px;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  [data-plugin="dsh-muzi-creator"][data-surface="settings-card"].open .header {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    padding-inline: 12px;
+    background: var(--muzi-island-sidebar);
+  }
   [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .body { margin: 0 12px; }
   [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .capabilityGrid { grid-template-columns: 1fr; }
   [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .pathRow { align-items: stretch; flex-direction: column; }

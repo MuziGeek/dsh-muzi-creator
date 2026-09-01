@@ -1,4 +1,4 @@
-import { useEffect, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, type ChangeEvent, type FormEvent } from "react";
 import type { MuziPrimaryDocument } from "../../muziTypes.ts";
 import { IslandButton, IslandInput, IslandModal, IslandRadio } from "../ui/IslandControls.tsx";
 import { isProjectTitleValid } from "./createProjectDialogModel.ts";
@@ -26,15 +26,21 @@ export function CreateProjectDialog({
   onSubmit,
 }: CreateProjectDialogProps) {
   const valid = isProjectTitleValid(title);
+  const returnFocus = useRef<HTMLElement | null>(
+    typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
 
   useEffect(() => {
     const modal = document.querySelector<HTMLElement>(".muziCreateModal");
-    if (modal === null) return;
+    if (modal === null) return () => { returnFocus.current?.focus(); };
     modal.dataset.plugin = "dsh-muzi-creator";
     modal.dataset.surface = "muzi-create-dialog";
     return () => {
       delete modal.dataset.plugin;
       delete modal.dataset.surface;
+      returnFocus.current?.focus();
     };
   }, []);
 

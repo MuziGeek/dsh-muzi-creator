@@ -4,7 +4,9 @@
 
 Lab 用于本地检查界面组件和响应式布局，不执行发布、同步或归档。先运行 `pnpm build`，再用 `pnpm lab:setup` 创建项目内 `.lab/` fixture，随后运行 `pnpm lab:config` 写入隔离 Web profile。使用 `pnpm lab:start -- --cli <已构建 DSH CLI 路径> --port 51873` 启动 Web；源码版 DSH 应传 `apps/cli/lib/bin.js`，不能直接传 TypeScript 入口。不提供 CLI 时脚本会明确提示，不能把未启动当作通过。
 
-Lab 配置固定关闭 `externalActionsEnabled`，清空常用模型、字幕和生图凭据，所有可写目录位于 `.lab`。`lab:desktop -- --desktop <路径>` 仅接受已安装 Desktop 的显式路径，并使用相同隔离 home；Desktop 缺失时验收为 `UNVERIFIED`。详见 [DESIGN.md](../DESIGN.md)。
+Desktop 2.0.2 使用独立的 `.lab/desktop-home` 与 `.lab/desktop-user-data`：脚本写入并在每次启动前严格核对 `<user-data>/profile-selection/state.json` 的 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`、`desktop-market/state.json` 的显式 `disabled` 状态，以及 `<desktop-home>/settings.yaml` 的 `dsh-desktop.mode: compatibility`。`lab:desktop -- --desktop <路径>` 仅接受已安装 Desktop 的显式普通可执行文件，传入独立 `--user-data-dir`，并将 `DSH_HOME`、`HOME`、`USERPROFILE`、应用数据、遥测、凭据与外部能力隔离；任一 profile、源码链接、可写路径、选择状态或 `lib/` 构建产物偏离时拒绝启动，不会接管个人 Desktop 或 `~/.dsh`。Desktop 缺失时验收为 `UNVERIFIED`。
+
+源码联调继续使用受控的源码链接 Web profile。为本地成品安装验收做准备时，只能把已有 `.tgz` 放进 `.lab/packages/`，再运行 `pnpm lab:desktop -- --prepare-tgz .lab/packages/<包名>.tgz`；该命令只核对隔离条件和归档位置，不下载、不安装、不启动 Desktop。详见 [DESIGN.md](../DESIGN.md)。
 
 DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的检查器，右边继续对话。一条片子对应 `~/Movies/视频项目/` 里的一个文件夹，名字是 `日期_可读标题`。
 
@@ -27,7 +29,7 @@ DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的
 
 左侧列表显示每条片子的阶段和时间。已经在任一视频平台发出去的，显示「已发布」；成片、字幕、封面都齐但还没发出去的，显示「待发布」。
 
-点开一条片子，中间检查器不关右边的对话。检查器有五个页：概览、视频、脚本、字幕、文章。概览用封面旁的状态标明阶段，只展开当前步骤的按钮；封面并排显示 3:4 和 4:3。视频页播放带字幕成片，没有带字幕成片时播放原片。字幕和烧录由对话里的工具完成。文章页用 Markdown 渲染 `公众号文章/` 里的成稿和配图。中间栏可以拖宽，大约到 800 像素。
+点开一条片子，中间检查器不关右边的对话。检查器默认约 640px，可在 480–800px 内拖动；它至少为对话保留 440px，空间不足时自动全屏。检查器有五个页：概览、视频、脚本、字幕、文章。概览用封面旁的状态标明阶段，只展开当前步骤的按钮；封面并排显示 3:4 和 4:3。视频页播放带字幕成片，没有带字幕成片时播放原片。字幕和烧录由对话里的工具完成。文章页用 Markdown 渲染 `公众号文章/` 里的成稿和配图。
 
 右边输入 `@`，可以选择「当前详情」或搜以前的片子。发出去的是那一期的文件夹路径，封面、脚本、字幕都在里面，按 [files.md](files.md) 自己去列、去读。`/current content` 同样只带当前打开那条的文件夹路径。
 

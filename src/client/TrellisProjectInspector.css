@@ -4,9 +4,6 @@
   --muzi-surface-muted: var(--muzi-island-sidebar);
   --muzi-border: var(--muzi-island-line);
   --muzi-border-strong: var(--muzi-island-line-strong);
-  --muzi-radius-sm: 12px;
-  --muzi-radius-md: 14px;
-  --muzi-radius-lg: 18px;
   --trellis-font-caption: 11px;
   --trellis-font-label: 12px;
   --trellis-font-body: 13px;
@@ -16,7 +13,7 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="trellis-inspector"] {
   position: absolute;
-  inset: 0 auto 0 var(--oil-sidebar-width, 280px);
+  inset: 0 auto 0 var(--oil-sidebar-width, 360px);
   z-index: 8;
   display: flex;
   min-width: 0;
@@ -27,7 +24,7 @@
   color: var(--muzi-island-text);
   box-sizing: border-box;
 }
-[data-plugin="dsh-muzi-creator"][data-surface="trellis-inspector"].full { left: 0; width: 100% !important; }
+[data-plugin="dsh-muzi-creator"][data-surface="trellis-inspector"].full { left: 0; }
 [data-plugin="dsh-muzi-creator"][data-surface="trellis-inspector"].dragging { user-select: none; }
 
 [data-plugin="dsh-muzi-creator"] .trellisInspectorTop {
@@ -42,10 +39,7 @@
 }
 [data-plugin="dsh-muzi-creator"] .trellisInspectorTop > div { display: flex; min-width: 0; align-items: center; gap: 8px; }
 [data-plugin="dsh-muzi-creator"] .trellisInspectorTop > div:first-child span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--trellis-font-body); font-weight: 600; }
-[data-plugin="dsh-muzi-creator"] .trellisTopActions { flex: none; }
-[data-plugin="dsh-muzi-creator"] .trellisTopActions button { display: grid; width: 40px; min-width: 40px; height: 40px; place-items: center; padding: 0; border: 0; border-radius: var(--muzi-radius-sm); background: transparent; color: var(--muzi-island-text-soft); cursor: pointer; }
-[data-plugin="dsh-muzi-creator"] .trellisTopActions button:hover { background: var(--muzi-island-leaf-soft); }
-[data-plugin="dsh-muzi-creator"] .trellisTopActions button:focus-visible { outline: 3px solid var(--muzi-island-focus); outline-offset: 2px; }
+[data-plugin="dsh-muzi-creator"] .trellisTopActions { flex: none; gap: 4px; }
 
 [data-plugin="dsh-muzi-creator"] .trellisInspectorScroll { flex: 1; min-height: 0; overflow: auto; padding: 0 22px 48px; }
 [data-plugin="dsh-muzi-creator"] .trellisInspectorState { display: grid; width: min(360px, 80%); flex: 1; place-content: center; gap: 10px; margin: 0 auto; padding: 24px; color: var(--muzi-island-text-faint); text-align: center; }
@@ -56,9 +50,7 @@
 [data-plugin="dsh-muzi-creator"] .trellisHeroHeading { display: grid; gap: 5px; }
 [data-plugin="dsh-muzi-creator"] .trellisHeroHeading h1 { max-width: 28ch; margin: 0; color: var(--muzi-island-text); font-size: 24px; line-height: 32px; letter-spacing: -.025em; text-wrap: balance; }
 [data-plugin="dsh-muzi-creator"] .trellisHeroHeading p { margin: 0; color: var(--muzi-island-text-soft); font-size: var(--trellis-font-body); line-height: var(--trellis-line-body); }
-[data-plugin="dsh-muzi-creator"] .trellisProjectState { width: fit-content; padding: 3px 7px; border-radius: 999px; background: var(--muzi-island-success-soft, rgb(45 145 93 / 10%)); color: var(--muzi-island-success, #2f9461); font-size: var(--trellis-font-caption); line-height: var(--trellis-line-caption); font-weight: 650; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectState.degraded { background: var(--muzi-island-warning-soft, rgb(180 115 0 / 10%)); color: var(--muzi-island-warning, #a56b00); }
-[data-plugin="dsh-muzi-creator"] .trellisProjectState:not(.ready):not(.degraded) { background: var(--muzi-island-danger-soft, rgb(190 60 50 / 10%)); color: var(--muzi-island-danger); }
+[data-plugin="dsh-muzi-creator"] .trellisProjectState { width: fit-content; max-width: 100%; }
 
 [data-plugin="dsh-muzi-creator"] .trellisDistribution { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-md); background: var(--muzi-border); }
 [data-plugin="dsh-muzi-creator"] .trellisDistribution > div { display: grid; gap: 2px; padding: 11px 10px; background: var(--muzi-surface-soft); }
@@ -81,16 +73,12 @@
 [data-plugin="dsh-muzi-creator"] .trellisTaskGroup h3 { margin: 0; color: var(--muzi-island-text-soft); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); font-weight: 650; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskGroup > header span { display: grid; min-width: 21px; height: 21px; place-items: center; border-radius: 999px; background: var(--muzi-surface-muted); color: var(--muzi-island-text-faint); font-size: var(--trellis-font-caption); line-height: var(--trellis-line-caption); font-variant-numeric: tabular-nums; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskRows { display: grid; gap: 6px; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskRows button { display: flex; width: 100%; min-width: 0; min-height: 48px; align-items: center; padding: 10px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-sm); background: var(--muzi-surface); color: inherit; text-align: left; cursor: pointer; font-family: var(--muzi-island-font); font-size: var(--trellis-font-body); line-height: var(--trellis-line-body); }
+[data-plugin="dsh-muzi-creator"] .trellisTaskRows button { display: flex; width: 100%; min-width: 0; min-height: 48px; text-align: left; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskRows button > span:last-child { display: flex; width: 100%; min-width: 0; align-items: center; gap: 9px; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskRows button:hover { border-color: var(--muzi-border-strong); }
-[data-plugin="dsh-muzi-creator"] .trellisTaskRows button.selected { border-color: var(--muzi-island-leaf); background: var(--muzi-island-leaf-soft); box-shadow: 0 2px 8px rgb(63 111 56 / 12%); }
-[data-plugin="dsh-muzi-creator"] .trellisTaskRows button:focus-visible { outline: 3px solid var(--muzi-island-focus); outline-offset: 2px; }
+[data-plugin="dsh-muzi-creator"] .trellisTaskRows button.selected { outline: 2px solid var(--animal-focus-yellow); outline-offset: 2px; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 8px 3px 3px; border: 0; border-top: 1px solid var(--muzi-border); background: transparent; color: var(--muzi-island-leaf); cursor: pointer; font-family: var(--muzi-island-font); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); text-align: left; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure:hover { color: var(--muzi-island-text); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure:focus-visible { outline: 3px solid var(--muzi-island-focus); outline-offset: 2px; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure svg { flex: none; transition: transform 160ms ease; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure svg.open { transform: rotate(180deg); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskStatus { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--muzi-island-text-faint); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskStatus.in_progress { background: var(--muzi-island-leaf); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskStatus.planning { background: var(--muzi-island-warning, #a56b00); }
@@ -98,9 +86,11 @@
 [data-plugin="dsh-muzi-creator"] .trellisTaskRowBody { display: grid; min-width: 0; flex: 1; gap: 2px; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskRowBody strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--trellis-font-body); line-height: 18px; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskRowBody small { overflow: hidden; color: var(--muzi-island-text-faint); font-size: var(--trellis-font-caption); line-height: var(--trellis-line-caption); text-overflow: ellipsis; white-space: nowrap; }
-[data-plugin="dsh-muzi-creator"] .trellisEvidence { flex: none; padding: 3px 6px; border-radius: 999px; font-size: var(--trellis-font-caption); line-height: var(--trellis-line-caption); font-weight: 650; }
-[data-plugin="dsh-muzi-creator"] .trellisEvidence.good { background: var(--muzi-island-success-soft, rgb(45 145 93 / 10%)); color: var(--muzi-island-success, #2f9461); }
-[data-plugin="dsh-muzi-creator"] .trellisEvidence.weak { background: var(--muzi-island-warning-soft, rgb(180 115 0 / 10%)); color: var(--muzi-island-warning, #a56b00); }
+[data-plugin="dsh-muzi-creator"] .trellisTaskRows span[class*="animal-tag"],
+[data-plugin="dsh-muzi-creator"] .trellisTaskDetail span[class*="animal-tag"] { min-width: 0; max-width: 100%; }
+[data-plugin="dsh-muzi-creator"] .trellisTaskRows span[class*="animal-text"],
+[data-plugin="dsh-muzi-creator"] .trellisTaskDetail span[class*="animal-text"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-muzi-creator"] .trellisEvidence { flex: none; max-width: 100%; }
 [data-plugin="dsh-muzi-creator"] .trellisGroupEmpty { margin: 0; padding: 8px 4px; color: var(--muzi-island-text-faint); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); text-align: center; }
 
 [data-plugin="dsh-muzi-creator"] .trellisTaskDetail { display: grid; gap: 18px; margin-top: 20px; padding: 20px 0 8px; border-top: 1px solid var(--muzi-border); background: var(--muzi-surface); }
@@ -108,9 +98,7 @@
 [data-plugin="dsh-muzi-creator"] .trellisTaskDetail > header > div { display: grid; min-width: 0; gap: 6px; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskDetail h2 { margin: 0; font-size: 20px; line-height: 28px; letter-spacing: -.02em; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskDetail > header p { margin: 0; color: var(--muzi-island-text-soft); font-size: var(--trellis-font-body); line-height: var(--trellis-line-body); }
-[data-plugin="dsh-muzi-creator"] .trellisStatusLabel { width: fit-content; padding: 3px 7px; border-radius: 999px; background: var(--muzi-surface-muted); color: var(--muzi-island-text-soft); font-size: var(--trellis-font-caption); line-height: var(--trellis-line-caption); font-weight: 650; }
-[data-plugin="dsh-muzi-creator"] .trellisStatusLabel.completed { background: var(--muzi-island-success-soft, rgb(45 145 93 / 10%)); color: var(--muzi-island-success, #2f9461); }
-[data-plugin="dsh-muzi-creator"] .trellisStatusLabel.in_progress { background: color-mix(in srgb, var(--muzi-island-leaf) 10%, transparent); color: var(--muzi-island-leaf); }
+[data-plugin="dsh-muzi-creator"] .trellisStatusLabel { width: fit-content; max-width: 100%; }
 [data-plugin="dsh-muzi-creator"] .trellisArchiveButton { display: inline-flex; min-height: 40px; flex: none; align-items: center; gap: 7px; border-radius: var(--muzi-radius-sm); color: inherit; cursor: pointer; font-family: var(--muzi-island-font); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); }
 [data-plugin="dsh-muzi-creator"] .trellisArchiveButton:hover { background: var(--muzi-island-leaf-soft); }
 [data-plugin="dsh-muzi-creator"] .trellisArchiveButton:disabled { opacity: .5; cursor: default; }
@@ -145,22 +133,20 @@
 [data-plugin="dsh-muzi-creator"] .trellisUnknownFields { margin: 0; color: var(--muzi-island-warning); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskIssues { margin: 0; padding-left: 18px; color: var(--muzi-island-warning); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); }
 
-[data-plugin="dsh-muzi-creator"] .trellisNotice { position: absolute; right: 16px; bottom: 16px; left: 16px; display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 9px 8px 12px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-sm); background: var(--muzi-surface); box-shadow: var(--muzi-island-shadow); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); }
-[data-plugin="dsh-muzi-creator"] .trellisNotice button { display: grid; width: 40px; min-width: 40px; height: 40px; flex: none; place-items: center; padding: 0; border: 0; border-radius: var(--muzi-radius-sm); background: transparent; color: inherit; cursor: pointer; }
-[data-plugin="dsh-muzi-creator"] .trellisNotice button:hover { background: var(--muzi-island-leaf-soft); }
+[data-plugin="dsh-muzi-creator"] .trellisNotice { position: absolute; right: 16px; bottom: 16px; left: 16px; display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--muzi-border); background: var(--muzi-surface); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); }
+[data-plugin="dsh-muzi-creator"] .trellisNotice button { flex: none; }
 [data-plugin="dsh-muzi-creator"] .trellisResize { position: absolute; top: 0; right: -6px; bottom: 0; z-index: 2; width: 12px; cursor: col-resize; touch-action: none; }
 [data-plugin="dsh-muzi-creator"] .trellisResize::after { position: absolute; top: 50%; left: 5px; width: 2px; height: 36px; border-radius: 999px; background: var(--muzi-border-strong); content: ""; opacity: 0; transform: translateY(-50%); }
 [data-plugin="dsh-muzi-creator"] .trellisResize:hover::after,
 [data-plugin="dsh-muzi-creator"] .trellisResize:focus-visible::after { background: var(--muzi-island-leaf); opacity: 1; }
 [data-plugin="dsh-muzi-creator"] .trellisResize:focus-visible { outline: 0; }
 
-.trellisArchiveModal > div { background: var(--muzi-island-paper); color: var(--muzi-island-text); font-family: var(--muzi-island-font); }
-.trellisArchiveModal [class*="animal-body"] { align-items: stretch; color: var(--muzi-island-text-soft); font-size: var(--trellis-font-body); font-weight: 500; }
+.trellisArchiveModal { color-scheme: light dark; }
+.trellisArchiveModal [class*="animal-body"] { align-items: stretch; font-size: var(--trellis-font-body); font-weight: 500; }
 .trellisArchiveTitle { display: flex; align-items: center; gap: 12px; color: var(--muzi-island-text); font-family: var(--muzi-island-font); }
 .trellisArchiveTitle > span:last-child { display: grid; gap: 2px; }
 .trellisArchiveTitle strong { font-size: 20px; line-height: 26px; }
 .trellisArchiveTitle small { max-width: 36ch; overflow: hidden; color: var(--muzi-island-text-soft); font-size: 13px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
-.trellisArchiveGlyph { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: var(--muzi-island-radius-sm); background: var(--muzi-island-leaf-soft); color: var(--muzi-island-leaf); }
 .trellisArchiveDialogBody { display: grid; max-height: min(60vh, 560px); gap: 15px; overflow: auto; color: var(--muzi-island-text); }
 .trellisNoCommit { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 11px; border-radius: var(--muzi-island-radius-sm); background: var(--muzi-island-leaf-soft); color: var(--muzi-island-text-soft); font-size: 13px; line-height: 20px; }
 .trellisImpactGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; overflow: hidden; border: 1px solid var(--muzi-island-line); border-radius: var(--muzi-island-radius-sm); background: var(--muzi-island-line); }
@@ -181,7 +167,7 @@
 .trellisArchiveError { margin: 0; color: var(--muzi-island-danger); font-size: 13px; line-height: 20px; }
 
 @media (max-width: 880px) {
-  [data-plugin="dsh-muzi-creator"][data-surface="trellis-inspector"] { left: 0; width: 100% !important; }
+  [data-plugin="dsh-muzi-creator"][data-surface="trellis-inspector"] { left: 0; }
   [data-plugin="dsh-muzi-creator"] .trellisResize { display: none; }
 }
 
@@ -201,5 +187,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   [data-plugin="dsh-muzi-creator"] .trellisProjectCard { transition: none; }
-  [data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure svg { transition: none; }
 }

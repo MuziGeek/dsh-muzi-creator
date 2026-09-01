@@ -159,12 +159,14 @@ describe("Daily Hot UI contract", () => {
     expect(hot).toBeLessThan(content);
     expect(content).toBeLessThan(knowledge);
     expect(knowledge).toBeLessThan(projects);
-    expect(sidebar).toContain("IconLightOutline16");
+    expect(sidebar).toContain('<IslandIcon name="icon-miles"');
+    expect(sidebar).not.toContain("IconLightOutline16");
     expect(sidebar).toContain('if (tab !== "hot") selectDailyHotItem(null)');
     expect(panel).toContain("aria-busy={loading || refreshing}");
     expect(panel).toContain("aria-expanded={otherExpanded}");
     expect(panel).toContain("aria-controls={otherId}");
-    expect(panel).toContain("aria-pressed={selected}");
+    expect(panel).toContain("IslandSelectableCard");
+    expect(panel).toContain("selected={selected}");
     expect(panel).toContain('target="_blank" rel="noreferrer"');
   });
 
@@ -175,7 +177,7 @@ describe("Daily Hot UI contract", () => {
       readFile(new URL("../src/client/index.tsx", import.meta.url), "utf8"),
     ]);
     expect(inspector).toContain("resolveInspectorLayout");
-    expect(inspector).toContain("applyConversationInset");
+    expect(inspector).not.toContain("applyConversationInset");
     expect(inspector).toContain("setInspectorWidth");
     expect(inspector).toContain('role="separator"');
     expect(inspector).toContain("data-layout={layout.mode}");
@@ -194,7 +196,8 @@ describe("Daily Hot UI contract", () => {
     expect(css).toContain("@media (min-width: 1080px)");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr) 288px");
     expect(css).toContain("@media (max-width: 880px)");
-    expect(css).toContain("width: 100% !important");
+    expect(css).toContain("[data-surface=\"daily-hot-inspector\"].full");
+    expect(css).not.toContain("!important");
     expect(css).toContain("overflow: auto");
     expect(client).toContain('occupant: "content" | "hot" | "project" | null');
     expect(client).toContain("subscribeDailyHotSelection(sync)");

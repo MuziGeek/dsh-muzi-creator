@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import {
-  Card,
-  Icon,
-  Tag,
-  type TagColor,
-} from "animal-island-ui";
-import {
-  IconCloseOutline16,
   MarkdownText,
   type MarkdownFileMentions,
 } from "@deepseek-ai/dsh-client-ui-primitives";
@@ -52,8 +45,6 @@ import {
   type VideoProductionStageStatus,
 } from "./videoProductionProgress.ts";
 import {
-  applyConversationInset,
-  clearConversationInset,
   getInspectorWidth,
   setInspectorWidth,
   setSelectedContentId,
@@ -68,11 +59,15 @@ import {
 } from "./inspectorLayout.ts";
 import {
   IslandButton,
+  IslandCard,
+  IslandIcon,
   IslandInput,
   IslandSelect,
   IslandSwitch,
+  IslandTag,
   IslandTabs,
   type IslandTabItem,
+  type IslandTagProps,
 } from "./ui/IslandControls.tsx";
 import "./MuziInspector.css";
 
@@ -83,6 +78,7 @@ const DOCUMENTS: Array<{ key: MuziDocumentKey; label: string }> = [
   { key: "xiaohongshu", label: "小红书" },
   { key: "blog", label: "博客" },
 ];
+type TagColor = NonNullable<IslandTagProps["color"]>;
 const TARGETS: Array<{ key: MuziPublishTarget; label: string; icon: PlatformId }> = [
   { key: "bilibili", label: "B站", icon: "bilibili" },
   { key: "douyin", label: "抖音", icon: "douyin" },
@@ -187,11 +183,11 @@ function statusColor(status: string): TagColor {
   if (status === "review") return "app-yellow";
   if (["ready", "complete", "published", "done", "finish", "live"].includes(status)) return "app-green";
   if (["research", "mother_draft", "adaptation", "draft", "platform_draft", "record", "cut", "running", "current"].includes(status)) return "app-teal";
-  return "default";
+  return "brown";
 }
 
 function StatusBadge({ status, label }: { status: string; label: string }) {
-  return <Tag className="muziStatusBadge" size="small" variant="soft" color={statusColor(status)}>{label}</Tag>;
+  return <IslandTag className="muziStatusBadge" size="small" variant="soft" color={statusColor(status)}>{label}</IslandTag>;
 }
 
 function projectCounts(project: MuziProjectDetail): { ready: number; published: number } {
@@ -270,14 +266,14 @@ function PendingKnowledgeDetail({ file, onProcess }: { file: PendingKnowledgeFil
       <header className="muziInspectorHeader pendingDetailHeader">
           <div className="knowledgeDetailHeading">
             <div className="knowledgeDetailMeta">
-              <Tag size="small" color="brown">{file.extension.toUpperCase()}</Tag>
-              <Tag size="small" color="app-orange">{PENDING_STATE_LABELS[file.state]}</Tag>
+              <IslandTag size="small" color="brown">{file.extension.toUpperCase()}</IslandTag>
+              <IslandTag size="small" color="app-orange">{PENDING_STATE_LABELS[file.state]}</IslandTag>
               <time dateTime={file.updatedAt}>更新于 {formatKnowledgeDate(file.updatedAt)}</time>
             </div>
           <h1>{file.title}</h1>
           <p>{file.relativePath} · {(file.size / 1024).toFixed(file.size < 1024 ? 1 : 0)} KB · 指纹 <code>{file.sha256.slice(0, 12)}…</code></p>
         </div>
-        <IslandButton type="primary" size="middle" className="knowledgeDiscuss" icon={<Icon name="icon-diy" size={18} />} onClick={onProcess}>处理文件</IslandButton>
+        <IslandButton type="primary" size="middle" className="knowledgeDiscuss" icon={<IslandIcon name="icon-diy" size={18} />} onClick={onProcess}>处理文件</IslandButton>
       </header>
       <div className="muziMarkdown pendingPreview">
         {file.previewKind === "binary"
@@ -308,13 +304,13 @@ function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: 
       <header className="muziInspectorHeader knowledgeDetailHeader">
           <div className="knowledgeDetailHeading">
             <div className="knowledgeDetailMeta">
-              <Tag size="small" color="app-teal">{category}</Tag>
+              <IslandTag size="small" color="app-teal">{category}</IslandTag>
               <time dateTime={page.updatedAt}>更新于 {formatKnowledgeDate(page.updatedAt)}</time>
             </div>
           <h1>{page.title}</h1>
           <p>内容指纹 <code>{page.sha256.slice(0, 12)}…</code></p>
         </div>
-        <IslandButton type="default" size="middle" className="knowledgeDiscuss" icon={<Icon name="icon-chat" size={18} />} onClick={onDiscuss}>
+        <IslandButton type="default" size="middle" className="knowledgeDiscuss" icon={<IslandIcon name="icon-chat" size={18} />} onClick={onDiscuss}>
           与智能助手讨论
         </IslandButton>
       </header>
@@ -462,18 +458,12 @@ export function MuziInspector({
   }, [epoch, oilFace, project?.folderName]);
 
   useEffect(() => {
-    applyConversationInset(expanded && layout.mode === "split" ? layout.width : 0, !dragging);
-    return () => { clearConversationInset(); };
-  }, [expanded, layout.mode, layout.width, dragging]);
-
-  useEffect(() => {
     if (!dragging) return;
     const move = (event: PointerEvent): void => {
       if (drag.current === null) return;
       const next = Math.min(layout.maxWidth, Math.max(INSPECTOR_MIN, drag.current.width + event.clientX - drag.current.x));
       drag.current.latestWidth = next;
       setWidth(next);
-      applyConversationInset(next, false);
     };
     const up = (): void => {
       if (drag.current !== null) setInspectorWidth(drag.current.latestWidth);
@@ -909,7 +899,7 @@ export function MuziInspector({
     <div data-plugin="dsh-muzi-creator" data-surface="muzi-inspector" className={`${expanded ? "open" : ""}${layout.mode === "full" ? " full" : ""}${dragging ? " dragging" : ""}`} style={{ width: shownWidth }}>
       <div className="muziInspectorTop">
         <div className="muziInspectorTitle">{knowledgePreview !== null ? "知识预览" : page !== null || pending !== null ? "知识详情" : project === null ? "Muzi Creator" : "内容详情"}</div>
-        <IslandButton type="text" aria-label="关闭详情" onClick={closeDetails}><IconCloseOutline16 size={14} /></IslandButton>
+        <IslandButton type="text" aria-label="关闭详情" onClick={closeDetails}>关闭</IslandButton>
       </div>
       {error !== null && <div className="muziInspectorEmpty error">{error}</div>}
       {error === null && page !== null && <KnowledgeDetail page={page} onDiscuss={() => {
@@ -937,7 +927,7 @@ export function MuziInspector({
               children: key === tab ? <div className="muziInspectorBody">
             {tab === "overview" && (
               <div className="muziOverview">
-                <Card className="muziProjectHero" color="default" pattern="default" aria-labelledby="muzi-project-title">
+                <IslandCard className="muziProjectHero" color="default" pattern="default" aria-labelledby="muzi-project-title">
                   <MuziProjectCover id={project.id} title={project.title} revision={project.coverRevision} load={muziFace.getProjectCover} className="muziProjectHeroCover" />
                   <div className="muziProjectHeroBody">
                     <div className="muziProjectHeroHeading">
@@ -952,7 +942,7 @@ export function MuziInspector({
                     <div><dt>稿件就绪</dt><dd>{projectCounts(project).ready}/5</dd></div>
                     <div><dt>已发布</dt><dd>{projectCounts(project).published}/5</dd></div>
                   </dl>
-                </Card>
+                </IslandCard>
                 <ProductionOverviewCard
                   detail={productionDetail}
                   error={productionError}
@@ -965,14 +955,14 @@ export function MuziInspector({
                   <div className="statusGrid">{DOCUMENTS.map((item) => {
                     const state = project.documents[item.key];
                     const openDocument = (): void => { setTab(item.key); };
-                    return <Card key={item.key} color="default" pattern="default" hoverable role="button" tabIndex={0} aria-label={`${item.label}：${DOCUMENT_STATUS_LABELS[state.status]}`} onClick={openDocument} onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                    return <IslandCard key={item.key} color="default" pattern="default" hoverable role="button" tabIndex={0} aria-label={`${item.label}：${DOCUMENT_STATUS_LABELS[state.status]}`} onClick={openDocument} onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
                       event.preventDefault();
                       openDocument();
                     }}>
                       <span className="statusRow"><strong>{item.label}</strong><StatusBadge status={state.status} label={DOCUMENT_STATUS_LABELS[state.status]} /></span>
                       <span className="statusNavigation">{state.stale ? <em>来源已更新，待重新加工</em> : <small>查看稿件</small>}</span>
-                    </Card>;
+                    </IslandCard>;
                   })}</div>
                 </section>
                 <section className="muziStatusSection videoPublishSection">
@@ -1083,17 +1073,17 @@ export function MuziInspector({
                     type="default"
                     size="middle"
                     className="obsidianLocate"
-                    icon={<Icon name="icon-map" size={18} />}
+                    icon={<IslandIcon name="icon-map" size={18} />}
                     onClick={() => { void openInObsidian(tab as MuziDocumentKey); }}
                   >
                     在 Obsidian 中定位
                   </IslandButton>
                 </div>
-                <Card className="muziDocumentBody" type={project.content[tab as MuziDocumentKey].trim() === "" ? "dashed" : "default"} color="default">
+                <IslandCard className="muziDocumentBody" type={project.content[tab as MuziDocumentKey].trim() === "" ? "dashed" : "default"} color="default">
                   {project.content[tab as MuziDocumentKey].trim() === ""
                     ? <div className="muziInspectorEmpty">暂无{DOCUMENTS.find((item) => item.key === tab)?.label ?? "内容"}。可在主题讨论会话中明确要求 Agent 生成，或在 Obsidian 中编辑。</div>
                     : <MarkdownText text={project.content[tab as MuziDocumentKey]} />}
-                </Card>
+                </IslandCard>
               </div>
             )}
             {tab === "evidence" && <EvidenceView project={project} />}
@@ -1103,7 +1093,7 @@ export function MuziInspector({
           />
         </>
       )}
-      {notice !== null && <div className="muziNotice" role="status" aria-live="polite"><span>{notice}</span><IslandButton type="text" aria-label="关闭提示" onClick={() => { setNotice(null); }}><IconCloseOutline16 size={13} /></IslandButton></div>}
+      {notice !== null && <div className="muziNotice" role="status" aria-live="polite"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
       {layout.mode === "split" && (
         <div
           className="muziResize"
@@ -1140,18 +1130,18 @@ function EvidenceDocument({
   emptyText: string;
 }) {
   return (
-    <Card className="evidenceDocument" color="default" pattern="default" aria-labelledby={id}>
+    <IslandCard className="evidenceDocument" color="default" pattern="default" aria-labelledby={id}>
       <header className="evidenceDocumentHeader">
         <div>
           <h3 id={id}>{title}</h3>
           <p>{description}</p>
         </div>
-        <Tag size="small" color="default">只读</Tag>
+        <IslandTag size="small" color="default">只读</IslandTag>
       </header>
       {markdown.trim() === ""
         ? <p className="evidenceDocumentEmpty">{emptyText}</p>
         : <div className="evidenceMarkdown"><MarkdownText text={markdown} /></div>}
-    </Card>
+    </IslandCard>
   );
 }
 
@@ -1165,7 +1155,7 @@ function EvidenceView({ project }: { project: MuziProjectDetail }) {
           <h2>证据</h2>
           <p>核对创作范围、事实依据与正式知识引用。</p>
         </div>
-        <Tag size="small" color="app-teal">{project.atlasReferences.length} 条引用</Tag>
+        <IslandTag size="small" color="app-teal">{project.atlasReferences.length} 条引用</IslandTag>
       </header>
       <div className="evidenceDocuments">
         <EvidenceDocument
@@ -1191,22 +1181,22 @@ function EvidenceView({ project }: { project: MuziProjectDetail }) {
           </div>
         </div>
         {project.atlasReferences.length === 0
-          ? <Card type="dashed" className="detailStateCard"><strong>尚未引用正式知识</strong><p>从主题知识发起讨论并生成内容后，引用会显示在这里。</p></Card>
+          ? <IslandCard type="dashed" className="detailStateCard"><strong>尚未引用正式知识</strong><p>从主题知识发起讨论并生成内容后，引用会显示在这里。</p></IslandCard>
           : (
-            <Card className="evidenceReferenceLedger" color="default">
+            <IslandCard className="evidenceReferenceLedger" color="default">
               <ul>
                 {project.atlasReferences.map((ref) => (
                   <li key={ref.locator}>
                     <div className="evidenceReferenceTitle">
                       <strong>{ref.title}</strong>
-                      <Tag size="small" color="default">正式知识</Tag>
+                      <IslandTag size="small" color="default">正式知识</IslandTag>
                     </div>
                     <code>{ref.locator}</code>
                     <small>内容指纹 {ref.sha256.slice(0, 12)}… · 引用于 {formatProjectDate(ref.attachedAt)}</small>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </IslandCard>
           )}
       </section>
     </div>
@@ -1253,13 +1243,13 @@ function ProductionOverviewCard({
         <div><h3 id="production-overview-title">视频制作</h3><p>从录制准备到成片就绪的只读阶段进度</p></div>
       </div>
       {error !== null
-        ? <Card type="dashed" className="productionOverviewState error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></Card>
+        ? <IslandCard type="dashed" className="productionOverviewState error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></IslandCard>
         : detail === null
-          ? <Card type="dashed" className="productionOverviewState"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></Card>
+          ? <IslandCard type="dashed" className="productionOverviewState"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></IslandCard>
           : (() => {
             const progress = videoProductionProgress(detail);
             return (
-              <Card
+              <IslandCard
                 className="productionOverviewCard"
                 color="default"
                 hoverable
@@ -1279,7 +1269,7 @@ function ProductionOverviewCard({
                 </div>
                 <ProductionProgressStrip progress={progress} />
                 <span className="statusNavigation"><small>查看制作阶段详情</small><small aria-hidden="true">→</small></span>
-              </Card>
+              </IslandCard>
             );
           })()}
     </section>
@@ -1300,12 +1290,12 @@ function ProductionCheckRow({ check }: { check: VideoProductionCheck }) {
 }
 
 function ProductionView({ detail, error }: { detail: ContentDetail | null; error: string | null }) {
-  if (error !== null) return <Card type="dashed" className="detailStateCard error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></Card>;
-  if (detail === null) return <Card type="dashed" className="detailStateCard"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></Card>;
+  if (error !== null) return <IslandCard type="dashed" className="detailStateCard error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></IslandCard>;
+  if (detail === null) return <IslandCard type="dashed" className="detailStateCard"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></IslandCard>;
   const progress = videoProductionProgress(detail);
   return (
     <div className="productionView">
-      <Card className="productionSummary" color="default" pattern="default">
+      <IslandCard className="productionSummary" color="default" pattern="default">
         <div>
           <h2>本地视频制作</h2>
           <p>制作状态只读同步自视频目录，不在此页面修改文件。</p>
@@ -1315,7 +1305,7 @@ function ProductionView({ detail, error }: { detail: ContentDetail | null; error
           <StatusBadge status={productionStageStatus(progress)} label={progress.complete ? "已就绪" : progress.currentTitle} />
           <small>下一步：{progress.nextAction}</small>
         </div>
-      </Card>
+      </IslandCard>
       <section className="productionSection" aria-labelledby="production-steps-title">
         <div className="detailSectionHeading">
           <div>
@@ -1323,7 +1313,7 @@ function ProductionView({ detail, error }: { detail: ContentDetail | null; error
             <p>录制工程、导出、字幕与封面按真实产物同步。</p>
           </div>
         </div>
-        <Card className="productionTimeline" color="default">
+        <IslandCard className="productionTimeline" color="default">
           <ol>
             {progress.stages.map((stage, index) => (
               <li
@@ -1345,7 +1335,7 @@ function ProductionView({ detail, error }: { detail: ContentDetail | null; error
               </li>
             ))}
           </ol>
-        </Card>
+        </IslandCard>
       </section>
     </div>
   );

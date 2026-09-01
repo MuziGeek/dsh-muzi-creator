@@ -10,7 +10,7 @@
 </p>
 
 > [!NOTE]
-> 当前兼容 Node.js 22.19+、DeepSeek Harness `0.1.0-rc.6` / `0.1.0-rc.7`。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
+> 当前固定兼容 Node.js 22.19+、DeepSeek Harness `0.1.1-rc.2`，桌面承载目标为 Windows x64 DSH Desktop `2.0.2` 的上游兼容模式。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
 
 ## 一个主题，就是一个项目目录
 
@@ -211,7 +211,11 @@ pnpm lab:start -- --cli /path/to/dsh/lib/bin.js --port 51873
 
 Windows 源码版 DSH 示例：`pnpm lab:start -- --cli D:\\Muzi\\DSH\\apps\\cli\\lib\\bin.js --port 51873`。`lab:setup` 只在项目内创建 `.lab/` fixture、隔离 home，以及一个精确指向当前源码目录的插件联接点；`lab:config` 写入真实的 `.lab/dsh-home/profiles/web` 与安全清单 `.lab/config/safety.json`。其中 `externalActionsEnabled` 固定为 `false`、凭据为空、内容/知识/Trellis 路径均在 `.lab` 内。脚本拒绝逃逸路径和任何非受控符号链接/联接点，不读取或复制真实用户 profile、凭据或内容。
 
-`lab:desktop -- --desktop <已安装的 Desktop 路径>` 只在显式路径存在时启动，不会安装软件。没有 DSH CLI 或 Desktop 时，Lab 会给出明确错误；未安装 Desktop 的验收状态为 `UNVERIFIED`，不代表产品失败。
+`lab:desktop -- --desktop <已安装的 Desktop 路径>` 只在显式普通可执行文件存在时启动，不会安装软件。Desktop 使用独立的 `.lab/desktop-home` 和 `.lab/desktop-user-data`，固定选择隔离 `web` Profile、`compatibility` 上游兼容模式和 `disabled` 插件市场，并在启动前复核源码链接、可写目录、构建产物及 Desktop 2.0.2 的三个持久状态。没有 DSH CLI 或 Desktop 时，Lab 会给出明确错误；未安装 Desktop 的验收状态为 `UNVERIFIED`，不代表产品失败。
+
+固定安装包为 `DSH-Desktop-2.0.2-x64-Setup.exe`，期望 SHA-256 为 `b31f63f8cf70d3fc07ed2ae36e5de7b1939e604bdb3be097de3383a82a06a787`。下载和校验不等于安装；安装程序必须在执行当次获得明确确认。成品包验收使用 `.lab/packages/` 下的本地 `.tgz` 和独立 Desktop Profile，不接触个人 DSH Profile。
+
+仓库的 `.npmrc` 关闭自动 peer 安装。Desktop 在运行时提供完整 Harness peer 图，插件只把 `0.1.1-rc.2` 的直接开发依赖装入本地；这样可避免包管理器把预发布 peer 错误解析为不存在的稳定版。
 
 Animal Island 组件映射、token、三栏布局和宿主边界见 [DESIGN.md](DESIGN.md)。库版本为 `animal-island-ui@1.6.0`，其 CC BY-NC 4.0 归属与项目 MIT 代码边界见 [NOTICE](NOTICE)。
 

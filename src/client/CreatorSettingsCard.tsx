@@ -1,5 +1,4 @@
 import { useEffect, useState, type ChangeEvent } from "react";
-import { IconChevronDownOutline14 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
 
@@ -11,7 +10,7 @@ import { applyDescribed, secretDraftOf } from "./credentialsApi.ts";
 import type { CreatorViewFace } from "./face.ts";
 import type { CreatorKey } from "./locales.ts";
 import { CREATOR_SETTINGS_PLATFORMS } from "./publishPlatforms.ts";
-import { IslandButton, IslandCheckbox, IslandInput, IslandTag } from "./ui/IslandControls.tsx";
+import { IslandButton, IslandCheckbox, IslandInput, IslandTag, IslandTextarea } from "./ui/IslandControls.tsx";
 import "./CreatorSettingsCard.css";
 
 export type CreatorSettingsCardProps =
@@ -259,7 +258,7 @@ export function CreatorSettingsCard({
           <span className="description">{t("settings.description" as CreatorKey)}</span>
         </span>
         {dirty && <span className="pending">{t("settings.save" as CreatorKey)}</span>}
-        <IconChevronDownOutline14 className={open ? "chevron open" : "chevron"} />
+        <span className="chevron" aria-hidden="true">{open ? "收起" : "展开"}</span>
       </IslandButton>
       {open && (
         <div className="body">
@@ -322,9 +321,13 @@ export function CreatorSettingsCard({
           <div className="field">
             <span className="fieldLabel">{t("settings.scriptRules" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.scriptRulesHint" as CreatorKey)}</span>
-            <textarea
+            <IslandTextarea
+              id="muzi-settings-script-rules"
               className="input textarea"
+              name="script-rules"
               rows={6}
+              aria-label={t("settings.scriptRules" as CreatorKey)}
+              autoComplete="off"
               placeholder={t("settings.scriptRulesPlaceholder" as CreatorKey)}
               value={draftRules}
               onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {

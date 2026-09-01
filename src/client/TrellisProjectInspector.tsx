@@ -1,14 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import {
-  IconArchiveOutline20,
-  IconBranchOutline16,
-  IconChecklistOutline14,
-  IconChevronDownOutline14,
-  IconCloseOutline16,
-  IconFolderOpenOutline16,
-  IconRefreshOutline16,
-  IconWarningOutline16,
-} from "@deepseek-ai/dsh-client-ui-primitives";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
 import type {
@@ -19,8 +9,6 @@ import type {
   TrellisTaskStatus,
 } from "../trellisTypes.ts";
 import {
-  applyConversationInset,
-  clearConversationInset,
   getInspectorWidth,
   setInspectorWidth,
   useSidebarChromeWidth,
@@ -80,6 +68,7 @@ const STATUS_LABELS: Record<TrellisTaskStatus, string> = {
 const TASK_GROUP_KEYS = ["inProgress", "planning", "completed", "archived"] as const;
 type TaskGroupKey = (typeof TASK_GROUP_KEYS)[number];
 type ExpandedTaskGroups = Record<TaskGroupKey, boolean>;
+const EMPTY_TASKS: TrellisTask[] = [];
 
 function collapsedTaskGroups(): ExpandedTaskGroups {
   return { inProgress: false, planning: false, completed: false, archived: false };
@@ -113,7 +102,6 @@ function ArchiveDialog({ preview, busy, error, t, onCancel, onConfirm }: Archive
       typewriter={false}
       title={(
         <span className="trellisArchiveTitle">
-          <span className="trellisArchiveGlyph"><IconArchiveOutline20 size={20} /></span>
           <span><strong>{t("projects.archive.title")}</strong><small>{preview.task.title}</small></span>
         </span>
       )}
@@ -134,7 +122,7 @@ function ArchiveDialog({ preview, busy, error, t, onCancel, onConfirm }: Archive
       onClose={() => { if (!busy) onCancel(); }}
     >
       <div data-plugin-modal="dsh-muzi-creator" className="trellisArchiveDialogBody">
-        <p className="trellisNoCommit"><IconChecklistOutline14 />{t("projects.archive.noCommit")}</p>
+        <p className="trellisNoCommit">{t("projects.archive.noCommit")}</p>
         <dl className="trellisImpactGrid">
           <div><dt>{t("projects.archive.destination")}</dt><dd>{preview.targetMonth}</dd></div>
           <div><dt>{t("projects.archive.evidence")}</dt><dd>{preview.evidence.message}</dd></div>
@@ -142,8 +130,8 @@ function ArchiveDialog({ preview, busy, error, t, onCancel, onConfirm }: Archive
           <div><dt>{t("projects.archive.children")}</dt><dd>{preview.activeChildren.length === 0 ? "无" : preview.activeChildren.join("、")}</dd></div>
         </dl>
         <div className="trellisDestination"><span>归档位置</span><code>{preview.destination}</code></div>
-        {preview.warnings.length > 0 && <section className="trellisArchiveMessages warning"><h3><IconWarningOutline16 size={16} />归档前请确认</h3><ul>{preview.warnings.map((item) => <li key={item}>{item}</li>)}</ul></section>}
-        {preview.blockers.length > 0 && <section className="trellisArchiveMessages blocker"><h3><IconWarningOutline16 size={16} />{t("projects.archive.blocked")}</h3><ul>{preview.blockers.map((item) => <li key={item}>{item}</li>)}</ul></section>}
+        {preview.warnings.length > 0 && <section className="trellisArchiveMessages warning"><h3>归档前请确认</h3><ul>{preview.warnings.map((item) => <li key={item}>{item}</li>)}</ul></section>}
+        {preview.blockers.length > 0 && <section className="trellisArchiveMessages blocker"><h3>{t("projects.archive.blocked")}</h3><ul>{preview.blockers.map((item) => <li key={item}>{item}</li>)}</ul></section>}
         {preview.git.sample.length > 0 && <details><summary>查看未提交文件摘要</summary><ul className="trellisGitSample">{preview.git.sample.map((item) => <li key={item}><code>{item}</code></li>)}</ul></details>}
         {error !== null && <p className="trellisArchiveError" role="alert">{error}</p>}
       </div>
@@ -191,7 +179,6 @@ function TaskList({ groupKey, label, tasks, selected, emptyLabel, expanded, onTo
             className="trellisTaskDisclosure"
             aria-expanded={expanded}
             aria-controls={rowsId}
-            icon={<IconChevronDownOutline14 className={expanded ? "open" : ""} aria-hidden="true" />}
             onClick={() => { onToggle(groupKey); }}
           >
             {expanded ? t("projects.showLess") : `${t("projects.showMore")} ${String(preview.remaining)} ${t("projects.taskUnit")}`}
@@ -221,7 +208,6 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   const viewportWidth = useViewportWidth();
   const sidebarWidth = useSidebarChromeWidth();
   const layout = resolveInspectorLayout(viewportWidth, sidebarWidth, width);
-  const [expanded, setExpanded] = useState(false);
   const [expandedTaskGroups, setExpandedTaskGroups] = useState<ExpandedTaskGroups>(collapsedTaskGroups);
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; width: number; latestWidth: number } | null>(null);
@@ -249,21 +235,12 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
     return () => { window.removeEventListener("focus", refresh); };
   }, [load]);
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => { setExpanded(true); });
-    return () => { window.cancelAnimationFrame(frame); };
-  }, []);
-  useEffect(() => {
-    applyConversationInset(expanded && layout.mode === "split" ? layout.width : 0, !dragging);
-    return () => { clearConversationInset(); };
-  }, [expanded, layout.mode, layout.width, dragging]);
-  useEffect(() => {
     if (!dragging) return;
     const move = (event: PointerEvent): void => {
       if (drag.current === null) return;
       const next = Math.min(layout.maxWidth, Math.max(INSPECTOR_MIN, drag.current.width + event.clientX - drag.current.x));
       drag.current.latestWidth = next;
       setWidth(next);
-      applyConversationInset(next, false);
     };
     const up = (): void => {
       if (drag.current !== null) setInspectorWidth(drag.current.latestWidth);
@@ -290,8 +267,8 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
     setInspectorWidth(clamped);
   };
 
-  const active = detail?.activeTasks ?? [];
-  const archived = detail?.archivedTasks ?? [];
+  const active = detail?.activeTasks ?? EMPTY_TASKS;
+  const archived = detail?.archivedTasks ?? EMPTY_TASKS;
   const priorities = useMemo(() => {
     const values = new Set<string>();
     for (const task of [...active, ...archived]) {
@@ -371,11 +348,11 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
       aria-label={t("projects.detail")}
     >
       <div className="trellisInspectorTop">
-        <div><IconBranchOutline16 size={16} /><span>{detail?.project.title ?? t("projects.detail")}</span></div>
+        <div><span>{detail?.project.title ?? t("projects.detail")}</span></div>
         <div className="trellisTopActions">
-          <IslandButton type="text" size="small" aria-label={t("projects.refresh")} icon={<IconRefreshOutline16 size={16} />} onClick={() => { void load(); }} />
-          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton type="text" size="small" aria-label={t("projects.openFolder")} icon={<IconFolderOpenOutline16 size={16} />} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }} />}
-          <IslandButton type="text" size="small" aria-label="关闭项目详情" icon={<IconCloseOutline16 size={16} />} onClick={closeDetails} />
+          <IslandButton type="text" size="small" aria-label={t("projects.refresh")} onClick={() => { void load(); }}>{t("projects.refresh")}</IslandButton>
+          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton type="text" size="small" aria-label={t("projects.openFolder")} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }}>{t("projects.openFolder")}</IslandButton>}
+          <IslandButton type="text" size="small" aria-label="关闭项目详情" onClick={closeDetails}>关闭</IslandButton>
         </div>
       </div>
 
@@ -417,7 +394,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
           </div>
 
           {selectedTask !== null && <section className="trellisTaskDetail">
-            <header><div><IslandTag className={`trellisStatusLabel ${selectedTask.status}`} color={selectedTask.status === "completed" ? "app-green" : selectedTask.status === "in_progress" ? "yellow-green" : selectedTask.status === "planning" ? "app-yellow" : "brown"} size="small" variant="soft">{STATUS_LABELS[selectedTask.status]}</IslandTag><h2>{selectedTask.title}</h2><p>{selectedTask.description || "未填写任务说明"}</p></div>{!selectedTask.archived && selectedTask.status === "completed" && <IslandButton className="trellisArchiveButton" loading={archiveBusy} disabled={archiveBusy} icon={<IconArchiveOutline20 size={18} />} onClick={() => { void prepareArchive(); }}>{archiveBusy ? t("projects.archive.checking") : t("projects.archive")}</IslandButton>}</header>
+            <header><div><IslandTag className={`trellisStatusLabel ${selectedTask.status}`} color={selectedTask.status === "completed" ? "app-green" : selectedTask.status === "in_progress" ? "yellow-green" : selectedTask.status === "planning" ? "app-yellow" : "brown"} size="small" variant="soft">{STATUS_LABELS[selectedTask.status]}</IslandTag><h2>{selectedTask.title}</h2><p>{selectedTask.description || "未填写任务说明"}</p></div>{!selectedTask.archived && selectedTask.status === "completed" && <IslandButton className="trellisArchiveButton" loading={archiveBusy} disabled={archiveBusy} onClick={() => { void prepareArchive(); }}>{archiveBusy ? t("projects.archive.checking") : t("projects.archive")}</IslandButton>}</header>
             <dl className="trellisTaskFacts">
               <div><dt>优先级</dt><dd>{selectedTask.priority ?? "—"}</dd></div>
               <div><dt>负责人</dt><dd>{selectedTask.assignee ?? "—"}</dd></div>
@@ -430,7 +407,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
               <div><dt>当前阶段</dt><dd>{phaseSummary.current}</dd></div>
               <div><dt>下一阶段</dt><dd>{phaseSummary.next}</dd></div>
             </dl>}
-             <div className={`trellisEvidenceCard ${selectedTask.evidence.state}`}><IconChecklistOutline14 /><div><strong>{selectedTask.archived && selectedTask.verifiedCompletion ? t("projects.evidence.verified") : selectedTask.evidence.state === "meaningful" ? "验证材料可读" : t("projects.evidence.insufficient")}</strong><p>{selectedTask.evidence.message}{selectedTask.evidence.files.length > 0 ? ` · ${selectedTask.evidence.files.join("、")}` : ""}</p></div></div>
+            <div className={`trellisEvidenceCard ${selectedTask.evidence.state}`}><div><strong>{selectedTask.archived && selectedTask.verifiedCompletion ? t("projects.evidence.verified") : selectedTask.evidence.state === "meaningful" ? "验证材料可读" : t("projects.evidence.insufficient")}</strong><p>{selectedTask.evidence.message}{selectedTask.evidence.files.length > 0 ? ` · ${selectedTask.evidence.files.join("、")}` : ""}</p></div></div>
             {(parent !== null || children.length > 0) && <div className="trellisRelations"><h3>父子任务</h3>{parent !== null && <p><span>父任务</span><IslandButton type="link" size="small" onClick={() => { selectTrellisTask(parent.key); }}>{parent.title}</IslandButton></p>}{children.length > 0 && <p><span>子任务</span>{children.map((child) => <IslandButton key={child.key} type="link" size="small" onClick={() => { selectTrellisTask(child.key); }}>{child.title}</IslandButton>)}</p>}</div>}
             {selectedTask.relatedFiles.length > 0 && <div className="trellisRelatedFiles"><h3>相关文件</h3><ul>{selectedTask.relatedFiles.map((file) => <li key={file}><code>{file}</code></li>)}</ul></div>}
             {selectedTask.notes !== "" && <div className="trellisTaskNotes"><h3>任务记录</h3><p>{selectedTask.notes}</p></div>}
@@ -440,7 +417,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
         </div>
       )}
 
-      {notice !== null && <div className="trellisNotice" role="status"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" icon={<IconCloseOutline16 size={14} />} onClick={() => { setNotice(null); }} /></div>}
+      {notice !== null && <div className="trellisNotice" role="status"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
       {layout.mode === "split" && <div className="trellisResize" role="separator" aria-orientation="vertical" aria-label="调整项目详情宽度" aria-valuemin={INSPECTOR_MIN} aria-valuemax={layout.maxWidth} aria-valuenow={layout.width} tabIndex={0} onKeyDown={resizeWithKeyboard} onPointerDown={(event) => { drag.current = { x: event.clientX, width: layout.width, latestWidth: layout.width }; setDragging(true); }} />}
       {archivePreview !== null && <ArchiveDialog preview={archivePreview} busy={archiveBusy} error={archiveError} t={t} onCancel={() => { if (!archiveBusy) setArchivePreview(null); }} onConfirm={() => { void executeArchive(); }} />}
     </aside>

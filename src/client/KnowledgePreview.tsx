@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { IconRefreshOutline16 } from "@deepseek-ai/dsh-client-ui-primitives";
 import ForceGraph3D, { type ForceGraphMethods } from "react-force-graph-3d";
 import SpriteText from "three-spritetext";
 
@@ -297,7 +296,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
           </div>
           <div className="knowledgeGraphControls" aria-label="星图控制">
             <IslandButton type="default" size="small" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</IslandButton>
-            <IslandButton type="text" size="small" className="knowledgeRefresh" aria-label={refreshing ? "正在刷新星图" : "刷新星图"} loading={refreshing} disabled={refreshing} onClick={() => { void refresh(); }}><IconRefreshOutline16 size={15} /></IslandButton>
+            <IslandButton type="text" size="small" className="knowledgeRefresh" aria-label={refreshing ? "正在刷新星图" : "刷新星图"} loading={refreshing} disabled={refreshing} onClick={() => { void refresh(); }}>刷新</IslandButton>
           </div>
         </div>
         <div className="knowledgeGraphGuide">
@@ -384,7 +383,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
                 }}
               />
             )}
-            {refreshing && <div className="knowledgeGraphLoading" role="status"><IconRefreshOutline16 size={16} /><span>正在刷新知识快照…</span></div>}
+            {refreshing && <div className="knowledgeGraphLoading" role="status">正在刷新知识快照…</div>}
             <span className="knowledgeGraphAnnouncement" aria-live="polite">
               {selected === null ? "" : `${CATEGORY_LABELS[selected.category]}，${selected.title}，${selected.degree} 条关联`}
             </span>

@@ -1,16 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import {
-  IconChevronDownOutline14,
-  IconCloseOutline16,
-  IconLightOutline16,
-  IconLinkOutline16,
-  IconWarningOutline16,
-} from "@deepseek-ai/dsh-client-ui-primitives";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
 import {
-  applyConversationInset,
-  clearConversationInset,
   getInspectorWidth,
   setInspectorWidth,
   useSidebarChromeWidth,
@@ -54,21 +45,12 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
   const viewportWidth = useViewportWidth();
   const sidebarWidth = useSidebarChromeWidth();
   const layout = resolveInspectorLayout(viewportWidth, sidebarWidth, width);
-  const [expanded, setExpanded] = useState(false);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; width: number; latestWidth: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sourceListId = useId();
 
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => { setExpanded(true); });
-    return () => { window.cancelAnimationFrame(frame); };
-  }, []);
-  useEffect(() => {
-    applyConversationInset(item !== null && expanded && layout.mode === "split" ? layout.width : 0, !dragging);
-    return () => { clearConversationInset(); };
-  }, [item, expanded, layout.mode, layout.width, dragging]);
   useEffect(() => {
     setSourcesExpanded(false);
     scrollRef.current?.scrollTo({ top: 0 });
@@ -83,7 +65,6 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
       );
       drag.current.latestWidth = next;
       setWidth(next);
-      applyConversationInset(next, false);
     };
     const up = (): void => {
       if (drag.current !== null) setInspectorWidth(drag.current.latestWidth);
@@ -129,15 +110,14 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
       aria-label={t("hot.detail")}
     >
       <div className="dailyHotInspectorTop">
-        <div><IconLightOutline16 size={16} /><span>{t("hot.detail")}</span></div>
+        <div><span>{t("hot.detail")}</span></div>
         <IslandButton
           className="dailyHotClose"
           type="text"
           size="small"
           aria-label={t("hot.close")}
-          icon={<IconCloseOutline16 size={16} />}
           onClick={closeDetails}
-        />
+        >关闭</IslandButton>
       </div>
 
       <div ref={scrollRef} className="dailyHotInspectorScroll">
@@ -203,7 +183,6 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
                     size="small"
                     aria-expanded={sourcesExpanded}
                     aria-controls={sourceListId}
-                    icon={<IconChevronDownOutline14 size={14} />}
                     onClick={() => { setSourcesExpanded((value) => !value); }}
                   >
                     {sourcesExpanded ? t("hot.sources.hide") : `${t("hot.sources.showMore")} ${String(sourcePreview.remaining)} ${t("hot.sources.unit")}`}
@@ -216,19 +195,18 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
               <nav className="dailyHotLinks" aria-label={t("hot.links")}>
                 {primaryLink !== null && (
                   <a href={primaryLink} target="_blank" rel="noreferrer">
-                    <IconLinkOutline16 size={16} />{t("hot.openEvent")}
+                    {t("hot.openEvent")}
                   </a>
                 )}
                 {item.links.original !== null && (
                   <a href={item.links.original} target="_blank" rel="noreferrer">
-                    <IconLinkOutline16 size={16} />{t("hot.openOriginal")}
+                    {t("hot.openOriginal")}
                   </a>
                 )}
               </nav>
             )}
 
             <footer className="dailyHotDisclaimer">
-              <IconWarningOutline16 size={16} />
               <p><strong>{t("hot.readOnly")}</strong>{t("hot.disclaimer")}</p>
             </footer>
           </div>
