@@ -198,6 +198,23 @@ npx @deepseek-ai/dsh plugin --profile web remove dsh-muzi-creator
 
 ## 开发与验证
 
+### 隔离 UI Lab
+
+需要检查 Animal Island UI、侧栏、检查器或响应式布局时，在项目目录运行：
+
+```sh
+pnpm build
+pnpm lab:setup
+pnpm lab:config
+pnpm lab:start -- --cli /path/to/dsh/lib/bin.js --port 51873
+```
+
+Windows 源码版 DSH 示例：`pnpm lab:start -- --cli D:\\Muzi\\DSH\\apps\\cli\\lib\\bin.js --port 51873`。`lab:setup` 只在项目内创建 `.lab/` fixture、隔离 home，以及一个精确指向当前源码目录的插件联接点；`lab:config` 写入真实的 `.lab/dsh-home/profiles/web` 与安全清单 `.lab/config/safety.json`。其中 `externalActionsEnabled` 固定为 `false`、凭据为空、内容/知识/Trellis 路径均在 `.lab` 内。脚本拒绝逃逸路径和任何非受控符号链接/联接点，不读取或复制真实用户 profile、凭据或内容。
+
+`lab:desktop -- --desktop <已安装的 Desktop 路径>` 只在显式路径存在时启动，不会安装软件。没有 DSH CLI 或 Desktop 时，Lab 会给出明确错误；未安装 Desktop 的验收状态为 `UNVERIFIED`，不代表产品失败。
+
+Animal Island 组件映射、token、三栏布局和宿主边界见 [DESIGN.md](DESIGN.md)。库版本为 `animal-island-ui@1.6.0`，其 CC BY-NC 4.0 归属与项目 MIT 代码边界见 [NOTICE](NOTICE)。
+
 ```bash
 pnpm install --frozen-lockfile
 pnpm check

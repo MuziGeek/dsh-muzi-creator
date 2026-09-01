@@ -1,5 +1,11 @@
 # 内容工作台使用说明
 
+## 隔离 UI Lab
+
+Lab 用于本地检查界面组件和响应式布局，不执行发布、同步或归档。先运行 `pnpm build`，再用 `pnpm lab:setup` 创建项目内 `.lab/` fixture，随后运行 `pnpm lab:config` 写入隔离 Web profile。使用 `pnpm lab:start -- --cli <已构建 DSH CLI 路径> --port 51873` 启动 Web；源码版 DSH 应传 `apps/cli/lib/bin.js`，不能直接传 TypeScript 入口。不提供 CLI 时脚本会明确提示，不能把未启动当作通过。
+
+Lab 配置固定关闭 `externalActionsEnabled`，清空常用模型、字幕和生图凭据，所有可写目录位于 `.lab`。`lab:desktop -- --desktop <路径>` 仅接受已安装 Desktop 的显式路径，并使用相同隔离 home；Desktop 缺失时验收为 `UNVERIFIED`。详见 [DESIGN.md](../DESIGN.md)。
+
 DeepSeek Harness 打开后，左侧切到「内容」，中间是一条片子的检查器，右边继续对话。一条片子对应 `~/Movies/视频项目/` 里的一个文件夹，名字是 `日期_可读标题`。
 
 ## 对话工具能不能走完整条片子

@@ -1,5 +1,11 @@
 # Muzi Creator：单插件架构与现阶段实现
 
+## UI Lab 与 Animal Island 约束
+
+界面 Lab 是项目内的隔离开发环境，并在 `.lab/dsh-home/profiles/web` 创建一次性 DSH Web profile。它合成 fixture、安全清单和一个只指向当前源码目录的受控插件联接点；脚本拒绝路径逃逸及其他符号链接/联接点，凭据为空且 `externalActionsEnabled` 固定为 `false`。Lab 不安装软件、不发布、不同步、不归档。
+
+Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token；宿主 DSH 对话、设置、审批和 shell layout 仍由 Host 所有。组件映射与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
+
 `dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的单个运行插件。它把选题、创作、知识、热点、项目进度和受控发布入口放进同一界面，同时保留 Agent 对话。
 
 安装：`npx @deepseek-ai/dsh plugin --profile web add github:MuziGeek/dsh-muzi-creator`（本地开发用目录路径）
