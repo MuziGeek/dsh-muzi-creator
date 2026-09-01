@@ -1,9 +1,9 @@
 [data-plugin="dsh-muzi-creator"][data-surface="daily-hot-inspector"] {
-  --muzi-surface: var(--muzi-island-paper, var(--dsw-alias-bg-base));
-  --muzi-surface-soft: var(--muzi-island-canvas, var(--dsw-alias-bg-layer-1));
-  --muzi-surface-muted: var(--dsw-alias-bg-layer-2);
-  --muzi-border: var(--muzi-island-line, var(--dsw-alias-border-l1));
-  --muzi-border-strong: var(--muzi-island-line-strong, var(--dsw-alias-border-l2));
+  --muzi-surface: var(--muzi-island-paper);
+  --muzi-surface-soft: var(--muzi-island-canvas);
+  --muzi-surface-muted: var(--muzi-island-sidebar);
+  --muzi-border: var(--muzi-island-line);
+  --muzi-border-strong: var(--muzi-island-line-strong);
   position: absolute;
   inset: 0 auto 0 var(--oil-sidebar-width, 280px);
   z-index: 8;
@@ -13,7 +13,7 @@
   overflow: hidden;
   border-right: 1px solid var(--muzi-border);
   background: var(--muzi-surface);
-  color: var(--muzi-island-text, var(--dsw-alias-label-primary));
+  color: var(--muzi-island-text);
   font-family: var(--muzi-island-font, inherit);
   box-sizing: border-box;
 }
@@ -29,7 +29,7 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotInspectorTop {
   display: flex;
-  height: 52px;
+  height: 56px;
   flex: none;
   align-items: center;
   justify-content: space-between;
@@ -57,27 +57,28 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotInspectorTop > button {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
   flex: none;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--muzi-island-radius-sm);
   background: transparent;
-  color: var(--muzi-island-text-soft, var(--dsw-alias-label-secondary));
+  color: var(--muzi-island-text-soft);
   cursor: pointer;
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotInspectorTop > button:hover {
-  background: var(--muzi-island-leaf-soft, var(--dsw-alias-interactive-bg-hover));
-  color: var(--muzi-island-leaf, var(--dsw-alias-state-business-primary));
+  background: var(--muzi-island-leaf-soft);
+  color: var(--muzi-island-leaf);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotInspectorTop > button:focus-visible,
 [data-plugin="dsh-muzi-creator"] .dailyHotSourcesToggle:focus-visible,
 [data-plugin="dsh-muzi-creator"] .dailyHotLinks a:focus-visible {
-  outline: 2px solid var(--muzi-island-leaf, var(--dsw-alias-state-business-primary));
+  outline: 3px solid var(--muzi-island-focus);
   outline-offset: 2px;
 }
 
@@ -113,26 +114,24 @@
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  color: var(--muzi-island-text-faint, var(--dsw-alias-label-tertiary));
+  color: var(--muzi-island-text-faint);
   font-size: 11px;
   line-height: 16px;
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotHeroMeta > span {
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: var(--muzi-surface-muted);
+  max-width: 100%;
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotEvidence.multi-source,
 [data-plugin="dsh-muzi-creator"] .dailyHotEvidence.original-linked {
-  background: var(--muzi-island-success-soft, var(--dsw-alias-state-success-tertiary, rgb(45 145 93 / 9%)));
-  color: var(--muzi-island-success, var(--dsw-alias-state-success-primary, #2f9461));
+  background: var(--muzi-island-success-soft);
+  color: var(--muzi-island-success);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotEvidence.summary-only {
-  background: var(--dsw-alias-state-warn-tertiary, rgb(180 115 0 / 9%));
-  color: var(--dsw-alias-state-warn-label, #8c5c00);
+  background: var(--muzi-island-warning-soft);
+  color: var(--muzi-island-warning);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotHero h1 {
@@ -149,7 +148,7 @@
 [data-plugin="dsh-muzi-creator"] .dailyHotHero > p {
   max-width: 68ch;
   margin: 0;
-  color: var(--muzi-island-text-soft, var(--dsw-alias-label-secondary));
+  color: var(--muzi-island-text-soft);
   font-size: 14px;
   line-height: 23px;
   text-wrap: pretty;
@@ -162,10 +161,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotDomains span {
-  padding: 4px 8px;
-  border: 1px solid var(--muzi-border);
-  border-radius: 999px;
-  color: var(--muzi-island-text-soft, var(--dsw-alias-label-secondary));
+  color: var(--muzi-island-text-soft);
   font-size: 11px;
   line-height: 16px;
 }
@@ -176,15 +172,15 @@
   margin-top: 24px;
   padding: 16px 18px;
   border: 1px solid var(--muzi-border);
-  border-radius: 12px;
-  background: var(--muzi-island-leaf-soft, var(--muzi-surface-soft));
+  border-radius: var(--muzi-island-radius-md);
+  background: var(--muzi-island-leaf-soft);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotLatest h2,
 [data-plugin="dsh-muzi-creator"] .dailyHotSummary h2,
 [data-plugin="dsh-muzi-creator"] .dailyHotEvidenceGroup h2 {
   margin: 0;
-  color: var(--muzi-island-text-soft, var(--dsw-alias-label-secondary));
+  color: var(--muzi-island-text-soft);
   font-size: 12px;
   line-height: 18px;
   font-weight: 650;
@@ -192,12 +188,12 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotLatest h2 {
-  color: var(--muzi-island-leaf, var(--dsw-alias-state-business-primary));
+  color: var(--muzi-island-leaf);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotLatest p {
   margin: 0;
-  color: var(--muzi-island-text, var(--dsw-alias-label-primary));
+  color: var(--muzi-island-text);
   font-size: 14px;
   line-height: 23px;
   text-wrap: pretty;
@@ -217,7 +213,7 @@
 [data-plugin="dsh-muzi-creator"] .dailyHotSummaryBody p {
   max-width: 72ch;
   margin: 0;
-  color: var(--muzi-island-text, var(--dsw-alias-label-primary));
+  color: var(--muzi-island-text);
   font-size: 15px;
   line-height: 26px;
   white-space: pre-wrap;
@@ -260,7 +256,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotFacts dt {
-  color: var(--muzi-island-text-faint, var(--dsw-alias-label-tertiary));
+  color: var(--muzi-island-text-faint);
   font-size: 11px;
   line-height: 16px;
 }
@@ -269,7 +265,7 @@
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
-  color: var(--muzi-island-text, var(--dsw-alias-label-primary));
+  color: var(--muzi-island-text);
   font-size: 13px;
   line-height: 20px;
 }
@@ -285,27 +281,21 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotSourceNames li {
   max-width: 100%;
-  padding: 5px 8px;
   overflow-wrap: anywhere;
-  border-radius: 7px;
-  background: var(--muzi-surface-soft);
-  color: var(--muzi-island-text-soft, var(--dsw-alias-label-secondary));
-  font-size: 11px;
-  line-height: 16px;
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotSourcesToggle {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 40px;
   width: fit-content;
   align-items: center;
   gap: 6px;
   margin-top: -2px;
   padding: 0 4px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--muzi-island-radius-sm);
   background: transparent;
-  color: var(--muzi-island-leaf, var(--dsw-alias-state-business-primary));
+  color: var(--muzi-island-leaf);
   font: inherit;
   font-size: 12px;
   line-height: 18px;
@@ -313,7 +303,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotSourcesToggle:hover {
-  background: var(--muzi-island-leaf-soft, var(--dsw-alias-interactive-bg-hover));
+  background: var(--muzi-island-leaf-soft);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotSourcesToggle svg {
@@ -335,14 +325,14 @@
 [data-plugin="dsh-muzi-creator"] .dailyHotLinks a {
   display: inline-flex;
   min-width: 0;
-  min-height: 36px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   gap: 7px;
   padding: 0 12px;
   border: 1px solid var(--muzi-border-strong);
-  border-radius: 8px;
-  color: var(--muzi-island-text, var(--dsw-alias-label-primary));
+  border-radius: var(--muzi-island-radius-sm);
+  color: var(--muzi-island-text);
   font-size: 12px;
   line-height: 18px;
   text-align: center;
@@ -350,9 +340,10 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotLinks a:first-child {
-  border-color: var(--muzi-island-leaf, var(--dsw-alias-state-business-primary));
-  background: var(--muzi-island-leaf, var(--dsw-alias-state-business-primary));
-  color: var(--dsw-alias-state-business-on-primary, white);
+  border-color: var(--muzi-island-leaf);
+  background: var(--muzi-island-leaf);
+  color: var(--muzi-island-paper);
+  box-shadow: 0 3px 7px rgb(63 111 56 / 20%);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotLinks a:hover {
@@ -365,9 +356,9 @@
   gap: 9px;
   margin-top: 22px;
   padding: 12px;
-  border-radius: 10px;
-  background: var(--muzi-surface-soft);
-  color: var(--muzi-island-text-soft, var(--dsw-alias-label-secondary));
+  border-radius: var(--muzi-island-radius-sm);
+  background: var(--muzi-island-warning-soft);
+  color: var(--muzi-island-text-soft);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotDisclaimer svg {
@@ -384,7 +375,7 @@
 [data-plugin="dsh-muzi-creator"] .dailyHotDisclaimer strong {
   display: block;
   margin-bottom: 2px;
-  color: var(--muzi-island-text, var(--dsw-alias-label-primary));
+  color: var(--muzi-island-text);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotResize {
@@ -413,7 +404,7 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotResize:hover::after,
 [data-plugin="dsh-muzi-creator"] .dailyHotResize:focus-visible::after {
-  background: var(--muzi-island-leaf, var(--dsw-alias-state-business-primary));
+  background: var(--muzi-island-leaf);
   opacity: 1;
 }
 

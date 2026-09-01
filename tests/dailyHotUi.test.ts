@@ -184,6 +184,9 @@ describe("Daily Hot UI contract", () => {
     expect(inspector).toContain('className="dailyHotLatest"');
     expect(inspector).toContain("dailyHotSummaryParagraphs");
     expect(inspector).toContain("previewDailyHotSources");
+    expect(inspector).toContain("IslandButton");
+    expect(inspector).toContain("IslandTag");
+    expect(inspector).not.toContain("<button");
     expect(inspector).toContain("aria-expanded={sourcesExpanded}");
     expect(inspector).toContain("aria-controls={sourceListId}");
     expect(inspector).toContain("scrollRef.current?.scrollTo({ top: 0 })");

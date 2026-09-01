@@ -1,4 +1,6 @@
 [data-plugin="dsh-muzi-creator"],
+[data-plugin-modal="dsh-muzi-creator"],
+.trellisArchiveModal,
 [data-slot="conversation"] {
   --muzi-island-canvas: #f7f1e3;
   --muzi-island-paper: #fffaf0;
@@ -31,6 +33,8 @@
 }
 
 body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"],
+body[data-ds-dark-theme] [data-plugin-modal="dsh-muzi-creator"],
+body[data-ds-dark-theme] .trellisArchiveModal,
 body[data-ds-dark-theme] [data-slot="conversation"] {
   --muzi-island-canvas: #251f1a;
   --muzi-island-paper: #302820;

@@ -8,7 +8,6 @@ import {
   IconFolderOpenOutline16,
   IconRefreshOutline16,
   IconWarningOutline16,
-  Menu,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
@@ -45,6 +44,13 @@ import {
   taskIsOutsidePreview,
   taskPhaseSummary,
 } from "./trellisUiModel.ts";
+import {
+  IslandButton,
+  IslandModal,
+  IslandSelect,
+  IslandSkeleton,
+  IslandTag,
+} from "./ui/IslandControls.tsx";
 import "./TrellisProjectInspector.css";
 
 function useViewportWidth(): number {
@@ -98,24 +104,36 @@ interface ArchiveDialogProps {
 }
 
 function ArchiveDialog({ preview, busy, error, t, onCancel, onConfirm }: ArchiveDialogProps) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    ref.current?.showModal();
-    return () => { if (ref.current?.open === true) ref.current.close(); };
-  }, []);
   return (
-    <dialog
-      ref={ref}
-      data-plugin="dsh-muzi-creator"
-      data-surface="trellis-archive-dialog"
-      aria-labelledby="trellis-archive-title"
-      onCancel={(event) => { event.preventDefault(); if (!busy) onCancel(); }}
-    >
-      <div className="trellisArchiveDialogBody">
-        <header>
+    <IslandModal
+      open
+      className="trellisArchiveModal"
+      width={560}
+      maskClosable={!busy}
+      typewriter={false}
+      title={(
+        <span className="trellisArchiveTitle">
           <span className="trellisArchiveGlyph"><IconArchiveOutline20 size={20} /></span>
-          <div><h2 id="trellis-archive-title">{t("projects.archive.title")}</h2><p>{preview.task.title}</p></div>
-        </header>
+          <span><strong>{t("projects.archive.title")}</strong><small>{preview.task.title}</small></span>
+        </span>
+      )}
+      footer={(
+        <>
+          <IslandButton disabled={busy} onClick={onCancel}>{t("projects.cancel")}</IslandButton>
+          <IslandButton
+            danger
+            type="primary"
+            loading={busy}
+            disabled={!archivePreviewCanExecute(preview, busy)}
+            onClick={onConfirm}
+          >
+            {busy ? "正在归档…" : t("projects.archive.execute")}
+          </IslandButton>
+        </>
+      )}
+      onClose={() => { if (!busy) onCancel(); }}
+    >
+      <div data-plugin-modal="dsh-muzi-creator" className="trellisArchiveDialogBody">
         <p className="trellisNoCommit"><IconChecklistOutline14 />{t("projects.archive.noCommit")}</p>
         <dl className="trellisImpactGrid">
           <div><dt>{t("projects.archive.destination")}</dt><dd>{preview.targetMonth}</dd></div>
@@ -128,14 +146,8 @@ function ArchiveDialog({ preview, busy, error, t, onCancel, onConfirm }: Archive
         {preview.blockers.length > 0 && <section className="trellisArchiveMessages blocker"><h3><IconWarningOutline16 size={16} />{t("projects.archive.blocked")}</h3><ul>{preview.blockers.map((item) => <li key={item}>{item}</li>)}</ul></section>}
         {preview.git.sample.length > 0 && <details><summary>查看未提交文件摘要</summary><ul className="trellisGitSample">{preview.git.sample.map((item) => <li key={item}><code>{item}</code></li>)}</ul></details>}
         {error !== null && <p className="trellisArchiveError" role="alert">{error}</p>}
-        <footer>
-          <button type="button" className="secondary" disabled={busy} onClick={onCancel}>{t("projects.cancel")}</button>
-          <button type="button" className="danger" disabled={!archivePreviewCanExecute(preview, busy)} onClick={onConfirm}>
-            {busy ? "正在归档…" : t("projects.archive.execute")}
-          </button>
-        </footer>
       </div>
-    </dialog>
+    </IslandModal>
   );
 }
 
@@ -160,22 +172,30 @@ function TaskList({ groupKey, label, tasks, selected, emptyLabel, expanded, onTo
         ? <p className="trellisGroupEmpty">{emptyLabel}</p>
         : <>
           <div id={rowsId} className="trellisTaskRows">{preview.visible.map((task) => (
-            <button key={task.key} type="button" className={selected === task.key ? "selected" : ""} onClick={() => { selectTrellisTask(task.key); }}>
+            <IslandButton
+              key={task.key}
+              type="text"
+              block
+              className={selected === task.key ? "selected" : ""}
+              aria-pressed={selected === task.key}
+              onClick={() => { selectTrellisTask(task.key); }}
+            >
               <span className={`trellisTaskStatus ${task.status}`} aria-hidden="true" />
               <span className="trellisTaskRowBody"><strong>{task.title}</strong><small>{task.priority ?? "未设优先级"} · {task.assignee ?? "未分配"}</small></span>
-              {task.archived && <span className={task.verifiedCompletion ? "trellisEvidence good" : "trellisEvidence weak"}>{task.verifiedCompletion ? "已验证" : "证据不足"}</span>}
-            </button>
+              {task.archived && <IslandTag className={task.verifiedCompletion ? "trellisEvidence good" : "trellisEvidence weak"} color={task.verifiedCompletion ? "app-green" : "app-yellow"} size="small" variant="soft">{task.verifiedCompletion ? "已验证" : "证据不足"}</IslandTag>}
+            </IslandButton>
           ))}</div>
-          {preview.remaining > 0 && <button
-            type="button"
+          {preview.remaining > 0 && <IslandButton
+            type="text"
+            size="small"
             className="trellisTaskDisclosure"
             aria-expanded={expanded}
             aria-controls={rowsId}
+            icon={<IconChevronDownOutline14 className={expanded ? "open" : ""} aria-hidden="true" />}
             onClick={() => { onToggle(groupKey); }}
           >
-            <span>{expanded ? t("projects.showLess") : `${t("projects.showMore")} ${String(preview.remaining)} ${t("projects.taskUnit")}`}</span>
-            <IconChevronDownOutline14 className={expanded ? "open" : ""} aria-hidden="true" />
-          </button>}
+            {expanded ? t("projects.showLess") : `${t("projects.showMore")} ${String(preview.remaining)} ${t("projects.taskUnit")}`}
+          </IslandButton>}
         </>}
     </section>
   );
@@ -197,7 +217,6 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
   const [width, setWidth] = useState(getInspectorWidth);
   const viewportWidth = useViewportWidth();
   const sidebarWidth = useSidebarChromeWidth();
@@ -290,7 +309,6 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   taskGroupsRef.current = taskGroups;
   useEffect(() => {
     setExpandedTaskGroups(collapsedTaskGroups());
-    setPriorityMenuOpen(false);
     if (priority !== "all" && !priorities.includes(priority)) setPriority("all");
   }, [selection.projectId, priority, priorities]);
   useEffect(() => {
@@ -311,10 +329,9 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   const counts = detail?.project.counts ?? null;
   const phaseSummary = selectedTask === null ? null : taskPhaseSummary(selectedTask);
   const priorityItems = useMemo(() => [
-    { id: "all", label: t("projects.filter.all") },
-    ...priorities.map((value) => ({ id: value, label: value })),
+    { key: "all", label: t("projects.filter.all") },
+    ...priorities.map((value) => ({ key: value, label: value })),
   ], [priorities, t]);
-  const priorityLabel = priority === "all" ? t("projects.filter.all") : priority;
 
   const prepareArchive = async (): Promise<void> => {
     if (selection.projectId === null || selectedTask === null) return;
@@ -356,18 +373,18 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
       <div className="trellisInspectorTop">
         <div><IconBranchOutline16 size={16} /><span>{detail?.project.title ?? t("projects.detail")}</span></div>
         <div className="trellisTopActions">
-          <button type="button" aria-label={t("projects.refresh")} onClick={() => { void load(); }}><IconRefreshOutline16 size={16} /></button>
-          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <button type="button" aria-label={t("projects.openFolder")} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }}><IconFolderOpenOutline16 size={16} /></button>}
-          <button type="button" aria-label="关闭项目详情" onClick={closeDetails}><IconCloseOutline16 size={16} /></button>
+          <IslandButton type="text" size="small" aria-label={t("projects.refresh")} icon={<IconRefreshOutline16 size={16} />} onClick={() => { void load(); }} />
+          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton type="text" size="small" aria-label={t("projects.openFolder")} icon={<IconFolderOpenOutline16 size={16} />} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }} />}
+          <IslandButton type="text" size="small" aria-label="关闭项目详情" icon={<IconCloseOutline16 size={16} />} onClick={closeDetails} />
         </div>
       </div>
 
       {error !== null && detail === null && <div className="trellisInspectorState error"><strong>{t("projects.error")}</strong><p>{error}</p></div>}
-      {detail === null && error === null && <div className="trellisInspectorState"><strong>{t("projects.loading")}</strong></div>}
+      {detail === null && error === null && <div className="trellisInspectorState" aria-label={t("projects.loading")}><IslandSkeleton variant="text" width="72%" /><IslandSkeleton variant="text" width="46%" /></div>}
       {detail !== null && (
         <div className="trellisInspectorScroll">
           <header className="trellisProjectHero">
-            <div className="trellisHeroHeading"><span className={`trellisProjectState ${detail.project.status}`}>{detail.project.status === "ready" ? t("projects.ready") : detail.project.status === "degraded" ? t("projects.degraded") : t("projects.unavailable")}</span><h1>{detail.project.title}</h1><p>{detail.project.statusMessage}</p></div>
+            <div className="trellisHeroHeading"><IslandTag className={`trellisProjectState ${detail.project.status}`} color={detail.project.status === "ready" ? "app-green" : detail.project.status === "degraded" ? "app-yellow" : "app-red"} size="small" variant="soft">{detail.project.status === "ready" ? t("projects.ready") : detail.project.status === "degraded" ? t("projects.degraded") : t("projects.unavailable")}</IslandTag><h1>{detail.project.title}</h1><p>{detail.project.statusMessage}</p></div>
             {counts !== null && <div className="trellisDistribution" aria-label="任务状态分布">
               <div><strong>{counts.planning}</strong><span>{t("projects.planning")}</span></div>
               <div><strong>{counts.inProgress}</strong><span>{t("projects.inProgress")}</span></div>
@@ -380,37 +397,13 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
           <div className="trellisProjectToolbar">
             <div className="trellisPriorityField">
               <span className="trellisPriorityLabel">优先级</span>
-              <Menu
-                open={priorityMenuOpen}
-                portal={true}
-                dense={true}
-                align="start"
-                selectedId={priority}
-                items={priorityItems}
-                anchor={(
-                  <button
-                    type="button"
-                    className="trellisPriorityTrigger"
-                    aria-haspopup="menu"
-                    aria-expanded={priorityMenuOpen}
-                    aria-label={`优先级：${priorityLabel}`}
-                    onClick={() => { setPriorityMenuOpen((open) => !open); }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setPriorityMenuOpen(true);
-                      }
-                    }}
-                  >
-                    <span>{priorityLabel}</span>
-                    <IconChevronDownOutline14 className={priorityMenuOpen ? "open" : ""} aria-hidden="true" />
-                  </button>
-                )}
-                onSelect={(id) => {
-                  if (id === "all" || priorities.includes(id)) setPriority(id);
-                  setPriorityMenuOpen(false);
+              <IslandSelect
+                aria-label="优先级"
+                value={priority}
+                options={priorityItems}
+                onChange={(value: string) => {
+                  if (value === "all" || priorities.includes(value)) setPriority(value);
                 }}
-                onClose={() => { setPriorityMenuOpen(false); }}
               />
             </div>
             <span>读取于 {new Date(detail.scannedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</span>
@@ -424,7 +417,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
           </div>
 
           {selectedTask !== null && <section className="trellisTaskDetail">
-            <header><div><span className={`trellisStatusLabel ${selectedTask.status}`}>{STATUS_LABELS[selectedTask.status]}</span><h2>{selectedTask.title}</h2><p>{selectedTask.description || "未填写任务说明"}</p></div>{!selectedTask.archived && selectedTask.status === "completed" && <button type="button" className="trellisArchiveButton" disabled={archiveBusy} onClick={() => { void prepareArchive(); }}><IconArchiveOutline20 size={18} />{archiveBusy ? t("projects.archive.checking") : t("projects.archive")}</button>}</header>
+            <header><div><IslandTag className={`trellisStatusLabel ${selectedTask.status}`} color={selectedTask.status === "completed" ? "app-green" : selectedTask.status === "in_progress" ? "yellow-green" : selectedTask.status === "planning" ? "app-yellow" : "brown"} size="small" variant="soft">{STATUS_LABELS[selectedTask.status]}</IslandTag><h2>{selectedTask.title}</h2><p>{selectedTask.description || "未填写任务说明"}</p></div>{!selectedTask.archived && selectedTask.status === "completed" && <IslandButton className="trellisArchiveButton" loading={archiveBusy} disabled={archiveBusy} icon={<IconArchiveOutline20 size={18} />} onClick={() => { void prepareArchive(); }}>{archiveBusy ? t("projects.archive.checking") : t("projects.archive")}</IslandButton>}</header>
             <dl className="trellisTaskFacts">
               <div><dt>优先级</dt><dd>{selectedTask.priority ?? "—"}</dd></div>
               <div><dt>负责人</dt><dd>{selectedTask.assignee ?? "—"}</dd></div>
@@ -438,7 +431,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
               <div><dt>下一阶段</dt><dd>{phaseSummary.next}</dd></div>
             </dl>}
              <div className={`trellisEvidenceCard ${selectedTask.evidence.state}`}><IconChecklistOutline14 /><div><strong>{selectedTask.archived && selectedTask.verifiedCompletion ? t("projects.evidence.verified") : selectedTask.evidence.state === "meaningful" ? "验证材料可读" : t("projects.evidence.insufficient")}</strong><p>{selectedTask.evidence.message}{selectedTask.evidence.files.length > 0 ? ` · ${selectedTask.evidence.files.join("、")}` : ""}</p></div></div>
-            {(parent !== null || children.length > 0) && <div className="trellisRelations"><h3>父子任务</h3>{parent !== null && <p><span>父任务</span><button type="button" onClick={() => { selectTrellisTask(parent.key); }}>{parent.title}</button></p>}{children.length > 0 && <p><span>子任务</span>{children.map((child) => <button key={child.key} type="button" onClick={() => { selectTrellisTask(child.key); }}>{child.title}</button>)}</p>}</div>}
+            {(parent !== null || children.length > 0) && <div className="trellisRelations"><h3>父子任务</h3>{parent !== null && <p><span>父任务</span><IslandButton type="link" size="small" onClick={() => { selectTrellisTask(parent.key); }}>{parent.title}</IslandButton></p>}{children.length > 0 && <p><span>子任务</span>{children.map((child) => <IslandButton key={child.key} type="link" size="small" onClick={() => { selectTrellisTask(child.key); }}>{child.title}</IslandButton>)}</p>}</div>}
             {selectedTask.relatedFiles.length > 0 && <div className="trellisRelatedFiles"><h3>相关文件</h3><ul>{selectedTask.relatedFiles.map((file) => <li key={file}><code>{file}</code></li>)}</ul></div>}
             {selectedTask.notes !== "" && <div className="trellisTaskNotes"><h3>任务记录</h3><p>{selectedTask.notes}</p></div>}
             {selectedTask.unknownFields.length > 0 && <p className="trellisUnknownFields">未识别字段：{selectedTask.unknownFields.join("、")}</p>}
@@ -447,7 +440,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
         </div>
       )}
 
-      {notice !== null && <div className="trellisNotice" role="status"><span>{notice}</span><button type="button" aria-label="关闭提示" onClick={() => { setNotice(null); }}><IconCloseOutline16 size={14} /></button></div>}
+      {notice !== null && <div className="trellisNotice" role="status"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" icon={<IconCloseOutline16 size={14} />} onClick={() => { setNotice(null); }} /></div>}
       {layout.mode === "split" && <div className="trellisResize" role="separator" aria-orientation="vertical" aria-label="调整项目详情宽度" aria-valuemin={INSPECTOR_MIN} aria-valuemax={layout.maxWidth} aria-valuenow={layout.width} tabIndex={0} onKeyDown={resizeWithKeyboard} onPointerDown={(event) => { drag.current = { x: event.clientX, width: layout.width, latestWidth: layout.width }; setDragging(true); }} />}
       {archivePreview !== null && <ArchiveDialog preview={archivePreview} busy={archiveBusy} error={archiveError} t={t} onCancel={() => { if (!archiveBusy) setArchivePreview(null); }} onConfirm={() => { void executeArchive(); }} />}
     </aside>

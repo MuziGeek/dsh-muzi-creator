@@ -29,6 +29,7 @@ import {
   resolveInspectorLayout,
 } from "./inspectorLayout.ts";
 import type { CreatorKey } from "./locales.ts";
+import { IslandButton, IslandTag } from "./ui/IslandControls.tsx";
 import "./DailyHotInspector.css";
 
 function useViewportWidth(): number {
@@ -129,9 +130,14 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
     >
       <div className="dailyHotInspectorTop">
         <div><IconLightOutline16 size={16} /><span>{t("hot.detail")}</span></div>
-        <button type="button" aria-label={t("hot.close")} onClick={closeDetails}>
-          <IconCloseOutline16 size={16} />
-        </button>
+        <IslandButton
+          className="dailyHotClose"
+          type="text"
+          size="small"
+          aria-label={t("hot.close")}
+          icon={<IconCloseOutline16 size={16} />}
+          onClick={closeDetails}
+        />
       </div>
 
       <div ref={scrollRef} className="dailyHotInspectorScroll">
@@ -139,14 +145,21 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
           <article className="dailyHotArticle">
             <header className="dailyHotHero">
               <div className="dailyHotHeroMeta">
-                <span className={`dailyHotEvidence ${item.evidence.level}`}>{item.evidence.label}</span>
-                {item.categoryLabel !== null && <span>{item.categoryLabel}</span>}
+                <IslandTag
+                  className={`dailyHotEvidence ${item.evidence.level}`}
+                  color={item.evidence.level === "summary-only" ? "app-yellow" : "app-green"}
+                  size="small"
+                  variant="soft"
+                >
+                  {item.evidence.label}
+                </IslandTag>
+                {item.categoryLabel !== null && <IslandTag color="brown" size="small" variant="soft">{item.categoryLabel}</IslandTag>}
               </div>
               <h1>{item.title}</h1>
               <p>{item.attention.reason}</p>
               {item.attention.domains.length > 0 && (
                 <div className="dailyHotDomains" aria-label={t("hot.domains")}>
-                  {item.attention.domains.map((domain) => <span key={domain.id}>{domain.label}</span>)}
+                  {item.attention.domains.map((domain) => <IslandTag key={domain.id} color="yellow-green" size="small" variant="outlined">{domain.label}</IslandTag>)}
                 </div>
               )}
             </header>
@@ -182,18 +195,19 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
             {item.sourceNames.length > 0 && (
               <section className="dailyHotEvidenceGroup dailyHotSourceNames">
                 <h2>{t("hot.sources")}</h2>
-                <ul id={sourceListId}>{sourcePreview.items.map((name) => <li key={name}>{name}</li>)}</ul>
+                <ul id={sourceListId}>{sourcePreview.items.map((name) => <li key={name}><IslandTag color="brown" size="small" variant="soft">{name}</IslandTag></li>)}</ul>
                 {sourcePreview.remaining > 0 && (
-                  <button
-                    type="button"
+                  <IslandButton
                     className="dailyHotSourcesToggle"
+                    type="text"
+                    size="small"
                     aria-expanded={sourcesExpanded}
                     aria-controls={sourceListId}
+                    icon={<IconChevronDownOutline14 size={14} />}
                     onClick={() => { setSourcesExpanded((value) => !value); }}
                   >
-                    <span>{sourcesExpanded ? t("hot.sources.hide") : `${t("hot.sources.showMore")} ${String(sourcePreview.remaining)} ${t("hot.sources.unit")}`}</span>
-                    <IconChevronDownOutline14 size={14} />
-                  </button>
+                    {sourcesExpanded ? t("hot.sources.hide") : `${t("hot.sources.showMore")} ${String(sourcePreview.remaining)} ${t("hot.sources.unit")}`}
+                  </IslandButton>
                 )}
               </section>
             )}

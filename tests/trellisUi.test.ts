@@ -141,28 +141,29 @@ describe("Trellis project UI behavior", () => {
     expect(archivePreviewCanExecute(preview("signed-token"), false)).toBe(true);
   });
 
-  it("includes full-width narrow-screen details and modal cancellation handling", async () => {
+  it("includes full-width details with Animal modal and controlled priority selection", async () => {
     const [css, inspector] = await Promise.all([
       readFile(new URL("../src/client/TrellisProjectInspector.css", import.meta.url), "utf8"),
       readFile(new URL("../src/client/TrellisProjectInspector.tsx", import.meta.url), "utf8"),
     ]);
     expect(css).toContain("@media (max-width: 880px)");
     expect(css).toContain("width: 100% !important");
-    expect(inspector).toContain("onCancel={(event)");
+    expect(inspector).toContain("IslandModal");
+    expect(inspector).toContain("maskClosable={!busy}");
+    expect(inspector).toContain("typewriter={false}");
     expect(inspector).toContain("if (!busy) onCancel()");
     expect(inspector).toContain("aria-expanded={expanded}");
     expect(inspector).toContain("aria-controls={rowsId}");
     expect(inspector).toContain("taskIsOutsidePreview");
-    expect(inspector).toContain("Menu,");
-    expect(inspector).toContain("portal={true}");
-    expect(inspector).toContain("dense={true}");
-    expect(inspector).toContain("selectedId={priority}");
-    expect(inspector).toContain("aria-expanded={priorityMenuOpen}");
-    expect(inspector).toContain("onKeyDown={(event)");
-    expect(inspector).toContain('event.key === "Enter"');
-    expect(inspector).toContain('event.key === " "');
+    expect(inspector).toContain("IslandSelect");
+    expect(inspector).toContain("value={priority}");
+    expect(inspector).toContain("options={priorityItems}");
+    expect(inspector).toContain("archivePreviewCanExecute(preview, busy)");
+    expect(inspector).not.toContain("Menu,");
+    expect(inspector).not.toContain("<dialog");
     expect(inspector).not.toContain("<select");
-    expect(css).toContain(".trellisPriorityTrigger");
+    expect(css).toContain('.trellisPriorityField [role="combobox"]');
+    expect(css).toContain(".trellisArchiveModal");
     const fontSizes = [...css.matchAll(/font-size:\s*(\d+)px/g)].map((match) => Number.parseInt(match[1] ?? "0", 10));
     expect(fontSizes.length).toBeGreaterThan(0);
     expect(Math.min(...fontSizes)).toBeGreaterThanOrEqual(11);
