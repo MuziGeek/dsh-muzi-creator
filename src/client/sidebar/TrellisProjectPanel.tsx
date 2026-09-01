@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { IconBranchOutline16 } from "@deepseek-ai/dsh-client-ui-primitives";
 
 import type { TrellisProjectListResult, TrellisProjectSummary } from "../../trellisTypes.ts";
 import { setSelectedContentId } from "../contentSelection.ts";
@@ -13,7 +12,12 @@ import {
 } from "../trellisSelection.ts";
 import { projectMatchesQuery } from "../trellisUiModel.ts";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
-import { IslandButton, IslandCard, IslandSkeleton } from "../ui/IslandControls.tsx";
+import {
+  IslandIcon,
+  IslandSelectableCard,
+  IslandSkeleton,
+  IslandState,
+} from "../ui/IslandControls.tsx";
 import "./TrellisProjectPanel.css";
 
 function projectStateLabel(project: TrellisProjectSummary, t: (key: CreatorKey) => string): string {
@@ -79,23 +83,22 @@ export function TrellisProjectPanel({ face, t }: TrellisProjectPanelProps) {
       />
       <div className="trellisProjectList">
         {listed !== null && <p className="trellisProjectsRoot"><span>{t("projects.root")}</span><code title={listed.projectsRoot}>{listed.projectsRoot}</code></p>}
-        {loading && listed === null && <div className="muziPanelState"><IslandSkeleton variant="rectangular" width="100%" height="48px" /><strong>{t("projects.loading")}</strong></div>}
-        {error !== null && listed === null && <IslandCard className="muziPanelState error"><strong>{t("projects.error")}</strong><p>{error}</p></IslandCard>}
-        {!loading && listed !== null && listed.projects.length === 0 && <IslandCard className="trellisProjectEmpty"><IconBranchOutline16 size={22} /><p>{t("projects.empty")}</p></IslandCard>}
+        {loading && listed === null && <div className="muziCardSkeletons" aria-label={t("projects.loading")}><IslandSkeleton variant="rect" widthValue="100%" heightValue={84} /><IslandSkeleton variant="rect" widthValue="100%" heightValue={84} /></div>}
+        {error !== null && listed === null && <IslandState kind="error" title={t("projects.error")} message={error} />}
+        {!loading && listed !== null && listed.projects.length === 0 && <IslandState kind="empty" title={t("projects.empty")} action={<IslandIcon name="icon-map" size={24} />} />}
         {filtered.map((project) => {
           const selected = selection.projectId === project.projectId;
           const counts = project.counts;
           return (
-            <IslandCard key={project.projectId} className={`trellisProjectCard${selected ? " selected" : ""}`}>
-              <IslandButton
-                type="default"
-                className="trellisProjectMain"
-                aria-pressed={selected}
-                onClick={() => {
+            <IslandSelectableCard
+              key={project.projectId}
+              className={`trellisProjectCard trellisProjectMain${selected ? " selected" : ""}`}
+              selected={selected}
+              onSelect={() => {
                   selectTrellisProject(project.projectId);
                   setSelectedContentId(null);
-                }}
-              >
+              }}
+            >
                 <span className={`trellisConnectionMark ${project.status}`} aria-hidden="true" />
                 <span className="trellisProjectBody">
                   <span className="trellisProjectHeading"><strong>{project.title}</strong><small>{projectStateLabel(project, t)}</small></span>
@@ -109,8 +112,7 @@ export function TrellisProjectPanel({ face, t }: TrellisProjectPanelProps) {
                     </span>
                   )}
                 </span>
-              </IslandButton>
-            </IslandCard>
+            </IslandSelectableCard>
           );
         })}
       </div>

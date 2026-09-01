@@ -1,10 +1,15 @@
-[data-plugin="dsh-muzi-creator"] .trellisProjectPanel { min-width: 0; }
+[data-plugin="dsh-muzi-creator"] .trellisProjectPanel,
+[data-plugin="dsh-muzi-creator"] .trellisProjectList,
+[data-plugin="dsh-muzi-creator"] .trellisProjectCard {
+  min-width: 0;
+}
 
 [data-plugin="dsh-muzi-creator"] .trellisProjectList {
-  flex: 1;
   min-height: 0;
-  overflow: auto;
+  flex: 1;
   padding: 4px 12px 20px 4px;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
@@ -12,58 +17,35 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   margin: 2px 0 10px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--muzi-island-text-muted);
   font-size: 10px;
-  line-height: 15px;
+  line-height: 1.5;
 }
 
-[data-plugin="dsh-muzi-creator"] .trellisProjectsRoot span { flex: none; }
+[data-plugin="dsh-muzi-creator"] .trellisProjectsRoot span {
+  flex: none;
+}
+
 [data-plugin="dsh-muzi-creator"] .trellisProjectsRoot code {
   min-width: 0;
   overflow: hidden;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--muzi-island-text-soft);
   font: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 [data-plugin="dsh-muzi-creator"] .trellisProjectCard {
-  position: relative;
   display: flex;
-  min-width: 0;
-  margin: 0 0 7px;
-  border: 1px solid var(--muzi-border);
-  border-radius: var(--muzi-radius-md);
-  background: var(--muzi-surface);
-  overflow: hidden;
-  transition: border-color var(--muzi-motion-fast) var(--muzi-ease), background-color var(--muzi-motion-fast) var(--muzi-ease);
-}
-
-[data-plugin="dsh-muzi-creator"] .trellisProjectCard:hover { background: var(--dsw-alias-interactive-bg-hover); }
-[data-plugin="dsh-muzi-creator"] .trellisProjectCard.selected {
-  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 62%, var(--muzi-border));
-  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 6%, var(--muzi-surface));
-}
-
-[data-plugin="dsh-muzi-creator"] .trellisProjectMain {
-  display: flex;
-  min-width: 0;
-  flex: 1;
+  width: 100%;
+  min-height: 92px;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 11px 11px;
-  border: 0;
-  background: transparent;
-  color: inherit;
+  gap: 11px;
+  margin-bottom: 10px;
+  padding: 12px;
   text-align: left;
-  cursor: pointer;
-}
-
-[data-plugin="dsh-muzi-creator"] .trellisProjectMain:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
-  outline-offset: -2px;
 }
 
 [data-plugin="dsh-muzi-creator"] .trellisConnectionMark {
@@ -71,46 +53,93 @@
   height: 9px;
   flex: none;
   margin-top: 5px;
-  border: 2px solid var(--muzi-surface);
   border-radius: 50%;
-  background: var(--dsw-alias-label-tertiary);
-  box-shadow: 0 0 0 1px var(--muzi-border-strong);
+  background: var(--muzi-island-text-muted);
 }
-[data-plugin="dsh-muzi-creator"] .trellisConnectionMark.ready { background: var(--dsw-alias-state-success-primary, #2f9461); }
-[data-plugin="dsh-muzi-creator"] .trellisConnectionMark.degraded { background: var(--dsw-alias-state-warn-label, #b77700); }
+
+[data-plugin="dsh-muzi-creator"] .trellisConnectionMark.ready {
+  background: var(--muzi-island-success);
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisConnectionMark.degraded {
+  background: var(--muzi-island-warning);
+}
+
 [data-plugin="dsh-muzi-creator"] .trellisConnectionMark.path-missing,
 [data-plugin="dsh-muzi-creator"] .trellisConnectionMark.not-git-root,
 [data-plugin="dsh-muzi-creator"] .trellisConnectionMark.trellis-missing,
 [data-plugin="dsh-muzi-creator"] .trellisConnectionMark.unreadable,
-[data-plugin="dsh-muzi-creator"] .trellisConnectionMark.invalid { background: var(--dsw-alias-state-error-primary, #c94b42); }
-
-[data-plugin="dsh-muzi-creator"] .trellisProjectBody { display: grid; min-width: 0; flex: 1; gap: 6px; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectHeading { display: flex; min-width: 0; align-items: baseline; gap: 7px; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectHeading strong { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 18px; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectHeading small { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectPath { overflow: hidden; color: var(--dsw-alias-label-tertiary); font-size: 10px; line-height: 15px; text-overflow: ellipsis; white-space: nowrap; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectCounts { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 15px; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectCounts b { color: var(--dsw-alias-label-primary); font-variant-numeric: tabular-nums; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectCounts .invalid { color: var(--dsw-alias-state-error-primary); }
-
-[data-plugin="dsh-muzi-creator"] .trellisProjectEmpty { display: grid; max-width: 220px; justify-items: center; gap: 8px; margin: 38px auto 0; color: var(--dsw-alias-label-tertiary); text-align: center; }
-[data-plugin="dsh-muzi-creator"] .trellisProjectEmpty p { margin: 0; font-size: 11px; line-height: 18px; }
-
-[data-plugin="dsh-muzi-creator"] .trellisProjectCard {
-  border-color: var(--muzi-island-line);
-  border-radius: var(--muzi-island-radius-lg);
-  background: var(--muzi-island-paper);
+[data-plugin="dsh-muzi-creator"] .trellisConnectionMark.invalid {
+  background: var(--muzi-island-danger);
 }
 
-[data-plugin="dsh-muzi-creator"] .trellisProjectCard.selected {
-  border-color: var(--muzi-island-leaf);
-  background: var(--muzi-island-mint);
+[data-plugin="dsh-muzi-creator"] .trellisProjectBody {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 7px;
 }
 
-[data-plugin="dsh-muzi-creator"] .trellisProjectMain { min-height: 40px; color: var(--muzi-island-text); }
+[data-plugin="dsh-muzi-creator"] .trellisProjectHeading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
 
-[data-plugin="dsh-muzi-creator"] .trellisProjectMain:focus-visible { outline-color: var(--muzi-island-focus); }
+[data-plugin="dsh-muzi-creator"] .trellisProjectHeading strong {
+  display: -webkit-box;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisProjectHeading small {
+  flex: none;
+  color: var(--muzi-island-paper-text);
+  font-size: 10px;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisProjectPath {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muzi-island-paper-text);
+  font-size: 10px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisProjectCounts {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--muzi-island-paper-text);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisProjectCounts b {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisProjectCard.is-selected :where(.trellisProjectHeading small, .trellisProjectPath, .trellisProjectCounts) {
+  color: inherit;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisProjectCounts .invalid {
+  color: var(--muzi-island-danger);
+}
 
 @media (max-width: 430px) {
-  [data-plugin="dsh-muzi-creator"] .trellisProjectList { padding-right: 8px; }
+  [data-plugin="dsh-muzi-creator"] .trellisProjectList {
+    padding-right: 8px;
+  }
 }

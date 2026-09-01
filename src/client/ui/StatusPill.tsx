@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Tag, type TagColor } from "animal-island-ui";
+import { IslandTag, type IslandTagColor } from "./IslandControls.tsx";
 
 import "./StatusPill.css";
 
 export type StatusTone = "neutral" | "pending" | "active" | "success" | "error";
 
-const TONE_COLOR: Record<StatusTone, TagColor> = {
+const TONE_COLOR: Record<StatusTone, IslandTagColor> = {
   neutral: "brown",
   pending: "app-yellow",
   active: "yellow-green",
@@ -25,7 +25,7 @@ export function StatusPill({
   children: ReactNode;
 }) {
   return (
-    <Tag
+    <IslandTag
       className={statusPillClass(tone)}
       color={TONE_COLOR[tone]}
       size="small"
@@ -33,6 +33,6 @@ export function StatusPill({
     >
       <span aria-hidden="true" className="statusPillDot" />
       {children}
-    </Tag>
+    </IslandTag>
   );
 }

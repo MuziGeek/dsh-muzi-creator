@@ -1,11 +1,4 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import {
-  IconChevronDownOutline14,
-  IconLightOutline16,
-  IconRefreshOutline16,
-  IconWarningOutline16,
-  Tooltip,
-} from "@deepseek-ai/dsh-client-ui-primitives";
 
 import type { DailyHotItem, DailyHotResult } from "../../dailyHotTypes.ts";
 import { setSelectedContentId } from "../contentSelection.ts";
@@ -22,7 +15,13 @@ import {
 import type { DailyHotViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
 import { selectTrellisProject } from "../trellisSelection.ts";
-import { IslandButton, IslandCard, IslandSkeleton, IslandTag } from "../ui/IslandControls.tsx";
+import {
+  IslandButton,
+  IslandSelectableCard,
+  IslandSkeleton,
+  IslandState,
+  IslandTag,
+} from "../ui/IslandControls.tsx";
 import "./DailyHotPanel.css";
 
 interface DailyHotItemButtonProps {
@@ -34,12 +33,12 @@ interface DailyHotItemButtonProps {
 
 function DailyHotItemButton({ item, featured, selected, t }: DailyHotItemButtonProps) {
   return (
-    <IslandButton
-      type="default"
+    <IslandSelectableCard
       className={`dailyHotItem${featured ? " featured" : ""}${selected ? " selected" : ""}`}
-      aria-pressed={selected}
       aria-label={`${t("hot.openDetail")}：${item.title}`}
-      onClick={() => {
+      selected={selected}
+      selectedColor="lime-green"
+      onSelect={() => {
         setSelectedContentId(null);
         selectTrellisProject(null);
         selectDailyHotItem(item);
@@ -53,7 +52,7 @@ function DailyHotItemButton({ item, featured, selected, t }: DailyHotItemButtonP
           {formatDailyHotCompactTime(dailyHotItemTimestamp(item))}
         </time>
       </span>
-    </IslandButton>
+    </IslandSelectableCard>
   );
 }
 
@@ -152,40 +151,39 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
       <div className="muziSectionHeader dailyHotHeader">
         <span className="muziSectionLabel">
           <span>{t("hot.title")}</span>
-          {data !== null && <span className="dailyHotHeaderCount">{allItems.length}</span>}
+          {data !== null && <IslandTag className="dailyHotHeaderCount" size="small" color="brown" variant="soft">{allItems.length}</IslandTag>}
         </span>
         <div className="muziHeaderActions">
-          <Tooltip label={refreshing ? t("hot.refreshing") : t("hot.refresh")} side="bottom" delayMs={500}>
-            <IslandButton
-              type="text"
-              className={`muziHeaderIcon dailyHotRefresh${refreshing ? " spinning" : ""}`}
-              aria-label={refreshing ? t("hot.refreshing") : t("hot.refresh")}
-              aria-busy={refreshing}
-              disabled={refreshing}
-              onClick={() => { void load(true); }}
-            >
-              <IconRefreshOutline16 size={16} />
-            </IslandButton>
-          </Tooltip>
+          <IslandButton
+            type="text"
+            size="small"
+            className="dailyHotRefresh"
+            aria-label={refreshing ? t("hot.refreshing") : t("hot.refresh")}
+            aria-busy={refreshing}
+            disabled={refreshing}
+            onClick={() => { void load(true); }}
+          >
+            {refreshing ? t("hot.refreshing") : t("hot.refresh")}
+          </IslandButton>
         </div>
       </div>
 
       <div className="dailyHotScroll">
         {loading && data === null && (
           <div className="dailyHotLoading" aria-label={t("hot.loading")}>
-            <IslandSkeleton variant="rectangular" width="100%" height="44px" />
-            <IslandSkeleton variant="rectangular" width="100%" height="44px" />
-            <IslandSkeleton variant="rectangular" width="100%" height="44px" />
+            <IslandSkeleton variant="rect" widthValue="100%" heightValue={68} />
+            <IslandSkeleton variant="rect" widthValue="100%" heightValue={68} />
+            <IslandSkeleton variant="rect" widthValue="100%" heightValue={68} />
           </div>
         )}
 
         {error !== null && data === null && (
-          <IslandCard className="dailyHotError" role="alert">
-            <IconWarningOutline16 size={20} />
-            <strong>{t("hot.error.title")}</strong>
-            <p>{error}</p>
-            <IslandButton type="primary" onClick={() => { void load(true); }}>{t("hot.error.retry")}</IslandButton>
-          </IslandCard>
+          <IslandState
+            kind="error"
+            title={t("hot.error.title")}
+            message={error}
+            action={<IslandButton type="primary" onClick={() => { void load(true); }}>{t("hot.error.retry")}</IslandButton>}
+          />
         )}
 
         {data !== null && (
@@ -208,19 +206,17 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
 
             {data.status === "stale" && (
               <div className="dailyHotWarning" role="status">
-                <IconWarningOutline16 size={14} />
                 <span>{t("hot.warning.stale")} {data.error?.message ?? ""}</span>
               </div>
             )}
             {error !== null && (
               <div className="dailyHotWarning" role="status">
-                <IconWarningOutline16 size={14} />
                 <span>{t("hot.warning.local")} {error}</span>
               </div>
             )}
 
             {!hasItems
-              ? <IslandCard className="dailyHotEmpty"><IconLightOutline16 size={22} /><p>{t("hot.empty")}</p></IslandCard>
+              ? <IslandState kind="empty" title={t("hot.empty")} />
               : <>
                   <DailyHotTier
                     id="daily-hot-must-read"
@@ -250,7 +246,6 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
                       >
                         <span id={`${otherId}-label`}>{t("hot.other")} · {String(data.tiers.other.length)}</span>
                         <span>{otherExpanded ? t("hot.other.hide") : t("hot.other.show")}</span>
-                        <IconChevronDownOutline14 className={otherExpanded ? "open" : ""} aria-hidden="true" />
                       </IslandButton>
                       {otherExpanded && (
                         <div id={otherId} className="dailyHotTierItems">

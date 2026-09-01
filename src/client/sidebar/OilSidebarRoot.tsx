@@ -1,13 +1,4 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import {
-  IconBrowseOutline16,
-  IconFolderClose16,
-  IconLightOutline16,
-  IconNewChatOutline16,
-  IconPanelLeftOutline16,
-  IconProjectAddOutline16,
-  Tooltip,
-} from "@deepseek-ai/dsh-client-ui-primitives";
 
 import { selectDailyHotItem } from "../dailyHotSelection.ts";
 import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
@@ -19,7 +10,7 @@ import {
   useSidebarTab,
 } from "../contentSelection.ts";
 import { selectTrellisProject } from "../trellisSelection.ts";
-import { IslandButton } from "../ui/IslandControls.tsx";
+import { IslandButton, IslandIcon } from "../ui/IslandControls.tsx";
 import { nextSidebarTab, SIDEBAR_TABS } from "../trellisUiModel.ts";
 import { KnowledgePanel } from "./KnowledgePanel.tsx";
 import { DailyHotPanel } from "./DailyHotPanel.tsx";
@@ -183,41 +174,33 @@ export function OilSidebarRoot({
             <OilBrand tagline={t("brand.tagline")} />
           </IslandButton>
         )}
-        <Tooltip label={collapsed ? t("toggle.open") : t("toggle.collapse")} delayMs={500}>
-          <IslandButton
-            type="text"
-            className={cx("iconButton", "toggle")}
-            aria-label={collapsed ? t("toggle.open") : t("toggle.collapse")}
-            onClick={() => { toggleSidebar(); }}
-          >
-            {!wide && (
-              <span className="railBrand">
-                <OilBrand compact />
-              </span>
-            )}
-            <IconPanelLeftOutline16 className="panelIcon" size={wide ? 16 : 18} />
-          </IslandButton>
-        </Tooltip>
+        <IslandButton
+          type="text"
+          className={cx("iconButton", "toggle")}
+          aria-label={collapsed ? t("toggle.open") : t("toggle.collapse")}
+          onClick={() => { toggleSidebar(); }}
+        >
+          {!wide && <span className="railBrand"><OilBrand compact /></span>}
+          <span className="toggleText">{wide ? "收起" : "展开"}</span>
+        </IslandButton>
       </div>
 
       {!wide && (
-        <Tooltip label={t("session.new.label")} delayMs={500}>
-          <IslandButton
-            type="text"
-            className="newSession"
-            aria-label={t("session.new.label")}
-            onClick={() => { startSession(); }}
-          >
-            <IconNewChatOutline16 size={18} />
-          </IslandButton>
-        </Tooltip>
+        <IslandButton
+          type="text"
+          className="newSession"
+          aria-label={t("session.new.label")}
+          onClick={() => { startSession(); }}
+        >
+          <IslandIcon name="icon-chat" size={20} />
+        </IslandButton>
       )}
 
       {wide && (
         <div className="tabRow">
           <div className="tabList" role="tablist" aria-orientation="vertical" aria-label="Muzi Creator 导航">
             <IslandButton
-              type="text"
+              type={sidebarTab === "sessions" ? "primary" : "text"}
               role="tab"
               aria-selected={sidebarTab === "sessions"}
               tabIndex={sidebarTab === "sessions" ? 0 : -1}
@@ -226,11 +209,11 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("sessions"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "sessions"); }}
             >
-              <IconNewChatOutline16 size={14} />
+              <IslandIcon name="icon-chat" size={18} />
               {tabLabels.sessions}
             </IslandButton>
             <IslandButton
-              type="text"
+              type={sidebarTab === "hot" ? "primary" : "text"}
               role="tab"
               aria-selected={sidebarTab === "hot"}
               tabIndex={sidebarTab === "hot" ? 0 : -1}
@@ -239,11 +222,11 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("hot"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "hot"); }}
             >
-              <IconLightOutline16 size={14} />
+              <IslandIcon name="icon-miles" size={18} />
               {tabLabels.hot}
             </IslandButton>
             <IslandButton
-              type="text"
+              type={sidebarTab === "content" ? "primary" : "text"}
               role="tab"
               aria-selected={sidebarTab === "content"}
               tabIndex={sidebarTab === "content" ? 0 : -1}
@@ -252,11 +235,11 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("content"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "content"); }}
             >
-              <IconBrowseOutline16 size={14} />
+              <IslandIcon name="icon-diy" size={18} />
               {tabLabels.content}
             </IslandButton>
             <IslandButton
-              type="text"
+              type={sidebarTab === "knowledge" ? "primary" : "text"}
               role="tab"
               aria-selected={sidebarTab === "knowledge"}
               tabIndex={sidebarTab === "knowledge" ? 0 : -1}
@@ -265,11 +248,11 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("knowledge"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "knowledge"); }}
             >
-              <IconFolderClose16 size={14} />
+              <IslandIcon name="icon-critterpedia" size={18} />
               {tabLabels.knowledge}
             </IslandButton>
             <IslandButton
-              type="text"
+              type={sidebarTab === "projects" ? "primary" : "text"}
               role="tab"
               aria-selected={sidebarTab === "projects"}
               tabIndex={sidebarTab === "projects" ? 0 : -1}
@@ -278,7 +261,7 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("projects"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "projects"); }}
             >
-              <IconProjectAddOutline16 size={14} />
+              <IslandIcon name="icon-map" size={18} />
               {tabLabels.projects}
             </IslandButton>
           </div>
@@ -289,16 +272,15 @@ export function OilSidebarRoot({
         <div className={cx("regionPane", !sessionsVisible && "hidden")}>
           {wide && (
             <div className="headerNewSession">
-              <Tooltip label={t("session.new.label")} delayMs={500}>
-                <IslandButton
-                  type="text"
-                  className="iconButton"
-                  aria-label={t("session.new.label")}
-                  onClick={() => { startSession(); }}
-                >
-                  <IconNewChatOutline16 size={16} />
-                </IslandButton>
-              </Tooltip>
+              <IslandButton
+                type="text"
+                size="small"
+                className="iconButton"
+                aria-label={t("session.new.label")}
+                onClick={() => { startSession(); }}
+              >
+                <IslandIcon name="icon-chat" size={18} />
+              </IslandButton>
             </div>
           )}
           {renderSlot("sidebar.workspaces", {

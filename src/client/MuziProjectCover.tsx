@@ -1,7 +1,6 @@
-import { Icon } from "animal-island-ui";
-
 import type { CoverThumbResult } from "../types.ts";
 import { CoverThumb } from "./CoverThumb.tsx";
+import { IslandIcon } from "./ui/IslandControls.tsx";
 
 export function MuziProjectCover({
   id,
@@ -26,7 +25,7 @@ export function MuziProjectCover({
         height={4}
         fallback={(
           <span className="muziCoverFallback" role="img" aria-label={`暂无封面：${title}`}>
-            <Icon name="icon-camera" size={18} />
+            <IslandIcon name="icon-camera" size={18} />
             <span>无图片</span>
           </span>
         )}

@@ -8,16 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
-import { IslandButton, IslandInput, IslandTag } from "../ui/IslandControls.tsx";
-import {
-  IconCloseFill14,
-  IconBrowseOutline16,
-  IconPersonalizationOutline16,
-  IconProjectAddOutline16,
-  IconRefreshOutline16,
-  IconSearchOutline16,
-  Tooltip,
-} from "@deepseek-ai/dsh-client-ui-primitives";
+import { IslandButton, IslandCard, IslandInput, IslandTag } from "../ui/IslandControls.tsx";
 
 export interface PanelSectionHeaderProps {
   label: string;
@@ -37,7 +28,7 @@ export interface PanelSectionHeaderProps {
   onPreview?: () => void;
 }
 
-/** Shared section chrome matching the native DSH workspace browser. */
+/** Shared Animal Island section chrome for search and list actions. */
 export function PanelSectionHeader({
   label,
   count,
@@ -102,11 +93,9 @@ export function PanelSectionHeader({
       </span>
       <div className={searchExpanded ? "muziSearchSlot expanded" : "muziSearchSlot"}>
         <div className={searchExpanded ? "muziSearch expanded" : "muziSearch"}>
-          <Tooltip label={searchLabel} side="bottom" delayMs={500} disabled={searchExpanded}>
-            <IslandButton id={searchButtonId} type="text" size="small" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
-              <IconSearchOutline16 size={searchExpanded ? 11 : 14} />
-            </IslandButton>
-          </Tooltip>
+          <IslandButton id={searchButtonId} type="text" size="small" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
+            {searchExpanded ? "搜索中" : "搜索"}
+          </IslandButton>
           <IslandInput
             id={searchInputId}
             className="muziSearchInput"
@@ -123,48 +112,39 @@ export function PanelSectionHeader({
           />
           {searchExpanded && (
             <IslandButton type="text" size="small" className="muziClearButton" aria-label="清除搜索" onClick={(event: ReactMouseEvent<HTMLButtonElement>) => { event.stopPropagation(); closeSearch(); }}>
-              <IconCloseFill14 />
+              清除
             </IslandButton>
           )}
         </div>
       </div>
       <div className={searchExpanded ? "muziHeaderActions hidden" : "muziHeaderActions"}>
         {refreshLabel !== undefined && (
-          <Tooltip label={refreshLabel} side="bottom" delayMs={500}>
-            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={refreshLabel} onClick={onRefresh}>
-              <IconRefreshOutline16 size={16} />
-            </IslandButton>
-          </Tooltip>
+          <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={refreshLabel} onClick={onRefresh}>
+            刷新
+          </IslandButton>
         )}
         {viewLabel !== undefined && viewContent !== undefined && <div className="muziViewRoot" ref={viewRoot}>
-          <Tooltip label={viewLabel} side="bottom" delayMs={500}>
-            <IslandButton id={viewButtonId} type="text" size="small" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} aria-controls={viewId} onClick={() => { setViewOpen((open) => !open); }}>
-              <IconPersonalizationOutline16 size={16} />
-            </IslandButton>
-          </Tooltip>
+          <IslandButton id={viewButtonId} type="text" size="small" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} aria-controls={viewId} onClick={() => { setViewOpen((open) => !open); }}>
+            视图
+          </IslandButton>
           {viewOpen && (
-            <div id={viewId} className="muziViewMenu" role="group" aria-label={viewLabel}>
+            <IslandCard id={viewId} className="muziViewMenu" role="group" aria-label={viewLabel}>
               {viewContent}
               <IslandButton type="text" size="small" className="muziViewMenuItem" onClick={() => { setViewOpen(false); onRefresh(); }}>
-                <IconRefreshOutline16 size={16} />
                 刷新
               </IslandButton>
-            </div>
+            </IslandCard>
           )}
         </div>}
         {previewLabel !== undefined && onPreview !== undefined && (
-          <Tooltip label={previewLabel} side="bottom" delayMs={500}>
-            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={previewLabel} onClick={onPreview}>
-              <IconBrowseOutline16 size={16} />
-            </IslandButton>
-          </Tooltip>
+          <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={previewLabel} onClick={onPreview}>
+            预览
+          </IslandButton>
         )}
         {addLabel !== undefined && onAdd !== undefined && (
-          <Tooltip label={addLabel} side="bottom" delayMs={500}>
-            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
-              <IconProjectAddOutline16 size={16} />
-            </IslandButton>
-          </Tooltip>
+          <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
+            新增
+          </IslandButton>
         )}
       </div>
     </div>

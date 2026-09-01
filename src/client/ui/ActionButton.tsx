@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Button } from "animal-island-ui";
+import { IslandButton } from "./IslandControls.tsx";
 
 import "./ActionButton.css";
 
@@ -21,7 +21,7 @@ export function ActionButton({
   children: ReactNode;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type">) {
   return (
-    <Button
+    <IslandButton
       className={["muziIslandAction", className].filter(Boolean).join(" ")}
       htmlType="button"
       size="middle"
@@ -29,7 +29,7 @@ export function ActionButton({
       {...rest}
     >
       {children}
-    </Button>
+    </IslandButton>
   );
 }
 

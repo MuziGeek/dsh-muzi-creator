@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Card, Icon, Skeleton, Tag } from "animal-island-ui";
 
 import type {
   KnowledgePageSummary,
@@ -8,7 +7,13 @@ import type {
 import type { MuziViewFace } from "../face.ts";
 import { setSelectedContentId, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
-import { IslandButton } from "../ui/IslandControls.tsx";
+import {
+  IslandIcon,
+  IslandSelectableCard,
+  IslandSkeleton,
+  IslandState,
+  IslandTag,
+} from "../ui/IslandControls.tsx";
 import "./MuziPanels.css";
 
 function knowledgeSelection(locator: string): string {
@@ -29,21 +34,20 @@ function knowledgeCardExcerpt(item: KnowledgePageSummary): string {
 function KnowledgeRow({ item, selected }: { item: KnowledgePageSummary; selected: boolean }) {
   const openKnowledge = (): void => { setSelectedContentId(knowledgeSelection(item.locator)); };
   return (
-    <IslandButton
-      type="default"
+    <IslandSelectableCard
       className={selected ? "muziListRow muziKnowledgeRow selected" : "muziListRow muziKnowledgeRow"}
-      aria-pressed={selected}
-      onClick={openKnowledge}
+      selected={selected}
+      onSelect={openKnowledge}
     >
-      <span className="muziListIcon knowledge" aria-hidden="true"><Icon name="icon-critterpedia" size={20} /></span>
+      <span className="muziListIcon knowledge" aria-hidden="true"><IslandIcon name="icon-critterpedia" size={20} /></span>
       <span className="muziListBody">
         <span className="muziListHeading">
           <span className="muziListTitle">{item.title}</span>
         </span>
-        <span className="muziListMeta"><Tag className="muziCardTag" size="small" color={selected ? "app-teal" : "default"} variant={selected ? "solid" : "soft"}>主题知识</Tag></span>
+        <span className="muziListMeta"><IslandTag className="muziCardTag" size="small" color={selected ? "app-teal" : "brown"} variant="soft">主题知识</IslandTag></span>
         <span className="muziListSummary muziKnowledgeExcerpt">{knowledgeCardExcerpt(item) || "打开查看主题知识详情"}</span>
       </span>
-    </IslandButton>
+    </IslandSelectableCard>
   );
 }
 
@@ -100,14 +104,14 @@ export function KnowledgePanel({ face, onAddDirectory }: { face: MuziViewFace; o
         onRefresh={() => { setRefreshKey((key) => key + 1); }}
       />
       <div className="muziPanelList" aria-busy={loading}>
-        {error !== null && <Card type="dashed" className="muziPanelState error" role="alert"><strong>知识库读取失败</strong><p>{error}</p></Card>}
-        {error === null && status?.status === "unavailable" && <Card type="dashed" className="muziPanelState error" role="alert"><strong>知识库不可用</strong><p>{status.message ?? "请检查 Muzi Atlas 设置后重试。"}</p></Card>}
-        {error === null && loading && status === null && <div className="muziCardSkeletons" aria-label="正在读取知识">{[0, 1, 2].map((key) => <Skeleton key={key} variant="rect" widthValue="100%" heightValue={104} />)}</div>}
+        {error !== null && <IslandState kind="error" title="知识库读取失败" message={error} />}
+        {error === null && status?.status === "unavailable" && <IslandState kind="error" title="知识库不可用" message={status.message ?? "请检查 Muzi Atlas 设置后重试。"} />}
+        {error === null && loading && status === null && <div className="muziCardSkeletons" aria-label="正在读取知识">{[0, 1, 2].map((key) => <IslandSkeleton key={key} variant="rect" widthValue="100%" heightValue={104} />)}</div>}
         {error === null && status !== null && (
           <section className="muziKnowledgeSection" aria-labelledby="topic-knowledge-heading">
-            <div className="muziBrowseHeading"><strong id="topic-knowledge-heading">主题知识</strong><Tag size="small" color="default">{items.length}</Tag></div>
+            <div className="muziBrowseHeading"><strong id="topic-knowledge-heading">主题知识</strong><IslandTag size="small" color="default">{items.length}</IslandTag></div>
             {!loading && items.length === 0
-              ? <Card type="dashed" className="muziSectionEmpty">{trimmedQuery === "" ? "暂无主题知识。可通过会话使用 llm-wiki 新增。" : `没有找到“${trimmedQuery}”相关主题。`}</Card>
+              ? <IslandState kind="empty" title={trimmedQuery === "" ? "暂无主题知识" : "没有匹配主题"} message={trimmedQuery === "" ? "可通过会话使用 llm-wiki 新增。" : `没有找到“${trimmedQuery}”相关主题。`} />
               : items.map((item) => <KnowledgeRow key={item.id} item={item} selected={selectedId === knowledgeSelection(item.locator)} />)}
           </section>
         )}

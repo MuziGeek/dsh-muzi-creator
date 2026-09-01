@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { Card, Checkbox, Skeleton, Tag } from "animal-island-ui";
 import type { MuziPrimaryDocument } from "../../muziTypes.ts";
 import type { MuziViewFace } from "../face.ts";
 import { MuziProjectCover } from "../MuziProjectCover.tsx";
 import { bumpLibrary, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
 import { CreateProjectDialog } from "./CreateProjectDialog.tsx";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
-import { IslandButton } from "../ui/IslandControls.tsx";
+import {
+  IslandCheckbox,
+  IslandSelectableCard,
+  IslandSkeleton,
+  IslandState,
+  IslandTag,
+} from "../ui/IslandControls.tsx";
 import "./MuziPanels.css";
 
 const DOC_LABELS = { mother: "母内容", video: "视频稿", wechat: "公众号", xiaohongshu: "小红书", blog: "博客" } as const;
@@ -79,7 +84,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
         onAdd={() => { setCreateError(null); setCreateDraft({ title: "", primary: "mother" }); }}
         onRefresh={() => { void load(); }}
         viewContent={(
-          <Checkbox
+          <IslandCheckbox
             className="muziViewToggle"
             size="small"
             options={[{ label: "显示归档目录", value: "archived" }]}
@@ -89,20 +94,19 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
         )}
       />
       <div className="muziPanelList">
-        {loading && items.length === 0 && <div className="muziCardSkeletons" aria-label="正在读取内容">{[0, 1, 2].map((key) => <Skeleton key={key} variant="rect" widthValue="100%" heightValue={88} />)}</div>}
-        {error !== null && <Card type="dashed" className="muziPanelState error" role="alert"><strong>内容读取失败</strong><p>{error}</p></Card>}
-        {!loading && error === null && items.length === 0 && <Card type="dashed" className="muziPanelState"><strong>还没有创作项目</strong><p>使用右上角的新增按钮建立第一个内容目录。</p></Card>}
+        {loading && items.length === 0 && <div className="muziCardSkeletons" aria-label="正在读取内容">{[0, 1, 2].map((key) => <IslandSkeleton key={key} variant="rect" widthValue="100%" heightValue={88} />)}</div>}
+        {error !== null && <IslandState kind="error" title="内容读取失败" message={error} />}
+        {!loading && error === null && items.length === 0 && <IslandState kind="empty" title="还没有创作项目" message="使用上方的新增按钮建立第一个内容目录。" />}
         {items.map((item) => {
           const counts = statusCount(item);
           const selected = selectedId === item.id;
           const toggleSelection = (): void => { setSelectedId(selected ? null : item.id); };
           return (
-            <IslandButton
-              type="default"
+            <IslandSelectableCard
               key={item.id}
               className={selected ? "muziListRow muziContentRow selected" : "muziListRow muziContentRow"}
-              aria-pressed={selected}
-              onClick={toggleSelection}
+              selected={selected}
+              onSelect={toggleSelection}
             >
               <MuziProjectCover id={item.id} title={item.title} revision={item.coverRevision} load={face.getProjectCover} className="muziContentCover" />
               <span className="muziListBody">
@@ -110,7 +114,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
                   <span className="muziListTitle">{item.title}</span>
                 </span>
                 <span className="muziListMeta">
-                  <Tag className="muziCardTag" size="small" color={selected ? "app-teal" : "default"} variant={selected ? "solid" : "soft"}>{STAGE_LABELS[item.stage]}</Tag>
+                  <IslandTag className="muziCardTag" size="small" color={selected ? "app-teal" : "brown"} variant="soft">{STAGE_LABELS[item.stage]}</IslandTag>
                   <span className="muziCardMetaText">主稿 {DOC_LABELS[item.primaryDocument]}</span>
                 </span>
                 <span className="muziListSummary muziProgressSummary">
@@ -118,7 +122,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
                   <span><strong>{counts.published}</strong>/5 发布</span>
                 </span>
               </span>
-            </IslandButton>
+            </IslandSelectableCard>
           );
         })}
       </div>

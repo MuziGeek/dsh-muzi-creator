@@ -2,438 +2,227 @@
 [data-plugin-modal="dsh-muzi-creator"],
 .muziCreateModal,
 .trellisArchiveModal {
-  --muzi-island-canvas: #f7f1e3;
-  --muzi-island-paper: #fffaf0;
-  --muzi-island-sidebar: #f1ead7;
-  --muzi-island-line: #ded1b7;
-  --muzi-island-line-strong: #c8b697;
-  --muzi-island-text: #493426;
-  --muzi-island-text-soft: #6d5847;
-  --muzi-island-text-faint: #765f4e;
-  --muzi-island-text-muted: var(--muzi-island-text-soft);
-  --muzi-island-leaf: #3f6f38;
-  --muzi-island-leaf-soft: #e4ecd0;
-  --muzi-island-leaf-dark: var(--muzi-island-leaf);
-  --muzi-island-mint: var(--muzi-island-leaf-soft);
-  --muzi-island-success-soft: #dcebd7;
-  --muzi-island-success: #356b45;
-  --muzi-island-warning: #9a631d;
-  --muzi-island-warning-soft: #fff0c7;
-  --muzi-island-danger: #9f4038;
-  --muzi-island-danger-soft: #f8ddd5;
-  --muzi-island-focus: #e2a93b;
-  --muzi-island-radius-sm: 12px;
-  --muzi-island-radius-md: 14px;
-  --muzi-island-radius-lg: 18px;
-  --muzi-island-shadow: 0 10px 28px rgb(89 59 32 / 12%);
-  --muzi-island-font: Nunito, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  --muzi-island-canvas: var(--animal-bg-color-secondary);
+  --muzi-island-paper: var(--animal-bg-color);
+  --muzi-island-sidebar: color-mix(in srgb, var(--animal-bg-color-secondary) 76%, var(--animal-bg-color));
+  --muzi-island-line: var(--animal-border-color-light);
+  --muzi-island-line-strong: var(--animal-border-color);
+  --muzi-island-text: var(--animal-text-color);
+  --muzi-island-text-soft: var(--animal-text-color-secondary);
+  --muzi-island-text-faint: var(--animal-text-color-secondary);
+  --muzi-island-text-muted: var(--animal-text-color-secondary);
+  --muzi-island-leaf: var(--animal-primary-color);
+  --muzi-island-leaf-soft: var(--animal-primary-color-bg);
+  --muzi-island-leaf-dark: var(--animal-primary-color-active);
+  --muzi-island-mint: var(--animal-primary-color-bg);
+  --muzi-island-success-soft: color-mix(in srgb, var(--animal-success-color) 15%, var(--animal-bg-color));
+  --muzi-island-success: var(--animal-success-color-active);
+  --muzi-island-warning: var(--animal-warning-color-active);
+  --muzi-island-warning-soft: color-mix(in srgb, var(--animal-warning-color) 18%, var(--animal-bg-color));
+  --muzi-island-danger: var(--animal-error-color-active);
+  --muzi-island-danger-soft: color-mix(in srgb, var(--animal-error-color) 14%, var(--animal-bg-color));
+  --muzi-island-accent-ink: #17473f;
+  --muzi-island-paper-text: #725d42;
+  --muzi-island-paper-danger: #9a3a3a;
+  --muzi-island-focus: var(--animal-warning-color);
+  --muzi-island-radius-sm: var(--animal-border-radius-sm);
+  --muzi-island-radius-md: var(--animal-border-radius-base);
+  --muzi-island-radius-lg: var(--animal-border-radius-lg);
+  --muzi-island-shadow: none;
+  --muzi-island-font: var(--animal-font-family);
   --muzi-surface: var(--muzi-island-paper);
   --muzi-surface-soft: var(--muzi-island-canvas);
-  --muzi-surface-muted: #eee4cf;
+  --muzi-surface-muted: var(--muzi-island-leaf-soft);
   --muzi-border: var(--muzi-island-line);
   --muzi-border-strong: var(--muzi-island-line-strong);
+  --muzi-radius-sm: var(--muzi-island-radius-sm);
+  --muzi-radius-md: var(--muzi-island-radius-md);
+  --muzi-radius-lg: var(--muzi-island-radius-lg);
+  --muzi-control-size: var(--animal-height-base);
+  --muzi-motion-fast: var(--animal-motion-duration-fast);
+  --muzi-motion-enter: var(--animal-motion-duration-base);
+  --muzi-ease: var(--animal-motion-ease);
   font-family: var(--muzi-island-font);
 }
 
 body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"],
-body[data-ds-dark-theme] [data-plugin-modal="dsh-muzi-creator"],
-body[data-ds-dark-theme] .trellisArchiveModal {
-  --muzi-island-canvas: #251f1a;
-  --muzi-island-paper: #302820;
-  --muzi-island-sidebar: #2a241e;
-  --muzi-island-line: rgb(245 234 215 / 13%);
-  --muzi-island-line-strong: rgb(245 234 215 / 22%);
-  --muzi-island-text: #f5ead7;
-  --muzi-island-text-soft: #d8c8b1;
-  --muzi-island-text-faint: #c5b59d;
-  --muzi-island-leaf: #acd184;
-  --muzi-island-leaf-soft: rgb(143 179 105 / 19%);
-  --muzi-island-success-soft: rgb(92 153 100 / 20%);
-  --muzi-island-success: #9fd29a;
-  --muzi-island-warning: #f0bf6a;
-  --muzi-island-warning-soft: rgb(201 139 44 / 20%);
-  --muzi-island-danger: #f1a099;
-  --muzi-island-danger-soft: rgb(184 75 65 / 22%);
-  --muzi-island-focus: #f0c75b;
-  --muzi-island-shadow: 0 10px 28px rgb(12 9 7 / 34%);
-  --muzi-surface-muted: #3a3027;
+body[data-ds-dark-theme] [data-plugin-modal="dsh-muzi-creator"] {
+  --animal-primary-color: #a9d784;
+  --animal-primary-color-hover: #bce49a;
+  --animal-primary-color-active: #8fbd6d;
+  --animal-primary-color-bg: #35452f;
+  --animal-success-color: #9fd29a;
+  --animal-success-color-hover: #b2dda9;
+  --animal-success-color-active: #82b67f;
+  --animal-warning-color: #f0c75b;
+  --animal-warning-color-hover: #f5d67f;
+  --animal-warning-color-active: #d5aa3f;
+  --animal-error-color: #f1a099;
+  --animal-error-color-hover: #f5b9b3;
+  --animal-error-color-active: #d9827b;
+  --animal-text-color: #f5ead7;
+  --animal-text-color-secondary: #d8c8b1;
+  --animal-text-color-muted: #c5b59d;
+  --animal-text-color-disabled: #8d806f;
+  --animal-border-color: #746652;
+  --animal-border-color-hover: #9a876e;
+  --animal-border-color-light: #4c4135;
+  --animal-bg-color: #302820;
+  --animal-bg-color-secondary: #251f1a;
+  --animal-bg-color-disabled: #3a3027;
+  --animal-mask-bg: rgb(18 13 9 / 68%);
+  --muzi-island-accent-ink: #2d471f;
 }
 
-/* Animal Modal keeps a cream shell in both host themes, so portal copy stays on the matching light palette. */
+/* Animal Modal 1.6.0 uses a fixed cream shell; portal content deliberately keeps matching light tokens. */
 body[data-ds-dark-theme] .muziCreateModal,
 body[data-ds-dark-theme] .trellisArchiveModal {
-  --muzi-island-paper: #fffaf0;
-  --muzi-island-line: #ded1b7;
-  --muzi-island-line-strong: #c8b697;
-  --muzi-island-text: #493426;
-  --muzi-island-text-soft: #6d5847;
-  --muzi-island-text-faint: #765f4e;
-  --muzi-island-leaf: #3f6f38;
-  --muzi-island-leaf-soft: #e4ecd0;
-  --muzi-island-warning: #9a631d;
-  --muzi-island-warning-soft: #fff0c7;
-  --muzi-island-danger: #9f4038;
-  --muzi-island-danger-soft: #f8ddd5;
-  --muzi-island-focus: #e2a93b;
+  --animal-primary-color: #19c8b9;
+  --animal-primary-color-hover: #3dd4c6;
+  --animal-primary-color-active: #50b9ab;
+  --animal-primary-color-bg: #e6f9f6;
+  --animal-success-color: #6fba2c;
+  --animal-warning-color: #f5c31c;
+  --animal-error-color: #e05a5a;
+  --animal-text-color: #794f27;
+  --animal-text-color-secondary: #9f927d;
+  --animal-text-color-muted: #794f27;
+  --animal-text-color-disabled: #c4b89e;
+  --animal-border-color: #aaa69d;
+  --animal-border-color-hover: #827157;
+  --animal-border-color-light: #e8e2d6;
+  --animal-bg-color: #f8f8f0;
+  --animal-bg-color-secondary: #f0e8d8;
+  --animal-bg-color-disabled: #f0ece2;
+  color-scheme: light;
 }
 
-/* Workbench frame */
+[data-plugin="dsh-muzi-creator"] :where(button, input, textarea, select, [tabindex]):focus-visible,
+[data-plugin-modal="dsh-muzi-creator"] :where(button, input, textarea, select, [tabindex]):focus-visible,
+.muziCreateModal :where(button, input, textarea, select, [tabindex]):focus-visible,
+.trellisArchiveModal :where(button, input, textarea, select, [tabindex]):focus-visible {
+  outline-color: var(--muzi-island-focus);
+}
+
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] {
-  padding: 14px 18px 10px;
   border-right: 1px solid var(--muzi-island-line);
-  background: var(--muzi-island-sidebar);
-  color: var(--muzi-island-text);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .logoRow {
-  height: 56px;
-  margin: 0 0 10px;
-  padding: 0 2px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrand {
-  gap: 10px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandIcon {
-  width: 26px;
-  height: 26px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandText {
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -.025em;
-}
-
-[data-plugin="dsh-muzi-creator"] :where(button, input, textarea, select, [tabindex]):focus-visible {
-  outline: 3px solid var(--muzi-island-focus);
-  outline-offset: 2px;
-}
-
-[data-plugin="dsh-muzi-creator"] .islandSelectUnavailable {
-  display: block;
-  margin-top: 6px;
-  color: var(--muzi-island-text-faint);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandTagline {
-  color: var(--muzi-island-text-soft);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabRow {
-  margin: 0 0 18px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabList {
-  gap: 3px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton {
-  height: 38px;
-  gap: 10px;
-  padding: 0 12px;
-  border-radius: 10px;
-  color: var(--muzi-island-text-soft);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton:hover {
-  background: var(--muzi-island-leaf-soft);
-  color: var(--muzi-island-text);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton.active {
-  background: var(--muzi-island-leaf-soft);
-  color: var(--muzi-island-leaf);
-  font-weight: 600;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .regionArea {
-  margin-right: -18px;
-  padding-left: 0;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziSectionHeader {
-  min-height: 48px;
-  padding: 0 18px 0 4px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziSectionLabel {
-  gap: 8px;
-  color: var(--muzi-island-text-soft);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .02em;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziSectionCount {
-  min-width: 24px;
-  border: 0;
-  background: #f0ede7;
-  color: #786f64;
-}
-
-body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziSectionCount {
-  background: #292b30;
-  color: var(--muzi-island-text-faint);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziHeaderIcon,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziSearchButton,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .iconButton {
-  border-radius: var(--muzi-island-radius-sm);
-  color: var(--muzi-island-text-soft);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziHeaderIcon:hover,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziSearchButton:hover,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .iconButton:hover {
-  background: var(--muzi-island-leaf-soft);
-  color: var(--muzi-island-leaf);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziPanelList,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .trellisProjectList {
-  padding: 4px 18px 24px 4px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListRow {
-  min-height: 82px;
-  margin: 0;
-  padding: 12px 8px;
-  border: 0 !important;
-  border-bottom: 1px solid var(--muzi-island-line) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  transition: background-color 140ms ease;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListRow:hover,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListRow.selected {
-  border-radius: 11px !important;
-  background: var(--muzi-island-leaf-soft) !important;
-  outline: 0;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListTitle {
-  color: var(--muzi-island-text);
-  font-size: 13px;
-  font-weight: 620;
-  line-height: 19px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListMeta,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListSummary {
-  color: var(--muzi-island-text-faint);
-  font-size: 10.5px;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListIcon {
-  width: 38px;
-  height: 42px;
-  border-color: var(--muzi-island-line);
-  border-radius: 10px;
-  background: var(--muzi-island-paper);
-  color: var(--muzi-island-leaf);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziContentCover {
-  border-color: var(--muzi-island-line);
-  border-radius: 10px;
-  background: var(--muzi-island-paper);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .trellisProjectsRoot {
-  margin: 2px 0 12px;
-  color: var(--muzi-island-text-faint);
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .trellisProjectCard {
-  margin: 0 0 8px;
-  border: 1px solid var(--muzi-island-line);
-  border-radius: 12px;
-  background: var(--muzi-island-paper);
-  box-shadow: none;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .trellisProjectCard:hover,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .trellisProjectCard.selected {
-  border-color: #a9bdf2;
-  background: var(--muzi-island-leaf-soft);
-  box-shadow: none;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .footArea {
-  padding-top: 6px;
   border-top: 1px solid var(--muzi-island-line);
 }
 
-/* Reading and project detail column */
 [data-plugin="dsh-muzi-creator"][data-surface="muzi-inspector"],
+[data-plugin="dsh-muzi-creator"][data-surface="daily-hot-inspector"],
 [data-plugin="dsh-muzi-creator"][data-surface="trellis-inspector"] {
+  min-width: 0;
+  max-width: 100vw;
+  overflow: hidden;
   border-right: 1px solid var(--muzi-island-line);
   background: var(--muzi-island-paper);
   color: var(--muzi-island-text);
-  box-shadow: none;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziInspectorTop,
 [data-plugin="dsh-muzi-creator"] .trellisInspectorTop {
-  height: 72px;
-  padding: 0 26px;
-  border-bottom: 1px solid var(--muzi-island-line);
+  min-height: 56px;
+  padding-inline: clamp(14px, 3vw, 26px);
+  border-bottom-color: var(--muzi-island-line);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziInspectorTitle,
 [data-plugin="dsh-muzi-creator"] .trellisInspectorTop > div:first-child span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--muzi-island-text);
   font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -.015em;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziInspectorTop button,
-[data-plugin="dsh-muzi-creator"] .trellisTopActions button {
-  border-radius: 10px;
-  color: var(--muzi-island-text-soft);
-}
-
-[data-plugin="dsh-muzi-creator"] .muziInspectorTop button:hover,
-[data-plugin="dsh-muzi-creator"] .trellisTopActions button:hover {
-  background: var(--muzi-island-leaf-soft);
-  color: var(--muzi-island-leaf);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeader,
 [data-plugin="dsh-muzi-creator"] .pendingDetailHeader {
-  gap: 24px;
-  padding: 32px 34px 28px;
-  border-bottom: 1px solid var(--muzi-island-line);
-}
-
-[data-plugin="dsh-muzi-creator"] .knowledgeDetailMeta {
-  color: var(--muzi-island-text-faint);
-  font-size: 12px;
-}
-
-[data-plugin="dsh-muzi-creator"] .knowledgeDetailMeta > :first-child {
-  background: var(--muzi-island-success-soft);
-  color: var(--muzi-island-success);
+  gap: 22px;
+  padding: 30px clamp(20px, 5vw, 36px) 26px;
+  border-bottom-color: var(--muzi-island-line);
 }
 
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeading h1 {
-  margin-top: 16px;
+  margin-top: 14px;
   color: var(--muzi-island-text);
   font-size: clamp(24px, 2.1vw, 31px);
   line-height: 1.25;
-  letter-spacing: -.03em;
+  overflow-wrap: anywhere;
 }
 
+[data-plugin="dsh-muzi-creator"] .knowledgeDetailMeta,
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeading > p {
-  color: var(--muzi-island-text-faint);
-  font-size: 12px;
-}
-
-[data-plugin="dsh-muzi-creator"] .knowledgeDiscuss {
-  min-height: 40px;
-  padding-inline: 16px;
-  border-color: #cab28d !important;
-  border-radius: 999px !important;
-  background: transparent !important;
-  color: #71583b !important;
-  box-shadow: none !important;
-}
-
-body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"] .knowledgeDiscuss {
-  border-color: #75664f !important;
-  color: #d9c5a6 !important;
+  color: var(--muzi-island-text-muted);
+  overflow-wrap: anywhere;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziMarkdown {
-  padding: 34px 36px 72px;
+  padding: 32px clamp(20px, 5vw, 36px) 72px;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziMarkdownBody {
+[data-plugin="dsh-muzi-creator"] .muziMarkdownBody,
+[data-plugin="dsh-muzi-creator"] .muziMarkdownBody > div {
   max-width: 72ch;
-  color: #343943;
-  font-size: 16px;
-  line-height: 1.9;
-}
-
-body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"] .muziMarkdownBody {
-  color: #d8dce3;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziMarkdownBody h2 {
-  margin-top: 2.4em;
   color: var(--muzi-island-text);
-  font-size: 22px;
-  line-height: 1.4;
-  letter-spacing: -.02em;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziTabs {
-  min-height: 48px;
-  gap: 2px;
-  padding: 0 22px;
-  border-bottom: 1px solid var(--muzi-island-line);
+  min-width: 0;
+  overflow: hidden;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziTabs button {
-  min-height: 48px;
-  padding: 0 11px;
-  color: var(--muzi-island-text-faint);
-  font-size: 12px;
+[data-plugin="dsh-muzi-creator"] .muziTabs [role="tablist"] {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  white-space: nowrap;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziTabs button.active {
-  color: var(--muzi-island-leaf);
+[data-plugin="dsh-muzi-creator"] .muziTabs [role="tab"] {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziTabs [role="tab"][aria-selected="true"] {
+  background: var(--animal-primary-color);
+  color: var(--muzi-island-accent-ink);
+}
+
+[data-plugin="dsh-muzi-creator"] .muziTabs [role="tab"] * {
+  color: inherit;
+}
+
+body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"] .muziTabs [role="tablist"] {
+  background: var(--animal-bg-color-secondary);
+}
+
+body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"] .muziTabs [role="tab"]:not([aria-selected="true"]) {
+  color: var(--animal-text-color);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziInspectorBody,
 [data-plugin="dsh-muzi-creator"] .trellisInspectorScroll {
+  min-width: 0;
+  overflow-x: hidden;
   background: var(--muzi-island-paper);
-}
-
-[data-plugin="dsh-muzi-creator"] .muziProjectHero,
-[data-plugin="dsh-muzi-creator"] .statusGrid > *,
-[data-plugin="dsh-muzi-creator"] .publicationList,
-[data-plugin="dsh-muzi-creator"] .evidenceDocument,
-[data-plugin="dsh-muzi-creator"] .productionSummary,
-[data-plugin="dsh-muzi-creator"] .productionTimeline,
-[data-plugin="dsh-muzi-creator"] .trellisTaskGroup,
-[data-plugin="dsh-muzi-creator"] .trellisTaskDetail {
-  border-color: var(--muzi-island-line) !important;
-  background: var(--muzi-island-paper) !important;
-  background-image: none !important;
-  box-shadow: none !important;
 }
 
 [data-plugin="dsh-muzi-creator"].muziHeroBrandMark {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 8px;
   object-fit: contain;
 }
 
-@media (max-width: 960px) {
-  [data-plugin="dsh-muzi-creator"][data-surface="sidebar"]:not(.collapsed) {
-    width: min(320px, calc(100vw - 44px)) !important;
-  }
-}
-
 @media (max-width: 620px) {
-  [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] {
-    padding-inline: 12px;
-  }
-
   [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeader,
   [data-plugin="dsh-muzi-creator"] .pendingDetailHeader {
     align-items: stretch;
@@ -449,15 +238,16 @@ body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"] .muziMarkdownBody {
   [data-plugin="dsh-muzi-creator"] .muziMarkdown {
     padding: 26px 20px 56px;
   }
-
-  [data-plugin="dsh-muzi-creator"] .muziMarkdownBody {
-    font-size: 15px;
-    line-height: 1.82;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .muziListRow {
-    transition: none;
+  [data-plugin="dsh-muzi-creator"] *,
+  [data-plugin-modal="dsh-muzi-creator"] *,
+  .muziCreateModal *,
+  .trellisArchiveModal * {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
   }
 }

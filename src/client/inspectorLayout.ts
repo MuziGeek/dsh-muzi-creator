@@ -2,7 +2,7 @@
 export const CONVERSATION_MIN = 440;
 
 /** Minimum inspector width in split view. */
-export const INSPECTOR_MIN = 420;
+export const INSPECTOR_MIN = 480;
 
 /** Maximum user-preferred inspector width. */
 export const INSPECTOR_MAX = 800;

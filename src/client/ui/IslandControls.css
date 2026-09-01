@@ -1,0 +1,80 @@
+.islandSelectableCard {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.islandSelectableCard[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.islandSelectableCard:focus-visible,
+.islandTextarea:focus-visible {
+  outline: 2px solid var(--muzi-island-focus, var(--animal-warning-color));
+  outline-offset: 2px;
+}
+
+.islandTextarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid var(--animal-border-color-light);
+  border-radius: max(12px, var(--animal-border-radius-sm));
+  background: var(--animal-bg-color);
+  color: var(--animal-text-color);
+  box-sizing: border-box;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.islandTextarea::placeholder {
+  color: var(--animal-text-color-placeholder);
+}
+
+.islandSelectUnavailable {
+  display: block;
+  margin-top: 6px;
+  color: var(--animal-text-color-secondary);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.islandState {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding: 18px;
+  text-align: center;
+}
+
+.islandState strong,
+.islandState p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.islandState p {
+  margin: 0;
+  color: inherit;
+  line-height: 1.55;
+}
+
+.islandState-error strong,
+.islandState-error p {
+  color: var(--muzi-island-paper-danger, #9a3a3a);
+}
+
+.islandStateAction {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .islandSelectableCard,
+  .islandTextarea {
+    transition: none;
+  }
+}

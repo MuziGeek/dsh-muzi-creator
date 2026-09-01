@@ -82,7 +82,7 @@ describe("content selection", () => {
     stop();
   });
 
-  it("restores the inset host and global chrome on plugin release", async () => {
+  it("restores global sidebar chrome without selecting or mutating conversation DOM", async () => {
     class FakeStyle {
       private readonly values = new Map<string, { value: string; priority: string }>();
 
@@ -103,73 +103,34 @@ describe("content selection", () => {
       }
     }
 
-    class FakeHTMLElement {
-      readonly style = new FakeStyle();
-      parentElement: FakeHTMLElement | null = null;
-    }
+    class FakeHTMLElement { readonly style = new FakeStyle(); }
 
     const root = new FakeHTMLElement();
-    const host = new FakeHTMLElement();
-    const scrollport = new FakeHTMLElement();
-    scrollport.parentElement = host;
-    host.style.setProperty("padding-left", "8px", "important");
-    host.style.setProperty("transition", "opacity 1s");
+    const querySelector = vi.fn();
     root.style.setProperty("--oil-sidebar-width", "11px", "important");
     vi.stubGlobal("HTMLElement", FakeHTMLElement);
     vi.stubGlobal("document", {
       documentElement: root,
-      querySelector: () => scrollport,
+      querySelector,
     });
 
-    const { applyConversationInset, clearConversationInset, releaseShellChrome, setSidebarChromeWidth } =
+    const { releaseShellChrome, setSidebarChromeWidth } =
       await import("../src/client/contentSelection.ts");
-
-    expect(applyConversationInset(640, false)).toBe(host);
-    expect(host.style.getPropertyValue("padding-left")).toBe("640px");
-    expect(host.style.getPropertyValue("transition")).toBe("none");
-    expect(applyConversationInset(720, true)).toBe(host);
-    expect(host.style.getPropertyValue("padding-left")).toBe("720px");
-
-    setSelectedContentId(null);
-    expect(host.style.getPropertyValue("padding-left")).toBe("720px");
-    expect(host.style.getPropertyValue("transition")).toBe(
-      "padding-left var(--ds-transition-duration-slow) var(--ds-ease-in-out)",
-    );
 
     setSelectedContentId("content-selection-test");
     setSelectedContentId(null);
-    expect(host.style.getPropertyValue("padding-left")).toBe("8px");
-    expect(host.style.getPropertyPriority("padding-left")).toBe("important");
-    expect(host.style.getPropertyValue("transition")).toBe("opacity 1s");
 
     setSidebarChromeWidth(350);
     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("350px");
     releaseShellChrome();
-    clearConversationInset();
-    expect(host.style.getPropertyValue("padding-left")).toBe("8px");
-    expect(host.style.getPropertyPriority("padding-left")).toBe("important");
-    expect(host.style.getPropertyValue("transition")).toBe("opacity 1s");
     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("11px");
     expect(root.style.getPropertyPriority("--oil-sidebar-width")).toBe("important");
+    expect(querySelector).not.toHaveBeenCalled();
 
     setSidebarChromeWidth(350);
     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("350px");
     releaseShellChrome();
     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("11px");
-  });
-
-  it("does not touch the document when the conversation seam is absent", async () => {
-    class FakeHTMLElement {
-      readonly style = {};
-      parentElement: FakeHTMLElement | null = null;
-    }
-
-    vi.stubGlobal("HTMLElement", FakeHTMLElement);
-    vi.stubGlobal("document", {
-      documentElement: new FakeHTMLElement(),
-      querySelector: () => null,
-    });
-    const { applyConversationInset } = await import("../src/client/contentSelection.ts");
-    expect(applyConversationInset(640)).toBeNull();
+    expect(querySelector).not.toHaveBeenCalled();
   });
 });

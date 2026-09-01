@@ -11,15 +11,18 @@ describe("Animal Island sidebar controls", () => {
       readFile(new URL("../src/client/IslandWorkbench.css", import.meta.url), "utf8"),
     ]);
 
-    expect(root).toContain('import { IslandButton } from "../ui/IslandControls.tsx"');
+    expect(root).toContain('from "../ui/IslandControls.tsx"');
+    expect(root).toContain("IslandButton");
+    expect(root).toContain("IslandIcon");
+    expect(root).not.toContain("@deepseek-ai/dsh-client-ui-primitives");
     expect(dialog).toContain("IslandModal");
     expect(dialog).toContain("maskClosable={!submitting}");
     expect(dialog).toContain('form="muzi-create-project-form"');
     expect(dialog).not.toContain("<dialog");
     expect(settings).toContain("IslandCheckbox");
     expect(settings).toContain("IslandInput");
-    expect(workbench).toContain("--muzi-island-text-muted: var(--muzi-island-text-soft)");
-    expect(workbench).toContain("--muzi-island-mint: var(--muzi-island-leaf-soft)");
+    expect(workbench).toContain("--muzi-island-text-muted: var(--animal-text-color-secondary)");
+    expect(workbench).toContain("--muzi-island-mint: var(--animal-primary-color-bg)");
     expect(workbench).toContain("body[data-ds-dark-theme] .muziCreateModal");
   });
 });

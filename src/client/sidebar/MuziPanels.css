@@ -1,37 +1,41 @@
 [data-plugin="dsh-muzi-creator"] .muziPanel {
   display: flex;
-  flex: 1;
+  min-width: 0;
   min-height: 0;
+  flex: 1;
   flex-direction: column;
-  color: var(--dsw-alias-label-primary);
+  color: var(--muzi-island-text);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSectionHeader {
   position: relative;
-  flex: none;
   display: flex;
+  min-width: 0;
+  min-height: 44px;
+  flex: none;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
-  height: 40px;
-  margin: 2px 4px 4px 0;
-  padding-left: 4px;
-  border-radius: var(--muzi-radius-md);
+  gap: 6px;
+  padding: 2px 12px 6px 4px;
   box-sizing: border-box;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--muzi-island-text-muted);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSectionLabel {
-  flex: none;
   display: inline-flex;
+  min-width: 0;
+  flex: 1;
   align-items: center;
   gap: 7px;
-  max-width: 45%;
-  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  line-height: 20px;
-  transition: opacity 120ms var(--ds-ease-in-out), transform 180ms var(--ds-ease-in-out);
+  font-weight: 650;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziSectionLabel > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSectionCount {
@@ -39,426 +43,371 @@
   font-variant-numeric: tabular-nums;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziSectionLabel.hidden {
-  max-width: 0;
+[data-plugin="dsh-muzi-creator"] .muziSectionLabel.hidden,
+[data-plugin="dsh-muzi-creator"] .muziHeaderActions.hidden {
   display: none;
-  opacity: 0;
-  transform: translateX(-4px);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSearchSlot {
-  flex: 1;
-  max-width: var(--muzi-control-size);
-  min-width: 0;
   display: flex;
+  min-width: 0;
+  flex: none;
   align-items: center;
-  margin-left: auto;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziSearchSlot.expanded { max-width: 100%; }
+[data-plugin="dsh-muzi-creator"] .muziSearchSlot.expanded {
+  flex: 1;
+}
 
 [data-plugin="dsh-muzi-creator"] .muziSearch {
   display: flex;
+  min-width: 0;
   align-items: center;
-  width: 100%;
-  height: var(--muzi-control-size);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  overflow: hidden;
-  cursor: text;
-  color: var(--dsw-alias-label-secondary);
-  transition: border-color var(--muzi-motion-fast) var(--muzi-ease), border-radius var(--muzi-motion-fast) var(--muzi-ease), background-color var(--muzi-motion-fast) var(--muzi-ease);
+  gap: 4px;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSearch.expanded {
-  height: var(--muzi-control-size);
-  border-color: var(--dsw-alias-border-l2);
-  border-radius: var(--muzi-radius-sm);
-  background: var(--muzi-surface);
+  width: 100%;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziSearch.expanded:focus-within {
-  border-color: var(--dsw-alias-state-business-primary);
-  box-shadow: 0 0 0 1px var(--dsw-alias-state-business-primary);
+[data-plugin="dsh-muzi-creator"] .muziSearch.expanded .muziSearchButton {
+  display: none;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziSearchInput {
+  display: none;
+  min-width: 0;
+  flex: 1;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziSearch.expanded .muziSearchInput {
+  display: flex;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSearchButton,
 [data-plugin="dsh-muzi-creator"] .muziHeaderIcon,
 [data-plugin="dsh-muzi-creator"] .muziClearButton {
+  min-height: 36px;
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--muzi-control-size);
-  height: var(--muzi-control-size);
-  padding: 0;
-  border: 0;
-  border-radius: var(--muzi-radius-sm);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
+  white-space: nowrap;
 }
-
-[data-plugin="dsh-muzi-creator"] .muziSearchButton:hover,
-[data-plugin="dsh-muzi-creator"] .muziHeaderIcon:hover,
-[data-plugin="dsh-muzi-creator"] .muziClearButton:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-[data-plugin="dsh-muzi-creator"] .muziSearchInput {
-  flex: 1;
-  width: 0;
-  min-width: 0;
-  height: var(--muzi-control-size);
-  padding: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--dsw-alias-label-primary);
-  opacity: 0;
-  pointer-events: none;
-  font-size: 13px;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziSearch.expanded .muziSearchInput { opacity: 1; pointer-events: auto; }
-[data-plugin="dsh-muzi-creator"] .muziSearchInput::placeholder { color: var(--dsw-alias-label-tertiary); }
-[data-plugin="dsh-muzi-creator"] .muziClearButton { width: 28px; height: 28px; }
 
 [data-plugin="dsh-muzi-creator"] .muziHeaderActions {
-  flex: none;
   display: flex;
+  min-width: 0;
+  flex: none;
   align-items: center;
-  gap: 4px;
-  max-width: 96px;
-  opacity: 1;
-  overflow: visible;
-  transition: opacity 120ms var(--ds-ease-in-out), transform 180ms var(--ds-ease-in-out);
+  gap: 2px;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziHeaderActions.hidden {
-  max-width: 0;
-  display: none;
-  opacity: 0;
-  transform: translateX(4px);
-  pointer-events: none;
+[data-plugin="dsh-muzi-creator"] .muziViewRoot {
+  position: relative;
 }
-
-[data-plugin="dsh-muzi-creator"] .muziViewRoot { position: relative; }
 
 [data-plugin="dsh-muzi-creator"] .muziViewMenu {
   position: absolute;
-  z-index: 20;
-  top: 32px;
+  z-index: 30;
+  top: calc(100% + 6px);
   right: 0;
   display: grid;
-  min-width: 184px;
-  padding: 6px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 12px;
-  background: var(--dsw-alias-bg-elevated, var(--dsw-alias-bg-base));
-  color: var(--dsw-alias-label-primary);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  width: min(216px, calc(100vw - 32px));
+  gap: 4px;
+  padding: 10px;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziViewMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziViewMenuItem:hover { background: var(--dsw-alias-interactive-bg-hover); }
-[data-plugin="dsh-muzi-creator"] .muziViewToggle { width: 100%; padding: 6px 8px; }
-
-[data-plugin="dsh-muzi-creator"] .muziViewSelect {
-  display: grid;
-  gap: 6px;
-  padding: 6px 8px 8px;
-  font-size: 11px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-[data-plugin="dsh-muzi-creator"] .muziViewSelect select {
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-base);
-  color: var(--dsw-alias-label-primary);
-}
-
-[data-plugin="dsh-muzi-creator"] .knowledgeBaseline {
-  display: grid;
-  gap: 3px;
-  margin: 0 8px 8px 2px;
-  padding: 10px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 10px;
-  background: var(--dsw-alias-bg-base);
-  font-size: 11px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-[data-plugin="dsh-muzi-creator"] .knowledgeBaseline strong { color: var(--dsw-alias-label-primary); }
-[data-plugin="dsh-muzi-creator"] .knowledgeBaseline em { color: var(--dsw-alias-state-warning); font-style: normal; }
-
-[data-plugin="dsh-muzi-creator"] .muziKnowledgeSection {
-  display: grid;
-  gap: 2px;
-  padding: 4px 0 12px;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziKnowledgeSection + .muziKnowledgeSection {
-  border-top: 1px solid var(--dsw-alias-border-l1);
-  padding-top: 12px;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziBrowseHeading,
-[data-plugin="dsh-muzi-creator"] .muziBreadcrumb {
-  display: flex;
-  min-height: 30px;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 11px;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziBrowseHeading strong,
-[data-plugin="dsh-muzi-creator"] .muziBreadcrumb strong {
-  color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziBrowseHeading span { margin-left: auto; }
-[data-plugin="dsh-muzi-creator"] .muziBreadcrumb button {
-  padding: 3px 0;
-  border: 0;
-  background: transparent;
-  color: var(--dsw-alias-state-business-primary);
-  cursor: pointer;
-  font-size: 11px;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziDirectoryRow {
-  display: flex;
   width: 100%;
-  min-height: 56px;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: inherit;
+  min-height: 36px;
+  justify-content: flex-start;
   text-align: left;
-  cursor: pointer;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziDirectoryRow:hover { background: var(--dsw-alias-interactive-bg-hover); }
-[data-plugin="dsh-muzi-creator"] .muziDirectoryCount {
-  display: inline-flex;
-  min-width: 28px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
+[data-plugin="dsh-muzi-creator"] .muziViewToggle {
+  width: 100%;
+  padding-block: 6px;
 }
-
-[data-plugin="dsh-muzi-creator"] .muziSectionEmpty {
-  padding: 12px 8px 16px;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziLoadMore {
-  display: block;
-  min-width: 96px;
-  height: 32px;
-  margin: 8px auto 16px;
-  padding: 0 12px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--dsw-alias-label-secondary);
-  cursor: pointer;
-  font-size: 11px;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziLoadMore:hover { background: var(--dsw-alias-interactive-bg-hover); }
-[data-plugin="dsh-muzi-creator"] .muziLoadMore:disabled { opacity: .55; cursor: default; }
 
 [data-plugin="dsh-muzi-creator"] .muziPanelList {
-  flex: 1;
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
+  flex: 1;
   padding: 4px 12px 20px 4px;
-  scroll-padding: 4px 12px 20px 4px;
-  scrollbar-gutter: stable;
+  overflow: hidden auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziCardSkeletons {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziListRow {
-  position: relative;
   display: flex;
-  width: auto;
-  min-height: 88px;
+  width: 100%;
+  min-width: 0;
+  min-height: 92px;
   align-items: center;
-  gap: 10px;
-  margin: 0 0 8px;
-  padding: 9px;
-  box-sizing: border-box;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 12px;
   text-align: left;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziListRow.selected {
-  outline: 2px solid var(--animal-primary-color);
-  outline-offset: -2px;
+[data-plugin="dsh-muzi-creator"] .muziKnowledgeRow {
+  min-height: 108px;
+  align-items: flex-start;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziListIcon {
   display: grid;
+  width: 42px;
+  min-width: 42px;
+  height: 48px;
   place-items: center;
-  width: 38px;
-  height: 44px;
-  flex: none;
-  border: 1px solid var(--animal-border-color-light);
-  border-radius: var(--animal-border-radius-sm);
-  background: var(--animal-bg-color);
-  color: var(--animal-primary-color);
+  color: var(--muzi-island-leaf-dark);
 }
 
-[data-plugin="dsh-muzi-creator"] .muziListIcon.knowledge { height: 44px; }
-[data-plugin="dsh-muzi-creator"] .muziListIcon.pending { color: var(--dsw-alias-state-warn-label); }
-[data-plugin="dsh-muzi-creator"] .muziListRow.pending { min-height: 72px; }
-[data-plugin="dsh-muzi-creator"] .muziPendingState { display: inline-flex; min-height: 20px; align-items: center; padding: 0 7px; border-radius: 999px; background: var(--dsw-alias-state-warn-tertiary); color: var(--dsw-alias-state-warn-label); font-weight: 550; }
+[data-plugin="dsh-muzi-creator"] .muziListBody {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 7px;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziListHeading,
+[data-plugin="dsh-muzi-creator"] .muziListMeta,
+[data-plugin="dsh-muzi-creator"] .muziProgressSummary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziListTitle {
+  display: -webkit-box;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziListMeta,
+[data-plugin="dsh-muzi-creator"] .muziListSummary {
+  color: var(--muzi-island-paper-text);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+[data-plugin="dsh-muzi-creator"] .islandSelectableCard.is-selected .muziListMeta,
+[data-plugin="dsh-muzi-creator"] .islandSelectableCard.is-selected .muziListSummary {
+  color: inherit;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziCardTag {
+  flex: none;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziCardMetaText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziProgressSummary {
+  flex-wrap: wrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziProgressSummary strong {
+  font-variant-numeric: tabular-nums;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziKnowledgeExcerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 [data-plugin="dsh-muzi-creator"] .muziContentCover {
   position: relative;
   display: grid;
-  width: 52px;
-  height: 70px;
+  width: 54px;
+  height: 72px;
   flex: none;
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--animal-border-color-light);
   border-radius: var(--animal-border-radius-sm);
   background: var(--animal-bg-color-secondary);
-  box-sizing: border-box;
 }
-[data-plugin="dsh-muzi-creator"] .muziContentCover img { width: 100%; height: 100%; object-fit: cover; animation: muziCoverReveal var(--muzi-motion-enter) var(--muzi-ease); }
-[data-plugin="dsh-muzi-creator"] .muziCoverFallback { display: grid; width: 100%; height: 100%; place-content: center; justify-items: center; gap: 4px; color: var(--dsw-alias-label-tertiary); }
-[data-plugin="dsh-muzi-creator"] .muziCoverFallback span { font-size: 10px; line-height: 13px; white-space: nowrap; }
-[data-plugin="dsh-muzi-creator"] .muziListBody { display: grid; min-width: 0; flex: 1; gap: 6px; }
-[data-plugin="dsh-muzi-creator"] .muziListHeading { display: flex; min-width: 0; align-items: flex-start; gap: 4px; }
-[data-plugin="dsh-muzi-creator"] .muziListTitle { display: -webkit-box; min-width: 0; flex: 1; overflow: hidden; font-size: 13px; font-weight: 600; line-height: 18px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-[data-plugin="dsh-muzi-creator"] .muziListMeta { display: flex; min-width: 0; align-items: center; gap: 6px; font-size: 11px; color: var(--animal-text-color-secondary); }
-[data-plugin="dsh-muzi-creator"] .muziCardTag { flex: none; }
-[data-plugin="dsh-muzi-creator"] .muziCardMetaText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-plugin="dsh-muzi-creator"] .muziListSummary { overflow: hidden; font-size: 11px; color: var(--animal-text-color-secondary); }
-[data-plugin="dsh-muzi-creator"] .muziProgressSummary { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-[data-plugin="dsh-muzi-creator"] .muziProgressSummary strong { color: var(--dsw-alias-label-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
-[data-plugin="dsh-muzi-creator"] .muziKnowledgeRow { min-height: 104px; align-items: flex-start; }
-[data-plugin="dsh-muzi-creator"] .muziKnowledgeRow .muziListIcon { margin-top: 2px; }
-[data-plugin="dsh-muzi-creator"] .muziKnowledgeExcerpt { display: -webkit-box; line-height: 17px; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-[data-plugin="dsh-muzi-creator"] .muziEmpty { padding: 28px 12px; color: var(--dsw-alias-label-tertiary); text-align: center; font-size: 12px; }
-[data-plugin="dsh-muzi-creator"] .muziEmpty.error { color: var(--dsw-alias-state-error); }
 
-[data-plugin="dsh-muzi-creator"] .muziPanelState {
+[data-plugin="dsh-muzi-creator"] .muziContentCover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziCoverFallback {
   display: grid;
-  gap: 5px;
-  margin: 8px 0;
-  padding: 24px 16px;
-  text-align: center;
-}
-[data-plugin="dsh-muzi-creator"] .muziPanelState strong { font-size: 12px; font-weight: 600; }
-[data-plugin="dsh-muzi-creator"] .muziPanelState p { margin: 0; font-size: 11px; line-height: 17px; }
-[data-plugin="dsh-muzi-creator"] .muziPanelState.error strong,
-[data-plugin="dsh-muzi-creator"] .muziPanelState.error p { color: var(--animal-error-color); }
-
-[data-plugin="dsh-muzi-creator"] .muziCardSkeletons { display: grid; gap: 8px; padding-top: 4px; }
-
-.muziCreateModal { max-width: calc(100vw - 32px); color: var(--muzi-island-text); }
-.muziCreateForm { display: grid; gap: 18px; padding: 2px; }
-.muziCreateHeading { display: grid; gap: 5px; }
-.muziCreateHeading p { margin: 0; color: var(--muzi-island-text-muted); font-size: 12px; line-height: 18px; }
-.muziCreateField { display: grid; gap: 7px; color: var(--muzi-island-text); font-size: 12px; font-weight: 600; }
-.muziCreateField input { width: 100%; min-height: 40px; box-sizing: border-box; }
-.muziCreateField small { color: var(--muzi-island-text-muted); font-size: 11px; font-weight: 400; }
-.muziCreateForm fieldset { display: grid; gap: 7px; margin: 0; padding: 0; border: 0; }
-.muziCreateForm legend { margin-bottom: 7px; color: var(--muzi-island-text); font-size: 12px; font-weight: 600; }
-.muziCreatePrimary { display: grid; gap: 8px; }
-.muziCreatePrimary span { display: grid; gap: 2px; }
-.muziCreatePrimary strong { font-size: 12px; font-weight: 600; }
-.muziCreatePrimary small { color: var(--muzi-island-text-muted); font-size: 11px; line-height: 16px; }
-.muziCreateError { margin: -6px 0 0; color: var(--muzi-island-danger); font-size: 11px; line-height: 17px; }
-.muziCreateActions { display: flex; justify-content: flex-end; gap: 8px; }
-.muziCreateActions > button { min-width: 76px; min-height: 40px; }
-
-[data-plugin="dsh-muzi-creator"] .muziHeaderIcon:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziSearchButton:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziClearButton:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziViewMenuItem:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziListRow:focus-visible {
-  outline: 2px solid var(--animal-primary-color);
-  outline-offset: 2px;
+  width: 100%;
+  height: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  color: var(--muzi-island-text-muted);
 }
 
-[data-plugin="dsh-muzi-creator"] .muziDirectoryRow:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziBreadcrumb button:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziLoadMore:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
-  outline-offset: 2px;
+[data-plugin="dsh-muzi-creator"] .muziCoverFallback span {
+  font-size: 10px;
+  white-space: nowrap;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  [data-plugin="dsh-muzi-creator"] .muziSectionLabel,
-  [data-plugin="dsh-muzi-creator"] .muziSearchSlot,
-  [data-plugin="dsh-muzi-creator"] .muziSearch,
-  [data-plugin="dsh-muzi-creator"] .muziHeaderActions,
-  [data-plugin="dsh-muzi-creator"] .muziListRow { transition: none; }
-  [data-plugin="dsh-muzi-creator"] .muziContentCover img { animation: none; }
-  .muziCreateModal { animation: none; }
+[data-plugin="dsh-muzi-creator"] .muziKnowledgeSection {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding-bottom: 12px;
 }
 
-@keyframes muziCoverReveal {
-  from { opacity: .65; }
-  to { opacity: 1; }
+[data-plugin="dsh-muzi-creator"] .muziBrowseHeading {
+  display: flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 4px;
+  color: var(--muzi-island-text-muted);
+  font-size: 12px;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziListRow {
-  min-height: 40px;
-  border-color: var(--muzi-island-line);
-  border-radius: var(--muzi-island-radius-lg);
-  background: var(--muzi-island-paper);
+[data-plugin="dsh-muzi-creator"] .muziBrowseHeading > :last-child {
+  margin-left: auto;
+}
+
+.muziCreateModal {
+  max-width: calc(100vw - 32px);
   color: var(--muzi-island-text);
 }
 
-[data-plugin="dsh-muzi-creator"] .muziListRow.selected {
-  outline-color: var(--muzi-island-focus);
-  background: var(--muzi-island-mint);
+.muziCreateForm,
+.muziCreateHeading,
+.muziCreateField,
+.muziCreatePrimary {
+  display: grid;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziListRow:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziSearchButton:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziHeaderIcon:focus-visible,
-[data-plugin="dsh-muzi-creator"] .muziClearButton:focus-visible {
-  outline-color: var(--muzi-island-focus);
+.muziCreateForm {
+  gap: 18px;
+  padding: 2px;
+}
+
+.muziCreateHeading,
+.muziCreateField {
+  gap: 7px;
+}
+
+.muziCreateHeading p,
+.muziCreateField small {
+  margin: 0;
+  color: var(--muzi-island-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.muziCreateField {
+  color: var(--muzi-island-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.muziCreateField input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.muziCreateForm fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.muziCreateForm legend {
+  margin-bottom: 8px;
+  color: var(--muzi-island-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.muziCreatePrimary,
+.muziCreatePrimary span {
+  gap: 4px;
+}
+
+.muziCreatePrimary small {
+  color: var(--muzi-island-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.muziCreateError {
+  margin: -6px 0 0;
+  color: var(--muzi-island-danger);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.muziCreateActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.muziCreateActions > button {
+  min-width: 76px;
+  min-height: 40px;
 }
 
 @media (max-width: 430px) {
-  [data-plugin="dsh-muzi-creator"] .muziPanelList { padding-right: 8px; }
-  [data-plugin="dsh-muzi-creator"] .muziProgressSummary { gap: 6px; }
+  [data-plugin="dsh-muzi-creator"] .muziSectionHeader {
+    padding-right: 8px;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .muziHeaderIcon,
+  [data-plugin="dsh-muzi-creator"] .muziSearchButton,
+  [data-plugin="dsh-muzi-creator"] .muziClearButton {
+    padding-inline: 7px;
+    font-size: 11px;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .muziPanelList {
+    padding-right: 8px;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .muziListRow {
+    gap: 9px;
+    padding: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-plugin="dsh-muzi-creator"] .muziListRow,
+  [data-plugin="dsh-muzi-creator"] .muziSectionHeader,
+  .muziCreateModal {
+    transition: none;
+    animation: none;
+  }
 }
