@@ -111,30 +111,8 @@
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphHeading > div:first-child { display: grid; gap: 3px; }
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphHeading h3 { margin: 0; color: var(--dsw-alias-label-primary); font-size: 15px; font-weight: 600; letter-spacing: -.015em; }
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphHeading p { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 17px; }
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphControls { display: flex; flex: none; align-items: center; gap: 5px; }
-
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphControls button {
-  display: inline-grid;
-  min-width: 30px;
-  height: 30px;
-  place-items: center;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-  cursor: pointer;
-  font-size: 11px;
-  transition: background-color var(--muzi-motion-fast) var(--muzi-ease), color var(--muzi-motion-fast) var(--muzi-ease), transform var(--muzi-motion-fast) var(--muzi-ease);
-}
-
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphControls button:hover { background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover)); color: var(--dsw-alias-label-primary); transform: translateY(-1px); }
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphControls button:active { transform: translateY(0); }
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphControls button:focus-visible,
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphCanvas:focus-visible,
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphFallback button:focus-visible,
-[data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: 2px; }
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphControls button:disabled { opacity: .48; cursor: default; transform: none; }
+[data-plugin="dsh-muzi-creator"] .knowledgeGraphControls { display: flex; flex: none; align-items: center; gap: 8px; }
+[data-plugin="dsh-muzi-creator"] .knowledgeGraphCanvas:focus-visible { outline: 2px solid var(--animal-warning-color); outline-offset: -3px; }
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphSection.refreshing .knowledgeRefresh svg,
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphLoading svg { animation: knowledge-refresh-spin 850ms linear infinite; }
 
@@ -192,7 +170,6 @@
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphFallback { align-content: center; justify-items: center; gap: 14px; color: var(--dsw-alias-label-secondary); }
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphFallback p { max-width: 42ch; margin: 0; font-size: 11px; line-height: 1.7; }
 [data-plugin="dsh-muzi-creator"] .knowledgeGraphFallback > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-[data-plugin="dsh-muzi-creator"] .knowledgeGraphFallback button { height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); cursor: pointer; font-size: 11px; }
 
 [data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail {
   position: absolute;
@@ -216,9 +193,7 @@
 [data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail span,
 [data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail small { color: var(--dsw-alias-label-tertiary); font-size: 11px; }
 [data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail small { margin-left: auto; }
-[data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail button { flex: none; height: 32px; padding: 0 12px; border: 0; border-radius: var(--muzi-radius-sm); background: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-label-on-primary, white); cursor: pointer; font-size: 11px; transition: filter var(--muzi-motion-fast) var(--muzi-ease), transform var(--muzi-motion-fast) var(--muzi-ease); }
-[data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail button:hover { filter: brightness(.96); transform: translateY(-1px); }
-[data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail button:active { transform: translateY(0); }
+[data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail button { flex: none; }
 
 @keyframes knowledge-summary-enter {
   from { opacity: .01; transform: translateY(7px); clip-path: inset(0 0 10% 0 round 16px); }
@@ -259,6 +234,4 @@
   [data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail,
   [data-plugin="dsh-muzi-creator"] .knowledgeGraphSection.refreshing .knowledgeRefresh svg,
   [data-plugin="dsh-muzi-creator"] .knowledgeGraphLoading svg { animation: none; }
-  [data-plugin="dsh-muzi-creator"] .knowledgeGraphControls button,
-  [data-plugin="dsh-muzi-creator"] .knowledgeNodeDetail button { transition: none; }
 }
