@@ -68,6 +68,10 @@
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "lab:setup": "node scripts/lab-setup.mjs",
+    "lab:config": "node scripts/lab-config.mjs",
+    "lab:start": "node scripts/lab-start.mjs",
+    "lab:desktop": "node scripts/lab-desktop.mjs",
     "release:check": "node scripts/check-release.mjs",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },

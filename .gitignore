@@ -6,4 +6,5 @@ assets/readme/source/
 .dsh-pack*/
 design-qa.md
 design-qa-assets/
+.lab/
 .impeccable/mocks/*.png
