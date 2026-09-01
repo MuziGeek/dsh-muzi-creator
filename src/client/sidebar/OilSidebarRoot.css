@@ -29,6 +29,28 @@
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
+/* Island controls own their visual treatment; these rules only align the plugin layout. */
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] {
+  --muzi-surface: var(--muzi-island-sidebar);
+  --muzi-surface-soft: var(--muzi-island-paper);
+  --muzi-surface-muted: var(--muzi-island-mint);
+  --muzi-border: var(--muzi-island-line);
+  --muzi-border-strong: var(--muzi-island-leaf);
+  color: var(--muzi-island-text);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .iconButton,
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed .newSession,
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton {
+  min-height: 40px;
+  border-radius: var(--muzi-island-radius-md);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton.active {
+  background: var(--muzi-island-mint);
+  color: var(--muzi-island-leaf-dark);
+}
+
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed {
   padding: 18px 10px 6px;
 }

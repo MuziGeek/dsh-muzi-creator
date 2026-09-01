@@ -13,6 +13,7 @@ import {
 } from "../trellisSelection.ts";
 import { projectMatchesQuery } from "../trellisUiModel.ts";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
+import { IslandButton, IslandCard, IslandSkeleton } from "../ui/IslandControls.tsx";
 import "./TrellisProjectPanel.css";
 
 function projectStateLabel(project: TrellisProjectSummary, t: (key: CreatorKey) => string): string {
@@ -78,16 +79,16 @@ export function TrellisProjectPanel({ face, t }: TrellisProjectPanelProps) {
       />
       <div className="trellisProjectList">
         {listed !== null && <p className="trellisProjectsRoot"><span>{t("projects.root")}</span><code title={listed.projectsRoot}>{listed.projectsRoot}</code></p>}
-        {loading && listed === null && <div className="muziPanelState"><strong>{t("projects.loading")}</strong></div>}
-        {error !== null && listed === null && <div className="muziPanelState error"><strong>{t("projects.error")}</strong><p>{error}</p></div>}
-        {!loading && listed !== null && listed.projects.length === 0 && <div className="trellisProjectEmpty"><IconBranchOutline16 size={22} /><p>{t("projects.empty")}</p></div>}
+        {loading && listed === null && <div className="muziPanelState"><IslandSkeleton variant="rectangular" width="100%" height="48px" /><strong>{t("projects.loading")}</strong></div>}
+        {error !== null && listed === null && <IslandCard className="muziPanelState error"><strong>{t("projects.error")}</strong><p>{error}</p></IslandCard>}
+        {!loading && listed !== null && listed.projects.length === 0 && <IslandCard className="trellisProjectEmpty"><IconBranchOutline16 size={22} /><p>{t("projects.empty")}</p></IslandCard>}
         {filtered.map((project) => {
           const selected = selection.projectId === project.projectId;
           const counts = project.counts;
           return (
-            <article key={project.projectId} className={`trellisProjectCard${selected ? " selected" : ""}`}>
-              <button
-                type="button"
+            <IslandCard key={project.projectId} className={`trellisProjectCard${selected ? " selected" : ""}`}>
+              <IslandButton
+                type="default"
                 className="trellisProjectMain"
                 aria-pressed={selected}
                 onClick={() => {
@@ -108,8 +109,8 @@ export function TrellisProjectPanel({ face, t }: TrellisProjectPanelProps) {
                     </span>
                   )}
                 </span>
-              </button>
-            </article>
+              </IslandButton>
+            </IslandCard>
           );
         })}
       </div>

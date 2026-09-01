@@ -19,6 +19,7 @@ import {
   useSidebarTab,
 } from "../contentSelection.ts";
 import { selectTrellisProject } from "../trellisSelection.ts";
+import { IslandButton } from "../ui/IslandControls.tsx";
 import { nextSidebarTab, SIDEBAR_TABS } from "../trellisUiModel.ts";
 import { KnowledgePanel } from "./KnowledgePanel.tsx";
 import { DailyHotPanel } from "./DailyHotPanel.tsx";
@@ -173,18 +174,18 @@ export function OilSidebarRoot({
     >
       <div className="logoRow">
         {wide && (
-          <button
-            type="button"
+          <IslandButton
+            type="text"
             className={cx("brandButton", "wide")}
             aria-label={t("session.new.label")}
             onClick={() => { startSession(); }}
           >
             <OilBrand tagline={t("brand.tagline")} />
-          </button>
+          </IslandButton>
         )}
         <Tooltip label={collapsed ? t("toggle.open") : t("toggle.collapse")} delayMs={500}>
-          <button
-            type="button"
+          <IslandButton
+            type="text"
             className={cx("iconButton", "toggle")}
             aria-label={collapsed ? t("toggle.open") : t("toggle.collapse")}
             onClick={() => { toggleSidebar(); }}
@@ -195,91 +196,91 @@ export function OilSidebarRoot({
               </span>
             )}
             <IconPanelLeftOutline16 className="panelIcon" size={wide ? 16 : 18} />
-          </button>
+          </IslandButton>
         </Tooltip>
       </div>
 
       {!wide && (
         <Tooltip label={t("session.new.label")} delayMs={500}>
-          <button
-            type="button"
+          <IslandButton
+            type="text"
             className="newSession"
             aria-label={t("session.new.label")}
             onClick={() => { startSession(); }}
           >
             <IconNewChatOutline16 size={18} />
-          </button>
+          </IslandButton>
         </Tooltip>
       )}
 
       {wide && (
         <div className="tabRow">
           <div className="tabList" role="tablist" aria-orientation="vertical" aria-label="Muzi Creator 导航">
-            <button
-              type="button"
+            <IslandButton
+              type="text"
               role="tab"
               aria-selected={sidebarTab === "sessions"}
               tabIndex={sidebarTab === "sessions" ? 0 : -1}
               data-sidebar-tab="sessions"
               className={cx("tabButton", sidebarTab === "sessions" && "active")}
               onClick={() => { chooseTab("sessions"); }}
-              onKeyDown={(event) => { moveSidebarTab(event, "sessions"); }}
+              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "sessions"); }}
             >
               <IconNewChatOutline16 size={14} />
               {tabLabels.sessions}
-            </button>
-            <button
-              type="button"
+            </IslandButton>
+            <IslandButton
+              type="text"
               role="tab"
               aria-selected={sidebarTab === "hot"}
               tabIndex={sidebarTab === "hot" ? 0 : -1}
               data-sidebar-tab="hot"
               className={cx("tabButton", sidebarTab === "hot" && "active")}
               onClick={() => { chooseTab("hot"); }}
-              onKeyDown={(event) => { moveSidebarTab(event, "hot"); }}
+              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "hot"); }}
             >
               <IconLightOutline16 size={14} />
               {tabLabels.hot}
-            </button>
-            <button
-              type="button"
+            </IslandButton>
+            <IslandButton
+              type="text"
               role="tab"
               aria-selected={sidebarTab === "content"}
               tabIndex={sidebarTab === "content" ? 0 : -1}
               data-sidebar-tab="content"
               className={cx("tabButton", sidebarTab === "content" && "active")}
               onClick={() => { chooseTab("content"); }}
-              onKeyDown={(event) => { moveSidebarTab(event, "content"); }}
+              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "content"); }}
             >
               <IconBrowseOutline16 size={14} />
               {tabLabels.content}
-            </button>
-            <button
-              type="button"
+            </IslandButton>
+            <IslandButton
+              type="text"
               role="tab"
               aria-selected={sidebarTab === "knowledge"}
               tabIndex={sidebarTab === "knowledge" ? 0 : -1}
               data-sidebar-tab="knowledge"
               className={cx("tabButton", sidebarTab === "knowledge" && "active")}
               onClick={() => { chooseTab("knowledge"); }}
-              onKeyDown={(event) => { moveSidebarTab(event, "knowledge"); }}
+              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "knowledge"); }}
             >
               <IconFolderClose16 size={14} />
               {tabLabels.knowledge}
-            </button>
-            <button
-              type="button"
+            </IslandButton>
+            <IslandButton
+              type="text"
               role="tab"
               aria-selected={sidebarTab === "projects"}
               tabIndex={sidebarTab === "projects" ? 0 : -1}
               data-sidebar-tab="projects"
               className={cx("tabButton", sidebarTab === "projects" && "active")}
               onClick={() => { chooseTab("projects"); }}
-              onKeyDown={(event) => { moveSidebarTab(event, "projects"); }}
+              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "projects"); }}
             >
               <IconProjectAddOutline16 size={14} />
               {tabLabels.projects}
-            </button>
+            </IslandButton>
           </div>
         </div>
       )}
@@ -289,14 +290,14 @@ export function OilSidebarRoot({
           {wide && (
             <div className="headerNewSession">
               <Tooltip label={t("session.new.label")} delayMs={500}>
-                <button
-                  type="button"
+                <IslandButton
+                  type="text"
                   className="iconButton"
                   aria-label={t("session.new.label")}
                   onClick={() => { startSession(); }}
                 >
                   <IconNewChatOutline16 size={16} />
-                </button>
+                </IslandButton>
               </Tooltip>
             </div>
           )}

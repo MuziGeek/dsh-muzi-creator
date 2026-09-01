@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isProjectTitleValid } from "../src/client/sidebar/CreateProjectDialog.tsx";
+import { isProjectTitleValid } from "../src/client/sidebar/createProjectDialogModel.ts";
 
 describe("isProjectTitleValid", () => {
   it("rejects blank titles and accepts meaningful text", () => {

@@ -1,5 +1,14 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Tag } from "animal-island-ui";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
+import { IslandButton, IslandInput, IslandTag } from "../ui/IslandControls.tsx";
 import {
   IconCloseFill14,
   IconBrowseOutline16,
@@ -48,11 +57,11 @@ export function PanelSectionHeader({
 }: PanelSectionHeaderProps) {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
-  const searchInput = useRef<HTMLInputElement>(null);
-  const searchButton = useRef<HTMLButtonElement>(null);
   const viewRoot = useRef<HTMLDivElement>(null);
-  const viewButton = useRef<HTMLButtonElement>(null);
   const viewId = useId();
+  const searchInputId = useId();
+  const searchButtonId = useId();
+  const viewButtonId = useId();
 
   useEffect(() => {
     if (!viewOpen) return;
@@ -63,7 +72,7 @@ export function PanelSectionHeader({
       if (event.key !== "Escape") return;
       event.preventDefault();
       setViewOpen(false);
-      viewButton.current?.focus();
+      document.getElementById(viewButtonId)?.focus();
     };
     document.addEventListener("pointerdown", close);
     document.addEventListener("keydown", closeWithKeyboard);
@@ -76,30 +85,30 @@ export function PanelSectionHeader({
   const expandSearch = (): void => {
     setViewOpen(false);
     setSearchExpanded(true);
-    window.setTimeout(() => { searchInput.current?.focus(); }, 0);
+    window.setTimeout(() => { document.getElementById(searchInputId)?.focus(); }, 0);
   };
 
   const closeSearch = (): void => {
     onQueryChange("");
     setSearchExpanded(false);
-    window.requestAnimationFrame(() => { searchButton.current?.focus(); });
+    window.requestAnimationFrame(() => { document.getElementById(searchButtonId)?.focus(); });
   };
 
   return (
     <div className="muziSectionHeader">
       <span className={searchExpanded ? "muziSectionLabel hidden" : "muziSectionLabel"}>
         <span>{label}</span>
-        {count !== undefined && <Tag className="muziSectionCount" size="small" color="default">{count}</Tag>}
+        {count !== undefined && <IslandTag className="muziSectionCount" size="small" color="brown" variant="soft">{count}</IslandTag>}
       </span>
       <div className={searchExpanded ? "muziSearchSlot expanded" : "muziSearchSlot"}>
         <div className={searchExpanded ? "muziSearch expanded" : "muziSearch"}>
           <Tooltip label={searchLabel} side="bottom" delayMs={500} disabled={searchExpanded}>
-            <button ref={searchButton} type="button" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
+            <IslandButton id={searchButtonId} type="text" size="small" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
               <IconSearchOutline16 size={searchExpanded ? 11 : 14} />
-            </button>
+            </IslandButton>
           </Tooltip>
-          <input
-            ref={searchInput}
+          <IslandInput
+            id={searchInputId}
             className="muziSearchInput"
             type="text"
             name={searchName}
@@ -109,52 +118,52 @@ export function PanelSectionHeader({
             placeholder={searchPlaceholder}
             value={query}
             tabIndex={searchExpanded ? 0 : -1}
-            onChange={(event) => { onQueryChange(event.target.value); }}
-            onKeyDown={(event) => { if (event.key === "Escape") closeSearch(); }}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => { onQueryChange(event.target.value); }}
+            onKeyDown={(event: ReactKeyboardEvent<HTMLInputElement>) => { if (event.key === "Escape") closeSearch(); }}
           />
           {searchExpanded && (
-            <button type="button" className="muziClearButton" aria-label="清除搜索" onClick={(event) => { event.stopPropagation(); closeSearch(); }}>
+            <IslandButton type="text" size="small" className="muziClearButton" aria-label="清除搜索" onClick={(event: ReactMouseEvent<HTMLButtonElement>) => { event.stopPropagation(); closeSearch(); }}>
               <IconCloseFill14 />
-            </button>
+            </IslandButton>
           )}
         </div>
       </div>
       <div className={searchExpanded ? "muziHeaderActions hidden" : "muziHeaderActions"}>
         {refreshLabel !== undefined && (
           <Tooltip label={refreshLabel} side="bottom" delayMs={500}>
-            <button type="button" className="muziHeaderIcon" aria-label={refreshLabel} onClick={onRefresh}>
+            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={refreshLabel} onClick={onRefresh}>
               <IconRefreshOutline16 size={16} />
-            </button>
+            </IslandButton>
           </Tooltip>
         )}
         {viewLabel !== undefined && viewContent !== undefined && <div className="muziViewRoot" ref={viewRoot}>
           <Tooltip label={viewLabel} side="bottom" delayMs={500}>
-            <button ref={viewButton} type="button" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} aria-controls={viewId} onClick={() => { setViewOpen((open) => !open); }}>
+            <IslandButton id={viewButtonId} type="text" size="small" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} aria-controls={viewId} onClick={() => { setViewOpen((open) => !open); }}>
               <IconPersonalizationOutline16 size={16} />
-            </button>
+            </IslandButton>
           </Tooltip>
           {viewOpen && (
             <div id={viewId} className="muziViewMenu" role="group" aria-label={viewLabel}>
               {viewContent}
-              <button type="button" className="muziViewMenuItem" onClick={() => { setViewOpen(false); onRefresh(); }}>
+              <IslandButton type="text" size="small" className="muziViewMenuItem" onClick={() => { setViewOpen(false); onRefresh(); }}>
                 <IconRefreshOutline16 size={16} />
                 刷新
-              </button>
+              </IslandButton>
             </div>
           )}
         </div>}
         {previewLabel !== undefined && onPreview !== undefined && (
           <Tooltip label={previewLabel} side="bottom" delayMs={500}>
-            <button type="button" className="muziHeaderIcon" aria-label={previewLabel} onClick={onPreview}>
+            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={previewLabel} onClick={onPreview}>
               <IconBrowseOutline16 size={16} />
-            </button>
+            </IslandButton>
           </Tooltip>
         )}
         {addLabel !== undefined && onAdd !== undefined && (
           <Tooltip label={addLabel} side="bottom" delayMs={500}>
-            <button type="button" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
+            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
               <IconProjectAddOutline16 size={16} />
-            </button>
+            </IslandButton>
           </Tooltip>
         )}
       </div>

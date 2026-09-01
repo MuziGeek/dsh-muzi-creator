@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
 import { Card, Checkbox, Skeleton, Tag } from "animal-island-ui";
 import type { MuziPrimaryDocument } from "../../muziTypes.ts";
 import type { MuziViewFace } from "../face.ts";
@@ -6,6 +6,7 @@ import { MuziProjectCover } from "../MuziProjectCover.tsx";
 import { bumpLibrary, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
 import { CreateProjectDialog } from "./CreateProjectDialog.tsx";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
+import { IslandButton } from "../ui/IslandControls.tsx";
 import "./MuziPanels.css";
 
 const DOC_LABELS = { mother: "母内容", video: "视频稿", wechat: "公众号", xiaohongshu: "小红书", blog: "博客" } as const;
@@ -96,21 +97,12 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
           const selected = selectedId === item.id;
           const toggleSelection = (): void => { setSelectedId(selected ? null : item.id); };
           return (
-            <Card
+            <IslandButton
+              type="default"
               key={item.id}
               className={selected ? "muziListRow muziContentRow selected" : "muziListRow muziContentRow"}
-              color="default"
-              pattern={selected ? "app-teal" : "default"}
-              hoverable
-              role="button"
-              tabIndex={0}
               aria-pressed={selected}
               onClick={toggleSelection}
-              onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                toggleSelection();
-              }}
             >
               <MuziProjectCover id={item.id} title={item.title} revision={item.coverRevision} load={face.getProjectCover} className="muziContentCover" />
               <span className="muziListBody">
@@ -126,7 +118,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
                   <span><strong>{counts.published}</strong>/5 发布</span>
                 </span>
               </span>
-            </Card>
+            </IslandButton>
           );
         })}
       </div>
