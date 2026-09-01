@@ -11,6 +11,11 @@ export async function setupLab(repositoryRoot) {
     paths.home,
     paths.profile,
     paths.profileModules,
+    paths.desktopHome,
+    paths.desktopProfile,
+    paths.desktopProfileModules,
+    paths.desktopUserData,
+    paths.packageStaging,
     paths.fixture,
     paths.library,
     paths.atlas,
@@ -26,6 +31,7 @@ export async function setupLab(repositoryRoot) {
   await mkdir(project, { recursive: true });
   await writeFile(join(project, "script.md"), "# Lab fixture\n", "utf8");
   await ensurePluginLink(paths.pluginLink, paths.root);
+  await ensurePluginLink(paths.desktopPluginLink, paths.root);
   console.log(`Lab 已准备：${paths.lab}`);
   return paths;
 }

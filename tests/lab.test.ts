@@ -22,7 +22,9 @@ import { confinedPath, labPaths } from "../scripts/lab-paths.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
 import { setupLab } from "../scripts/lab-setup.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
-import { assertLabConfiguration, findDshCli, startLab } from "../scripts/lab-start.mjs";
+import { assertDesktopLabConfiguration, assertLabConfiguration, findDshCli, startLab } from "../scripts/lab-start.mjs";
+// @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
+import { prepareLocalTgzAcceptance, startDesktop } from "../scripts/lab-desktop.mjs";
 
 const sourceRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -40,6 +42,13 @@ describe("isolated UI Lab", () => {
 
   beforeEach(async () => {
     repositoryRoot = await mkdtemp(join(tmpdir(), "dsh-muzi-lab-"));
+    await mkdir(join(repositoryRoot, "lib"), { recursive: true });
+    await Promise.all([
+      "index.js",
+      "client.js",
+      "typert.host.js",
+      "collect-publish.mjs",
+    ].map((file) => writeFile(join(repositoryRoot, "lib", file), "// Lab build fixture\n", "utf8")));
   });
 
   afterEach(async () => {
@@ -81,6 +90,18 @@ describe("isolated UI Lab", () => {
     ]);
     expect(manifest.dependencies["dsh-muzi-creator"]).toBe(`link:${paths.root.replaceAll("\\", "/")}`);
     expect(await realpath(paths.pluginLink)).toBe(await realpath(paths.root));
+    expect(await realpath(paths.desktopPluginLink)).toBe(await realpath(paths.root));
+    expect(JSON.parse(await readFile(paths.desktopProfileSelection, "utf8"))).toEqual({
+      version: 1,
+      active: "web",
+      lastKnownGood: "web",
+    });
+    expect(JSON.parse(await readFile(paths.desktopMarketSelection, "utf8"))).toEqual({
+      version: 1,
+      requested: "disabled",
+      legacyDefaulted: false,
+    });
+    expect(await readFile(paths.desktopSettings, "utf8")).toBe("dsh-desktop:\n  mode: compatibility\n");
     expect(patch).toContain("- id: dsh-muzi-creator");
     expect(patch).toContain("externalActionsEnabled: false");
     expect(config.credentials).toEqual({});
@@ -98,7 +119,8 @@ describe("isolated UI Lab", () => {
       await expect(confinedPath(paths.lab, config[key])).resolves.toBe(resolve(config[key]));
     }
     await expect(assertLabConfiguration(paths)).resolves.toEqual(config);
-  });
+    await expect(assertDesktopLabConfiguration(paths)).resolves.toEqual(config);
+  }, 15_000);
 
   it("starts the built DSH CLI with the isolated profile contract", async () => {
     const paths = await setupLab(repositoryRoot);
@@ -125,7 +147,7 @@ describe("isolated UI Lab", () => {
     expect(invocation.env.DEEPSEEK_API_KEY).toBe("");
     expect(invocation.env.DASHSCOPE_API_KEY).toBe("");
     expect(invocation.env.ZENMUX_API_KEY).toBe("");
-  });
+  }, 15_000);
 
   it("rejects a runtime patch that diverges from the generated isolated paths", async () => {
     const { paths } = await writeLabConfig(repositoryRoot);
@@ -150,6 +172,62 @@ describe("isolated UI Lab", () => {
 
     await expect(assertLabConfiguration(paths)).rejects.toThrow("未指向当前源码 checkout");
   });
+
+  it("starts Desktop with isolated user data and the selected Web profile", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    const fakeDesktop = join(repositoryRoot, "fake-desktop.exe");
+    await writeFile(fakeDesktop, "fixture\n", "utf8");
+
+    const invocation = await startDesktop({ repositoryRoot, desktop: fakeDesktop, dryRun: true });
+
+    expect(invocation.args).toEqual(["--user-data-dir", paths.desktopUserData]);
+    expect(invocation.cwd).toBe(paths.root);
+    expect(invocation.env.DSH_HOME).toBe(paths.desktopHome);
+    expect(invocation.env.HOME).toBe(paths.desktopHome);
+    expect(invocation.env.USERPROFILE).toBe(paths.desktopHome);
+    expect(invocation.env.APPDATA).toBe(paths.desktopUserData);
+    expect(invocation.env.DSH_TELEMETRY_DISABLED).toBe("1");
+    expect(invocation.env.DSH_EXTERNAL_ACTIONS_ENABLED).toBe("0");
+    expect(invocation.env.DEEPSEEK_API_KEY).toBe("");
+  }, 15_000);
+
+  it("fails closed when Desktop no longer selects the Web profile", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    await writeFile(paths.desktopProfileSelection, `${JSON.stringify({
+      version: 1,
+      active: "desktop",
+      lastKnownGood: "desktop",
+    })}\n`, "utf8");
+
+    await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格选择 web Profile");
+  }, 15_000);
+
+  it("fails closed when Desktop enables a Market or leaves compatibility mode", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    await writeFile(paths.desktopMarketSelection, `${JSON.stringify({
+      version: 1,
+      requested: "community-market",
+      legacyDefaulted: false,
+    })}\n`, "utf8");
+    await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格禁用插件市场");
+
+    await writeLabConfig(repositoryRoot);
+    await writeFile(paths.desktopSettings, "dsh-desktop:\n  mode: advanced\n", "utf8");
+    await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格选择上游兼容模式");
+  }, 15_000);
+
+  it("prepares a local packed acceptance without installing or starting Desktop", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    const packageArchive = join(paths.packageStaging, "dsh-muzi-creator-0.1.10.tgz");
+    await writeFile(packageArchive, "fixture\n", "utf8");
+
+    await expect(prepareLocalTgzAcceptance({ repositoryRoot, tgz: packageArchive })).resolves.toEqual({
+      profile: "web",
+      archive: packageArchive,
+    });
+    await expect(prepareLocalTgzAcceptance({ repositoryRoot, tgz: join(repositoryRoot, "outside.tgz") }))
+      .rejects.toThrow("路径逃逸");
+  }, 15_000);
 
   it("keeps Animal Island imports and plugin ownership centralized", async () => {
     const files = await sourceFiles(join(sourceRoot, "src", "client"));

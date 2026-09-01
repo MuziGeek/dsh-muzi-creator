@@ -33,13 +33,13 @@ function registerWithSlotCore(kind: "keyed" | "list"): SlotCore {
 }
 
 describe("settings.plugin.item compatibility", () => {
-  it("passes the rc.7 keyed slot validation", () => {
+  it("passes the keyed slot validation", () => {
     const slots = registerWithSlotCore("keyed");
     expect(slots.entries("settings.plugin.item")[0]?.options.key)
       .toBe(CREATOR_SETTINGS_NAMESPACE);
   });
 
-  it("passes the rc.6 list slot validation", () => {
+  it("passes the list slot compatibility validation", () => {
     const slots = registerWithSlotCore("list");
     expect(slots.entries("settings.plugin.item")[0]?.options.id)
       .toBe("dsh-oil-creator");

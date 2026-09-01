@@ -22,6 +22,20 @@ export const LAB_WRITABLE_PATH_KEYS = Object.freeze([
 
 export const LAB_PROFILE_WORKSPACE = "packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n";
 
+export const DESKTOP_PROFILE_SELECTION_STATE = Object.freeze({
+  version: 1,
+  active: "web",
+  lastKnownGood: "web",
+});
+
+export const DESKTOP_MARKET_SELECTION_STATE = Object.freeze({
+  version: 1,
+  requested: "disabled",
+  legacyDefaulted: false,
+});
+
+export const DESKTOP_SETTINGS_DOCUMENT = "dsh-desktop:\n  mode: compatibility\n";
+
 export function createLabSafetyConfig(paths) {
   return {
     externalActionsEnabled: false,
@@ -73,6 +87,16 @@ export function createLabProfilePatch(config) {
   ].join("\n");
 }
 
+/** Returns the Desktop-owned selected-profile state used by Desktop 2.0.2. */
+export function createDesktopProfileSelectionState() {
+  return { ...DESKTOP_PROFILE_SELECTION_STATE };
+}
+
+/** Returns Desktop 2.0.2's explicit disabled-Market selection. */
+export function createDesktopMarketSelectionState() {
+  return { ...DESKTOP_MARKET_SELECTION_STATE };
+}
+
 export async function writeLabConfig(repositoryRoot) {
   const paths = await setupLab(repositoryRoot);
   const config = createLabSafetyConfig(paths);
@@ -82,15 +106,32 @@ export async function writeLabConfig(repositoryRoot) {
   }
   const manifest = createLabProfileManifest(paths);
   const patch = createLabProfilePatch(config);
-  for (const target of [paths.profileManifest, paths.profilePatch, paths.profileWorkspace, paths.safetyManifest]) {
+  for (const target of [
+    paths.profileManifest,
+    paths.profilePatch,
+    paths.profileWorkspace,
+    paths.desktopProfileManifest,
+    paths.desktopProfilePatch,
+    paths.desktopProfileWorkspace,
+    paths.desktopProfileSelection,
+    paths.desktopMarketSelection,
+    paths.desktopSettings,
+    paths.safetyManifest,
+  ]) {
     await prepareLabPath(paths.lab, target);
     await mkdir(dirname(target), { recursive: true });
   }
   await writeFile(paths.profileManifest, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   await writeFile(paths.profilePatch, patch, "utf8");
   await writeFile(paths.profileWorkspace, LAB_PROFILE_WORKSPACE, "utf8");
+  await writeFile(paths.desktopProfileManifest, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  await writeFile(paths.desktopProfilePatch, patch, "utf8");
+  await writeFile(paths.desktopProfileWorkspace, LAB_PROFILE_WORKSPACE, "utf8");
+  await writeFile(paths.desktopProfileSelection, `${JSON.stringify(createDesktopProfileSelectionState(), null, 2)}\n`, "utf8");
+  await writeFile(paths.desktopMarketSelection, `${JSON.stringify(createDesktopMarketSelectionState(), null, 2)}\n`, "utf8");
+  await writeFile(paths.desktopSettings, DESKTOP_SETTINGS_DOCUMENT, "utf8");
   await writeFile(paths.safetyManifest, `${JSON.stringify(config, null, 2)}\n`, "utf8");
-  console.log(`Lab Web profile 已写入：${paths.profile}`);
+  console.log(`Lab Web 与 Desktop profile 已写入：${paths.profile}`);
   return { paths, config };
 }
 

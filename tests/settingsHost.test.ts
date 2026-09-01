@@ -7,7 +7,7 @@ import {
 } from "../src/settingsHost.ts";
 
 describe("creator settings namespace", () => {
-  it("registers the namespace that rc.7 uses to dispatch the settings card", () => {
+  it("registers the namespace used to dispatch the settings card", () => {
     const register = vi.fn();
 
     registerCreatorSettingsNamespace({ register } as never);

@@ -10,6 +10,9 @@ export function labPaths(repositoryRoot = resolve(fileURLToPath(new URL("..", im
   const lab = join(root, LAB_DIR_NAME);
   const home = join(lab, "dsh-home");
   const profile = join(home, "profiles", "web");
+  const desktopHome = join(lab, "desktop-home");
+  const desktopProfile = join(desktopHome, "profiles", "web");
+  const desktopUserData = join(lab, "desktop-user-data");
   const fixture = join(lab, "fixture");
   return {
     root,
@@ -21,6 +24,18 @@ export function labPaths(repositoryRoot = resolve(fileURLToPath(new URL("..", im
     profileWorkspace: join(profile, "pnpm-workspace.yaml"),
     profileModules: join(profile, "node_modules"),
     pluginLink: join(profile, "node_modules", "dsh-muzi-creator"),
+    desktopHome,
+    desktopProfile,
+    desktopProfileManifest: join(desktopProfile, "package.json"),
+    desktopProfilePatch: join(desktopProfile, "cordis.patch.yml"),
+    desktopProfileWorkspace: join(desktopProfile, "pnpm-workspace.yaml"),
+    desktopProfileModules: join(desktopProfile, "node_modules"),
+    desktopPluginLink: join(desktopProfile, "node_modules", "dsh-muzi-creator"),
+    desktopUserData,
+    desktopProfileSelection: join(desktopUserData, "profile-selection", "state.json"),
+    desktopMarketSelection: join(desktopUserData, "desktop-market", "state.json"),
+    desktopSettings: join(desktopHome, "settings.yaml"),
+    packageStaging: join(lab, "packages"),
     safetyManifest: join(lab, "config", "safety.json"),
     fixture,
     library: join(fixture, "library"),
