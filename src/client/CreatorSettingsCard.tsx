@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { IconChevronDownOutline14 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
@@ -11,8 +11,7 @@ import { applyDescribed, secretDraftOf } from "./credentialsApi.ts";
 import type { CreatorViewFace } from "./face.ts";
 import type { CreatorKey } from "./locales.ts";
 import { CREATOR_SETTINGS_PLATFORMS } from "./publishPlatforms.ts";
-import { ActionBar, ActionButton } from "./ui/ActionButton.tsx";
-import { StatusPill, type StatusTone } from "./ui/StatusPill.tsx";
+import { IslandButton, IslandCheckbox, IslandInput, IslandTag } from "./ui/IslandControls.tsx";
 import "./CreatorSettingsCard.css";
 
 export type CreatorSettingsCardProps =
@@ -41,8 +40,8 @@ const CAPABILITY_ROWS: ReadonlyArray<{ id: keyof CreatorCapabilities; label: Cre
   { id: "publishSync", label: "settings.capability.ego" },
 ];
 
-function capabilityTone(state: CreatorCapabilities[keyof CreatorCapabilities]["state"]): StatusTone {
-  return state === "ready" ? "success" : "neutral";
+function capabilityColor(state: CreatorCapabilities[keyof CreatorCapabilities]["state"]): "lime-green" | "brown" {
+  return state === "ready" ? "lime-green" : "brown";
 }
 
 function capabilityStateKey(state: CreatorCapabilities[keyof CreatorCapabilities]["state"]): CreatorKey {
@@ -248,8 +247,8 @@ export function CreatorSettingsCard({
 
   return (
     <li data-plugin="dsh-muzi-creator" data-surface="settings-card" className={open ? "card open" : "card"}>
-      <button
-        type="button"
+      <IslandButton
+        type="text"
         className="header"
         aria-expanded={open}
         aria-label={`${t((open ? "settings.collapse" : "settings.expand") as CreatorKey)}: ${title}`}
@@ -261,7 +260,7 @@ export function CreatorSettingsCard({
         </span>
         {dirty && <span className="pending">{t("settings.save" as CreatorKey)}</span>}
         <IconChevronDownOutline14 className={open ? "chevron open" : "chevron"} />
-      </button>
+      </IslandButton>
       {open && (
         <div className="body">
           {capabilities !== undefined && (
@@ -274,9 +273,9 @@ export function CreatorSettingsCard({
                   return (
                     <span key={row.id} className="capabilityItem" title={item.detail}>
                       <span className="capabilityName">{t(row.label)}</span>
-                      <StatusPill tone={capabilityTone(item.state)}>
+                      <IslandTag color={capabilityColor(item.state)} size="small" variant="soft">
                         {t(capabilityStateKey(item.state))}
-                      </StatusPill>
+                      </IslandTag>
                     </span>
                   );
                 })}
@@ -290,9 +289,9 @@ export function CreatorSettingsCard({
               <span className={draftRoot === "" ? "path empty" : "path"}>
                 {draftRoot === "" ? t("settings.libraryRootEmpty" as CreatorKey) : draftRoot}
               </span>
-              <ActionButton onClick={() => { void onPick(); }}>
+              <IslandButton type="default" onClick={() => { void onPick(); }}>
                 {t("settings.pick" as CreatorKey)}
-              </ActionButton>
+              </IslandButton>
             </span>
           </label>
           <label className="field">
@@ -302,25 +301,22 @@ export function CreatorSettingsCard({
               <span className={draftTrellisRoot === "" ? "path empty" : "path"}>
                 {draftTrellisRoot === "" ? t("settings.trellisRootEmpty" as CreatorKey) : draftTrellisRoot}
               </span>
-              <ActionButton onClick={() => { void onPickTrellis(); }}>
+              <IslandButton type="default" onClick={() => { void onPickTrellis(); }}>
                 {t("settings.pick" as CreatorKey)}
-              </ActionButton>
+              </IslandButton>
             </span>
           </label>
           <div className="field">
             <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.enabledPlatformsHint" as CreatorKey)}</span>
             {CREATOR_SETTINGS_PLATFORMS.map((platform) => (
-              <label className="inputLabel" key={platform.key}>
-                <span>
-                  <input
-                    type="checkbox"
-                    checked={draftProfile.enabledPlatforms.includes(platform.key)}
-                    onChange={(event) => { patchProfile(platform.key, event.target.checked); }}
-                  />
-                  {t(platform.label)}
-                </span>
-              </label>
+              <IslandCheckbox
+                className="inputLabel"
+                key={platform.key}
+                value={draftProfile.enabledPlatforms.includes(platform.key) ? [platform.key] : []}
+                options={[{ value: platform.key, label: t(platform.label) }]}
+                onChange={(values: Array<string | number>) => { patchProfile(platform.key, values.includes(platform.key)); }}
+              />
             ))}
           </div>
           <div className="field">
@@ -331,7 +327,7 @@ export function CreatorSettingsCard({
               rows={6}
               placeholder={t("settings.scriptRulesPlaceholder" as CreatorKey)}
               value={draftRules}
-              onChange={(event) => {
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
                 setDraftRules(event.target.value);
                 setSaved(false);
                 setFailed(false);
@@ -341,11 +337,11 @@ export function CreatorSettingsCard({
           <div className="field">
             <span className="fieldLabel">{t("settings.obsidianExecutable" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.obsidianExecutableHint" as CreatorKey)}</span>
-            <input
+            <IslandInput
               className="input"
               placeholder={t("settings.obsidianExecutablePlaceholder" as CreatorKey)}
               value={draftObsidian}
-              onChange={(event) => {
+              onChange={(event: ChangeEvent<HTMLInputElement>) => {
                 setDraftObsidian(event.target.value);
                 setSaved(false);
                 setFailed(false);
@@ -359,7 +355,7 @@ export function CreatorSettingsCard({
               <label className="inputLabel" key={item.kind}>
                 <span className="secretHead">
                   <span>{t(`settings.secret.${item.kind}` as CreatorKey)}</span>
-                  <StatusPill tone={item.loadError ? "error" : item.configured ? "success" : "neutral"}>
+                  <IslandTag color={item.loadError ? "app-red" : item.configured ? "lime-green" : "brown"} size="small" variant="soft">
                     {t((
                       item.loadError
                         ? "settings.secret.loadFailed"
@@ -367,17 +363,17 @@ export function CreatorSettingsCard({
                           ? "settings.secret.configured"
                           : "settings.secret.missing"
                     ) as CreatorKey)}
-                  </StatusPill>
+                  </IslandTag>
                 </span>
                 <span className="fieldHint">{t(`settings.secret.${item.kind}Hint` as CreatorKey)}</span>
-                <input
+                <IslandInput
                   className="input"
                   type="password"
                   autoComplete="off"
                   placeholder={t("settings.secret.placeholder" as CreatorKey)}
                   disabled={!item.writable || saving}
                   value={item.nextValue}
-                  onChange={(event) => {
+                  onChange={(event: ChangeEvent<HTMLInputElement>) => {
                     const value = event.target.value;
                     setSecrets((current) => current.map((row) => (
                       row.kind === item.kind ? { ...row, nextValue: value } : row
@@ -397,8 +393,9 @@ export function CreatorSettingsCard({
             {failed && <p className="failed" role="status">{t("settings.saveFailed" as CreatorKey)}</p>}
             {keyFailed && <p className="failed" role="status">{t("settings.secret.saveFailed" as CreatorKey)}</p>}
             {saved && !dirty && <p className="ok" role="status">{t("settings.saved" as CreatorKey)}</p>}
-            <ActionBar>
-              <ActionButton
+            <div className="settingsActionBar">
+              <IslandButton
+                type="default"
                 disabled={!dirty || saving || !loaded}
                 onClick={() => {
                   setDraftRoot(savedRoot);
@@ -413,15 +410,15 @@ export function CreatorSettingsCard({
                 }}
               >
                 {t("settings.discard" as CreatorKey)}
-              </ActionButton>
-              <ActionButton
-                tone="primary"
+              </IslandButton>
+              <IslandButton
+                type="primary"
                 disabled={!dirty || saving || (dirtyRoot && draftRoot === "")}
                 onClick={() => { void onSave(); }}
               >
                 {t((saving ? "settings.saving" : "settings.save") as CreatorKey)}
-              </ActionButton>
-            </ActionBar>
+              </IslandButton>
+            </div>
           </div>
         </div>
       )}

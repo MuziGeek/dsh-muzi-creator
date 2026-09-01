@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
 import { Card, Icon, Skeleton, Tag } from "animal-island-ui";
 
 import type {
@@ -8,6 +8,7 @@ import type {
 import type { MuziViewFace } from "../face.ts";
 import { setSelectedContentId, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
+import { IslandButton } from "../ui/IslandControls.tsx";
 import "./MuziPanels.css";
 
 function knowledgeSelection(locator: string): string {
@@ -28,20 +29,11 @@ function knowledgeCardExcerpt(item: KnowledgePageSummary): string {
 function KnowledgeRow({ item, selected }: { item: KnowledgePageSummary; selected: boolean }) {
   const openKnowledge = (): void => { setSelectedContentId(knowledgeSelection(item.locator)); };
   return (
-    <Card
+    <IslandButton
+      type="default"
       className={selected ? "muziListRow muziKnowledgeRow selected" : "muziListRow muziKnowledgeRow"}
-      color="default"
-      pattern={selected ? "app-teal" : "default"}
-      hoverable
-      role="button"
-      tabIndex={0}
       aria-pressed={selected}
       onClick={openKnowledge}
-      onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        openKnowledge();
-      }}
     >
       <span className="muziListIcon knowledge" aria-hidden="true"><Icon name="icon-critterpedia" size={20} /></span>
       <span className="muziListBody">
@@ -51,7 +43,7 @@ function KnowledgeRow({ item, selected }: { item: KnowledgePageSummary; selected
         <span className="muziListMeta"><Tag className="muziCardTag" size="small" color={selected ? "app-teal" : "default"} variant={selected ? "solid" : "soft"}>主题知识</Tag></span>
         <span className="muziListSummary muziKnowledgeExcerpt">{knowledgeCardExcerpt(item) || "打开查看主题知识详情"}</span>
       </span>
-    </Card>
+    </IslandButton>
   );
 }
 

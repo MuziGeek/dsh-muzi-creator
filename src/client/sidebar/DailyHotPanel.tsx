@@ -22,6 +22,7 @@ import {
 import type { DailyHotViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
 import { selectTrellisProject } from "../trellisSelection.ts";
+import { IslandButton, IslandCard, IslandSkeleton, IslandTag } from "../ui/IslandControls.tsx";
 import "./DailyHotPanel.css";
 
 interface DailyHotItemButtonProps {
@@ -33,8 +34,8 @@ interface DailyHotItemButtonProps {
 
 function DailyHotItemButton({ item, featured, selected, t }: DailyHotItemButtonProps) {
   return (
-    <button
-      type="button"
+    <IslandButton
+      type="default"
       className={`dailyHotItem${featured ? " featured" : ""}${selected ? " selected" : ""}`}
       aria-pressed={selected}
       aria-label={`${t("hot.openDetail")}：${item.title}`}
@@ -52,7 +53,7 @@ function DailyHotItemButton({ item, featured, selected, t }: DailyHotItemButtonP
           {formatDailyHotCompactTime(dailyHotItemTimestamp(item))}
         </time>
       </span>
-    </button>
+    </IslandButton>
   );
 }
 
@@ -71,7 +72,7 @@ function DailyHotTier({ id, items, label, featured = false, emptyLabel, selected
     <section className="dailyHotTier" aria-labelledby={id}>
       <header>
         <h3 id={id}>{label}</h3>
-        <span>{items.length}</span>
+        <IslandTag size="small" color="brown" variant="soft">{items.length}</IslandTag>
       </header>
       {items.length === 0
         ? <p className="dailyHotTierEmpty">{emptyLabel}</p>
@@ -155,8 +156,8 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
         </span>
         <div className="muziHeaderActions">
           <Tooltip label={refreshing ? t("hot.refreshing") : t("hot.refresh")} side="bottom" delayMs={500}>
-            <button
-              type="button"
+            <IslandButton
+              type="text"
               className={`muziHeaderIcon dailyHotRefresh${refreshing ? " spinning" : ""}`}
               aria-label={refreshing ? t("hot.refreshing") : t("hot.refresh")}
               aria-busy={refreshing}
@@ -164,7 +165,7 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
               onClick={() => { void load(true); }}
             >
               <IconRefreshOutline16 size={16} />
-            </button>
+            </IslandButton>
           </Tooltip>
         </div>
       </div>
@@ -172,17 +173,19 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
       <div className="dailyHotScroll">
         {loading && data === null && (
           <div className="dailyHotLoading" aria-label={t("hot.loading")}>
-            <span /><span /><span /><span />
+            <IslandSkeleton variant="rectangular" width="100%" height="44px" />
+            <IslandSkeleton variant="rectangular" width="100%" height="44px" />
+            <IslandSkeleton variant="rectangular" width="100%" height="44px" />
           </div>
         )}
 
         {error !== null && data === null && (
-          <div className="dailyHotError" role="alert">
+          <IslandCard className="dailyHotError" role="alert">
             <IconWarningOutline16 size={20} />
             <strong>{t("hot.error.title")}</strong>
             <p>{error}</p>
-            <button type="button" onClick={() => { void load(true); }}>{t("hot.error.retry")}</button>
-          </div>
+            <IslandButton type="primary" onClick={() => { void load(true); }}>{t("hot.error.retry")}</IslandButton>
+          </IslandCard>
         )}
 
         {data !== null && (
@@ -217,7 +220,7 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
             )}
 
             {!hasItems
-              ? <div className="dailyHotEmpty"><IconLightOutline16 size={22} /><p>{t("hot.empty")}</p></div>
+              ? <IslandCard className="dailyHotEmpty"><IconLightOutline16 size={22} /><p>{t("hot.empty")}</p></IslandCard>
               : <>
                   <DailyHotTier
                     id="daily-hot-must-read"
@@ -238,8 +241,8 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
                   />
                   {data.tiers.other.length > 0 && (
                     <section className="dailyHotTier dailyHotOther" aria-labelledby={`${otherId}-label`}>
-                      <button
-                        type="button"
+                      <IslandButton
+                        type="text"
                         className="dailyHotOtherToggle"
                         aria-expanded={otherExpanded}
                         aria-controls={otherId}
@@ -248,7 +251,7 @@ export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
                         <span id={`${otherId}-label`}>{t("hot.other")} · {String(data.tiers.other.length)}</span>
                         <span>{otherExpanded ? t("hot.other.hide") : t("hot.other.show")}</span>
                         <IconChevronDownOutline14 className={otherExpanded ? "open" : ""} aria-hidden="true" />
-                      </button>
+                      </IslandButton>
                       {otherExpanded && (
                         <div id={otherId} className="dailyHotTierItems">
                           {data.tiers.other.map((item) => (

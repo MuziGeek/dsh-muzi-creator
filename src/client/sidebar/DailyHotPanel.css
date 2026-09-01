@@ -134,3 +134,37 @@
   [data-plugin="dsh-muzi-creator"] .dailyHotRefresh.spinning svg { animation: none; }
   [data-plugin="dsh-muzi-creator"] .dailyHotOtherToggle svg { transition: none; }
 }
+
+[data-plugin="dsh-muzi-creator"] .dailyHotStatus {
+  border-color: var(--muzi-island-line);
+  border-radius: var(--muzi-island-radius-lg);
+  background: var(--muzi-island-paper);
+}
+
+[data-plugin="dsh-muzi-creator"] .dailyHotItem {
+  min-height: 40px;
+  border-color: var(--muzi-island-line);
+  border-radius: var(--muzi-island-radius-md);
+  background: var(--muzi-island-paper);
+  color: var(--muzi-island-text);
+}
+
+[data-plugin="dsh-muzi-creator"] .dailyHotItem.featured,
+[data-plugin="dsh-muzi-creator"] .dailyHotItem:hover { background: var(--muzi-island-mint); }
+
+[data-plugin="dsh-muzi-creator"] .dailyHotItem.selected {
+  border-color: var(--muzi-island-leaf);
+  box-shadow: 0 0 0 2px var(--muzi-island-focus);
+}
+
+[data-plugin="dsh-muzi-creator"] .dailyHotItem:focus-visible,
+[data-plugin="dsh-muzi-creator"] .dailyHotOtherToggle:focus-visible {
+  outline-color: var(--muzi-island-focus);
+}
+
+[data-plugin="dsh-muzi-creator"] .dailyHotOtherToggle { min-height: 40px; color: var(--muzi-island-text); }
+
+@media (max-width: 430px) {
+  [data-plugin="dsh-muzi-creator"] .dailyHotScroll { padding-right: 8px; }
+  [data-plugin="dsh-muzi-creator"] .dailyHotCounts { grid-template-columns: 1fr; }
+}
