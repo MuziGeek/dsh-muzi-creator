@@ -6,7 +6,9 @@
 
 Desktop 2.0.2 的私有 `<user-data>/profile-selection/state.json` 固定为 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`；`<user-data>/desktop-market/state.json` 固定请求 `disabled`；`<desktop-home>/settings.yaml` 固定 `dsh-desktop.mode: compatibility`。三项状态都在 Electron spawn 前重新读取、严格比对。启动参数显式包含 `--user-data-dir <.lab/desktop-user-data>`；子进程的 `DSH_HOME`、`HOME`、`USERPROFILE` 指向 `.lab/desktop-home`，应用数据、遥测、凭据与外部能力保持隔离。脚本拒绝路径逃逸及其他符号链接/联接点，凭据为空且 `externalActionsEnabled` 固定为 `false`。Lab 不安装软件、不发布、不同步、不归档；本地 `.tgz` 成品路径只可做 `.lab/packages/` 下的准备性校验，安装与 Desktop 实机启动仍是单独验收步骤。
 
-Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token；宿主 DSH 对话、设置、审批和 shell layout 仍由 Host 所有。Inspector 只控制自身 Overlay 的位置和宽度，不查询对话滚动容器，也不向对话 DOM 写入 padding 或 transition；宽屏内的 480 px 分栏由 Inspector 容器查询切换内部单列布局，不依赖窗口宽度。组件映射、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
+Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token。宿主 DSH 对话、设置、审批、详情和 shell layout 仍由官方组件所有；插件通过 `@deepseek-ai/dsh-client-ui-theme` 的 `ThemeRuntime.overrideTokens()` 覆盖 `--dsw-*` 表现令牌，并用 `body[data-muzi-host-skin="animal-island"]` 下的固定 2.0.2 兼容样式补齐圆角、焦点、长文本、Portal 和响应式规则。外观规则排除插件自己的 Animal Island 根；唯一例外是 640 px 以下的布局规则，它让展开的 360 px 侧栏覆盖会话而不把会话挤成窄列。兼容样式不使用生成哈希类、不隐藏功能元素，也不注册宿主事件。
+
+Inspector 只控制自身 Overlay 的位置和宽度，不查询对话滚动容器，也不向对话 DOM 写入 padding 或 transition；宽屏内的 480 px 分栏由 Inspector 容器查询切换内部单列布局，不依赖窗口宽度。组件映射、主题令牌、固定版本选择器、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
 
 `dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的单个运行插件。它把选题、创作、知识、热点、项目进度和受控发布入口放进同一界面，同时保留 Agent 对话。
 
