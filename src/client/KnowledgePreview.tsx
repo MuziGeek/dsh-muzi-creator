@@ -16,6 +16,7 @@ import {
   type KnowledgeGraphVisualNodeData,
 } from "./knowledgeGraph3d.ts";
 import { selectKnowledgeGraph } from "./knowledgeGraphLayout.ts";
+import { IslandButton } from "./ui/IslandControls.tsx";
 import "./KnowledgePreview.css";
 
 const CATEGORY_LABELS: Record<KnowledgeCategory, string> = {
@@ -295,8 +296,8 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
             <p>当前呈现 {view.nodes.length} 个节点 · {view.edges.length} 条关系</p>
           </div>
           <div className="knowledgeGraphControls" aria-label="星图控制">
-            <button type="button" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</button>
-            <button type="button" className="knowledgeRefresh" aria-label={refreshing ? "正在刷新星图" : "刷新星图"} disabled={refreshing} onClick={() => { void refresh(); }}><IconRefreshOutline16 size={15} /></button>
+            <IslandButton type="default" size="small" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</IslandButton>
+            <IslandButton type="text" size="small" className="knowledgeRefresh" aria-label={refreshing ? "正在刷新星图" : "刷新星图"} loading={refreshing} disabled={refreshing} onClick={() => { void refresh(); }}><IconRefreshOutline16 size={15} /></IslandButton>
           </div>
         </div>
         <div className="knowledgeGraphGuide">
@@ -315,7 +316,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
         ) : !webGlSupported ? (
           <div className="knowledgeGraphFallback">
             <p>当前浏览器无法创建 3D 星图所需的 WebGL 环境，你仍可以打开主题知识。</p>
-            <div>{view.nodes.filter((node) => node.category === "topics").map((node) => <button key={node.id} type="button" onClick={() => { setSelectedContentId(`knowledge:${node.locator}`); }}>{node.title}</button>)}</div>
+            <div>{view.nodes.filter((node) => node.category === "topics").map((node) => <IslandButton key={node.id} type="default" size="small" onClick={() => { setSelectedContentId(`knowledge:${node.locator}`); }}>{node.title}</IslandButton>)}</div>
           </div>
         ) : (
           <div
@@ -391,7 +392,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
               <div className="knowledgeNodeDetail">
                 <div><strong>{selected.title}</strong><span>{CATEGORY_LABELS[selected.category]} · {selected.degree} 条关联</span></div>
                 {selected.category === "topics" && <small>{expandedTopicId === selected.id ? "已展开全部直接关联，再次点击主题可收起。" : "点击主题可展开全部直接关联。"}</small>}
-                <button type="button" onClick={() => { setSelectedContentId(`knowledge:${selected.locator}`); }}>打开知识</button>
+                <IslandButton type="primary" size="small" onClick={() => { setSelectedContentId(`knowledge:${selected.locator}`); }}>打开知识</IslandButton>
               </div>
             )}
           </div>
