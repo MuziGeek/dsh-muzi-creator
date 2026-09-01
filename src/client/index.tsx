@@ -75,7 +75,6 @@ import { MuziInspector } from "./MuziInspector.tsx";
 import { DailyHotInspector } from "./DailyHotInspector.tsx";
 import { TrellisProjectInspector } from "./TrellisProjectInspector.tsx";
 import {
-  registerMuziHeroBrandHeadline,
   registerMuziHeroBrandMark,
   type CompatibleHeroBrandSlots,
 } from "./heroBrand.tsx";
@@ -737,9 +736,6 @@ export function apply(ctx: ClientContext): void {
   );
   ctx.slots.inject("conversation.hero.brand.mark" as never, () =>
     registerMuziHeroBrandMark(ctx.slots as unknown as CompatibleHeroBrandSlots),
-  );
-  ctx.slots.inject("conversation.hero.brand.headline", () =>
-    registerMuziHeroBrandHeadline(ctx.slots as unknown as CompatibleHeroBrandSlots),
   );
 
   ctx.effect(async () => {

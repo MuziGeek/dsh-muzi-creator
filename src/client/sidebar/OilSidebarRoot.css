@@ -119,6 +119,13 @@
   object-fit: contain;
 }
 
+[data-plugin="dsh-oil-creator"][data-surface="sidebar"] .oilBrandCopy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] .oilBrandText {
   min-width: 0;
   overflow: hidden;
@@ -128,6 +135,18 @@
   font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1;
+}
+
+[data-plugin="dsh-oil-creator"][data-surface="sidebar"] .oilBrandTagline {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-weight: 450;
+  letter-spacing: 0;
+  line-height: 1.1;
 }
 
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] .iconButton {

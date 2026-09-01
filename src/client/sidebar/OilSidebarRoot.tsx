@@ -179,7 +179,7 @@ export function OilSidebarRoot({
             aria-label={t("session.new.label")}
             onClick={() => { startSession(); }}
           >
-            <OilBrand />
+            <OilBrand tagline={t("brand.tagline")} />
           </button>
         )}
         <Tooltip label={collapsed ? t("toggle.open") : t("toggle.collapse")} delayMs={500}>

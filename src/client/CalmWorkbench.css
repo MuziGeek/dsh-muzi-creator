@@ -82,6 +82,10 @@ body[data-ds-dark-theme] [data-plugin="dsh-oil-creator"] {
   letter-spacing: -.025em;
 }
 
+[data-plugin="dsh-oil-creator"][data-surface="sidebar"] .oilBrandTagline {
+  color: var(--muzi-editorial-text-soft);
+}
+
 [data-plugin="dsh-oil-creator"][data-surface="sidebar"] .tabRow {
   margin: 0 0 18px;
 }
@@ -415,10 +419,6 @@ body[data-ds-dark-theme] [data-plugin="dsh-oil-creator"] .muziMarkdownBody {
   height: 100%;
   border-radius: 8px;
   object-fit: contain;
-}
-
-[data-slot="conversation"] [data-phase="hero"] .muziHeroBrandHeadline {
-  white-space: nowrap;
 }
 
 [data-slot="conversation"] [data-phase="hero"] [class*="_heroGlow"] {

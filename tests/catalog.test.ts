@@ -212,11 +212,11 @@ describe("recordedAt precedence", () => {
 
   it("keeps the planned name date for an old topic folder", async () => {
     const root = await mkdtemp(join(tmpdir(), "dsh-oil-old-"));
-    const folder = join(root, "2026-09-01_future topic");
+    const folder = join(root, "2020-09-01_old topic");
     await mkdir(folder);
     await utimes(folder, new Date(2026, 7, 16, 14, 40), new Date(2026, 7, 16, 14, 40));
     const items = await scanLibrary(root, emptyOverlay());
-    expect(items[0]?.recordedAt).toBe(new Date(2026, 8, 1).getTime());
+    expect(items[0]?.recordedAt).toBe(new Date(2020, 8, 1).getTime());
   });
 
   it("ignores video mtime: re-exporting must not move the episode", async () => {
