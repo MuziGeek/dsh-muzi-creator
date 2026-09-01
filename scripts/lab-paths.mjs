@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 export const LAB_DIR_NAME = ".lab";
 
 /** Returns the repository root and its private Lab directories. */
-export function labPaths(repositoryRoot = resolve(fileURLToPath(new URL("..", import.meta.url)), "..")) {
+export function labPaths(repositoryRoot = resolve(fileURLToPath(new URL("..", import.meta.url)))) {
   const root = resolve(repositoryRoot);
   const lab = join(root, LAB_DIR_NAME);
   const home = join(lab, "dsh-home");

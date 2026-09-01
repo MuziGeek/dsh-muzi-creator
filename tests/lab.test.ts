@@ -52,6 +52,10 @@ describe("isolated UI Lab", () => {
     await rm(repositoryRoot, { recursive: true, force: true });
   });
 
+  it("resolves the source checkout when scripts omit an explicit root", () => {
+    expect(labPaths().root).toBe(sourceRoot);
+  });
+
   it("confines paths and rejects symlinked segments", async () => {
     const paths = labPaths(repositoryRoot);
     await mkdir(paths.lab, { recursive: true });
