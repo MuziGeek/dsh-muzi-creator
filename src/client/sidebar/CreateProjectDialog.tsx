@@ -45,7 +45,7 @@ export function CreateProjectDialog({
   return (
     <dialog
       ref={dialog}
-      data-plugin="dsh-oil-creator"
+      data-plugin="dsh-muzi-creator"
       data-surface="muzi-create-dialog"
       aria-labelledby="muzi-create-title"
       onCancel={(event) => {

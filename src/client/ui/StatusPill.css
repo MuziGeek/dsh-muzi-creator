@@ -1,27 +1,27 @@
-.statusPill {
+[data-plugin="dsh-muzi-creator"] .statusPill {
   gap: 5px;
   max-width: 100%;
   font-weight: 500;
   white-space: nowrap;
 }
 
-.statusPill.pending {
-  color: var(--dsw-alias-state-warn-label);
+[data-plugin="dsh-muzi-creator"] .statusPillDot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentcolor;
 }
 
-.statusPill.active {
-  color: var(--dsw-alias-state-business-primary);
+[data-plugin="dsh-muzi-creator"] .statusPill.pending {
+  color: var(--muzi-island-warning);
 }
 
-.statusPill.success {
-  color: var(--dsw-alias-state-success-primary);
+[data-plugin="dsh-muzi-creator"] .statusPill.active,
+[data-plugin="dsh-muzi-creator"] .statusPill.success {
+  color: var(--muzi-island-success);
 }
 
-.statusPill.error {
-  color: var(--dsw-alias-state-error-primary);
-}
-
-button.statusPill:disabled {
-  opacity: 0.5;
-  cursor: default;
+[data-plugin="dsh-muzi-creator"] .statusPill.error {
+  color: var(--muzi-island-danger);
 }

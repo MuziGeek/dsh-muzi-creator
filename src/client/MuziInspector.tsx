@@ -921,7 +921,7 @@ export function MuziInspector({
     && !acceptanceCommitted;
   const shownWidth = expanded ? layout.width : 0;
   return (
-    <div data-plugin="dsh-oil-creator" data-surface="muzi-inspector" className={`${expanded ? "open" : ""}${layout.mode === "full" ? " full" : ""}${dragging ? " dragging" : ""}`} style={{ width: shownWidth }}>
+    <div data-plugin="dsh-muzi-creator" data-surface="muzi-inspector" className={`${expanded ? "open" : ""}${layout.mode === "full" ? " full" : ""}${dragging ? " dragging" : ""}`} style={{ width: shownWidth }}>
       <div className="muziInspectorTop">
         <div className="muziInspectorTitle">{knowledgePreview !== null ? "知识预览" : page !== null || pending !== null ? "知识详情" : project === null ? "Muzi Creator" : "内容详情"}</div>
         <button type="button" aria-label="关闭详情" onClick={closeDetails}><IconCloseOutline16 size={14} /></button>

@@ -106,7 +106,7 @@ function ArchiveDialog({ preview, busy, error, t, onCancel, onConfirm }: Archive
   return (
     <dialog
       ref={ref}
-      data-plugin="dsh-oil-creator"
+      data-plugin="dsh-muzi-creator"
       data-surface="trellis-archive-dialog"
       aria-labelledby="trellis-archive-title"
       onCancel={(event) => { event.preventDefault(); if (!busy) onCancel(); }}
@@ -347,7 +347,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
 
   return (
     <aside
-      data-plugin="dsh-oil-creator"
+      data-plugin="dsh-muzi-creator"
       data-surface="trellis-inspector"
       className={`${layout.mode === "full" ? "full" : ""}${dragging ? " dragging" : ""}`}
       style={{ width: layout.width }}

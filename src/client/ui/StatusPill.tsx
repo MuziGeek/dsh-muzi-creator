@@ -1,16 +1,16 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Pill, StateDot, type StateDotState } from "@deepseek-ai/dsh-client-ui-primitives";
+import type { ReactNode } from "react";
+import { Tag, type TagColor } from "animal-island-ui";
 
 import "./StatusPill.css";
 
 export type StatusTone = "neutral" | "pending" | "active" | "success" | "error";
 
-const TONE_STATE: Record<StatusTone, StateDotState | undefined> = {
-  neutral: undefined,
-  pending: "warning",
-  active: "ongoing",
-  success: "done",
-  error: "error",
+const TONE_COLOR: Record<StatusTone, TagColor> = {
+  neutral: "brown",
+  pending: "app-yellow",
+  active: "yellow-green",
+  success: "app-green",
+  error: "app-red",
 };
 
 export function statusPillClass(tone: StatusTone, extra?: string): string {
@@ -19,25 +19,20 @@ export function statusPillClass(tone: StatusTone, extra?: string): string {
 
 export function StatusPill({
   tone = "neutral",
-  title,
   children,
-  onClick,
-  ...rest
 }: {
   tone?: StatusTone;
-  title?: string;
   children: ReactNode;
-} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
-  const state = TONE_STATE[tone];
+}) {
   return (
-    <Pill
+    <Tag
       className={statusPillClass(tone)}
-      {...(title === undefined ? {} : { title })}
-      {...(onClick === undefined ? {} : { onClick })}
-      {...rest}
+      color={TONE_COLOR[tone]}
+      size="small"
+      variant="soft"
     >
-      {state !== undefined ? <StateDot state={state} size={10} /> : null}
+      <span aria-hidden="true" className="statusPillDot" />
       {children}
-    </Pill>
+    </Tag>
   );
 }

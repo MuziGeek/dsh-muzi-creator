@@ -1,5 +1,12 @@
-[data-plugin="dsh-oil-creator"] .oilActionBar {
+[data-plugin="dsh-muzi-creator"] .oilActionBar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziIslandAction {
+  min-height: 40px;
+  border-radius: var(--muzi-island-radius-sm);
+  font-family: var(--muzi-island-font);
+  font-weight: 700;
 }

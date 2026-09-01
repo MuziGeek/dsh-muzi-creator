@@ -120,7 +120,7 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
 
   return (
     <aside
-      data-plugin="dsh-oil-creator"
+      data-plugin="dsh-muzi-creator"
       data-surface="daily-hot-inspector"
       data-layout={layout.mode}
       className={`${layout.mode === "full" ? "full" : ""}${dragging ? " dragging" : ""}`}

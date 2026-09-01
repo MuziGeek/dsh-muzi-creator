@@ -78,7 +78,7 @@ import {
   registerMuziHeroBrandMark,
   type CompatibleHeroBrandSlots,
 } from "./heroBrand.tsx";
-import "./CalmWorkbench.css";
+import "./IslandWorkbench.css";
 import {
   bumpLibrary,
   bumpProfile,

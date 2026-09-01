@@ -32,7 +32,7 @@ The plugin runs inside the DSH web client. It reads Creator Studio data, Muzi At
 
 ## Brand Commitments
 
-The product name is Muzi Creator. The sidebar uses the existing Muzi avatar and Calm Editorial Studio visual language. Chinese and English interfaces are both supported.
+The product name is Muzi Creator. The workbench uses the existing Muzi avatar and a restrained Animal Island visual language built from warm earth tones, rounded controls, clear focus states, and compact task-oriented surfaces. Chinese and English interfaces are both supported.
 
 ## Evidence on Hand
 

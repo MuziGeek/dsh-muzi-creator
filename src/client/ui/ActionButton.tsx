@@ -1,26 +1,33 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { Button } from "@deepseek-ai/dsh-client-ui-primitives";
+import { Button } from "animal-island-ui";
 
 import "./ActionButton.css";
 
 export type ActionTone = "primary" | "secondary" | "ghost";
 
-const VARIANT: Record<ActionTone, "primary" | "outline" | "ghost"> = {
+const VARIANT: Record<ActionTone, "primary" | "default" | "text"> = {
   primary: "primary",
-  secondary: "outline",
-  ghost: "ghost",
+  secondary: "default",
+  ghost: "text",
 };
 
 export function ActionButton({
   tone = "secondary",
   children,
+  className,
   ...rest
 }: {
   tone?: ActionTone;
   children: ReactNode;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type">) {
   return (
-    <Button type="button" size="sm" variant={VARIANT[tone]} {...rest}>
+    <Button
+      className={["muziIslandAction", className].filter(Boolean).join(" ")}
+      htmlType="button"
+      size="middle"
+      type={VARIANT[tone]}
+      {...rest}
+    >
       {children}
     </Button>
   );

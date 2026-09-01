@@ -156,7 +156,7 @@ export function OilSidebarRoot({
   return (
     <div
       ref={column}
-      data-plugin="dsh-oil-creator"
+      data-plugin="dsh-muzi-creator"
       data-surface="sidebar"
       className={cx(
         !wide && "collapsed",
