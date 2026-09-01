@@ -1,5 +1,6 @@
 [data-plugin="dsh-muzi-creator"],
 [data-plugin-modal="dsh-muzi-creator"],
+.muziCreateModal,
 .trellisArchiveModal,
 [data-slot="conversation"] {
   --muzi-island-canvas: #f7f1e3;
@@ -10,8 +11,11 @@
   --muzi-island-text: #493426;
   --muzi-island-text-soft: #6d5847;
   --muzi-island-text-faint: #765f4e;
+  --muzi-island-text-muted: var(--muzi-island-text-soft);
   --muzi-island-leaf: #3f6f38;
   --muzi-island-leaf-soft: #e4ecd0;
+  --muzi-island-leaf-dark: var(--muzi-island-leaf);
+  --muzi-island-mint: var(--muzi-island-leaf-soft);
   --muzi-island-success-soft: #dcebd7;
   --muzi-island-success: #356b45;
   --muzi-island-warning: #9a631d;
@@ -55,6 +59,24 @@ body[data-ds-dark-theme] [data-slot="conversation"] {
   --muzi-island-focus: #f0c75b;
   --muzi-island-shadow: 0 10px 28px rgb(12 9 7 / 34%);
   --muzi-surface-muted: #3a3027;
+}
+
+/* Animal Modal keeps a cream shell in both host themes, so portal copy stays on the matching light palette. */
+body[data-ds-dark-theme] .muziCreateModal,
+body[data-ds-dark-theme] .trellisArchiveModal {
+  --muzi-island-paper: #fffaf0;
+  --muzi-island-line: #ded1b7;
+  --muzi-island-line-strong: #c8b697;
+  --muzi-island-text: #493426;
+  --muzi-island-text-soft: #6d5847;
+  --muzi-island-text-faint: #765f4e;
+  --muzi-island-leaf: #3f6f38;
+  --muzi-island-leaf-soft: #e4ecd0;
+  --muzi-island-warning: #9a631d;
+  --muzi-island-warning-soft: #fff0c7;
+  --muzi-island-danger: #9f4038;
+  --muzi-island-danger-soft: #f8ddd5;
+  --muzi-island-focus: #e2a93b;
 }
 
 /* Workbench frame */
