@@ -32,13 +32,6 @@ const sessionBrowserActions = `${sessionBrowserHeader}:not(:has(input[type="text
 const sessionBrowserSearchSlot = `${sessionBrowserHeader} > :has(input[type="text"])`;
 const sessionBrowserSearch = `${sessionBrowserSearchSlot} > :has(> input[type="text"])`;
 const collapsedSessionBrowserRoot = `${host} [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child`;
-const expandedSessionBrowserSlot = `${host} [data-plugin="dsh-muzi-creator"][data-surface="sidebar"][data-sidebar-expanded="true"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"]`;
-const expandedSessionBrowserRoot = `${expandedSessionBrowserSlot} > :first-child`;
-const expandedSessionBrowserHeader = `${expandedSessionBrowserRoot} > :first-child`;
-const expandedSessionBrowserToolbarActions = `${expandedSessionBrowserHeader} > :has(button):not(:has(input[type="text"]))`;
-const expandedSessionBrowserSearchSlot = `${expandedSessionBrowserHeader} > :has(input[type="text"])`;
-const expandedSessionBrowserSearch = `${expandedSessionBrowserSearchSlot} > :has(> input[type="text"])`;
-const expandedSessionBrowserClosedSearchSlot = `${expandedSessionBrowserSearchSlot}:has(input[type="text"][tabindex="-1"])`;
 
 /**
  * The full selector inventory for the fixed DSH Desktop 2.0.4 compatibility skin.
@@ -72,10 +65,6 @@ export const dsh204HostSkinSelectors = [
   { selector: sessionBrowserSearchSlot, surface: "session browser search slot", purpose: "reserve the expanded search control width", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: sessionBrowserSearch, surface: "session browser search", purpose: "apply the warm inline search capsule", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: `${sessionBrowserSearch} > input[type="text"]`, surface: "session browser search input", purpose: "keep the official search field compact and readable", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
-  { selector: expandedSessionBrowserClosedSearchSlot, surface: "session browser closed search slot", purpose: "reserve room for the localized search label before the official input opens", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
-  { selector: `${expandedSessionBrowserSearch}:has(> input[type="text"][tabindex="-1"]) > button`, surface: "session browser search label", purpose: "show the localized short label until the official search input opens", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
-  { selector: `${expandedSessionBrowserToolbarActions} > :first-child button`, surface: "session browser view label", purpose: "show the localized short label on the official nested menu anchor", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
-  { selector: `${expandedSessionBrowserToolbarActions} > button:last-child`, surface: "session browser add label", purpose: "show the localized short label on the official add control", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: `${collapsedSessionBrowserRoot} > :is(:first-child, :nth-child(2)) button`, surface: "session browser rail controls", purpose: "provide a 40px target for official rail actions", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: expandedNarrowConversation, surface: "narrow conversation", purpose: "preserve the full conversation width while the sidebar is expanded", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: expandedNarrowSidebar, surface: "narrow sidebar", purpose: "overlay the expanded sidebar without hiding its collapse control", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },

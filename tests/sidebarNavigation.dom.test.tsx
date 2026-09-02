@@ -153,9 +153,10 @@ describe("Muzi Creator sidebar navigation", () => {
     ) : null} />);
 
     const sessionBrowser = document.querySelector<HTMLElement>('[data-surface="session-browser"]');
-    expect(sessionBrowser?.style.getPropertyValue("--muzi-session-search-label")).toBe('"session.toolbar.search"');
-    expect(sessionBrowser?.style.getPropertyValue("--muzi-session-view-label")).toBe('"session.toolbar.view"');
-    expect(sessionBrowser?.style.getPropertyValue("--muzi-session-add-label")).toBe('"session.toolbar.add"');
+    expect(sessionBrowser?.hasAttribute("style")).toBe(false);
+    for (const id of ["official-search", "official-view", "official-add"]) {
+      expect(document.querySelector(`#${id} > svg`)).not.toBeNull();
+    }
 
     await user.click(document.querySelector<HTMLButtonElement>("#official-search")!);
     await user.click(document.querySelector<HTMLButtonElement>("#official-view")!);

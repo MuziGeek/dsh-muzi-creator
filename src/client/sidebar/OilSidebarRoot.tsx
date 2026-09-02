@@ -3,7 +3,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type CSSProperties,
   type KeyboardEvent,
 } from "react";
 
@@ -32,16 +31,6 @@ const COLLAPSE_SETTLE_MS = 150;
 const SCROLLBAR_LINGER_MS = 2000;
 function cx(...parts: Array<string | false | undefined>): string {
   return parts.filter((part): part is string => typeof part === "string" && part !== "").join(" ");
-}
-
-type SessionToolbarLabelStyle = CSSProperties & {
-  "--muzi-session-search-label": string;
-  "--muzi-session-view-label": string;
-  "--muzi-session-add-label": string;
-};
-
-function cssContent(value: string): string {
-  return JSON.stringify(value);
 }
 
 export type OilSidebarRootProps =
@@ -170,11 +159,6 @@ export function OilSidebarRoot({
   const hotVisible = wide && sidebarTab === "hot";
   const knowledgeVisible = wide && sidebarTab === "knowledge";
   const projectsVisible = wide && sidebarTab === "projects";
-  const sessionToolbarLabelStyle: SessionToolbarLabelStyle = {
-    "--muzi-session-search-label": cssContent(contentT("session.toolbar.search")),
-    "--muzi-session-view-label": cssContent(contentT("session.toolbar.view")),
-    "--muzi-session-add-label": cssContent(contentT("session.toolbar.add")),
-  };
 
   useEffect(() => {
     setSidebarChromeWidth(!wide ? 56 : collapsed ? lastWideWidth.current : width);
@@ -325,11 +309,7 @@ export function OilSidebarRoot({
       <div className="regionArea">
         {slotError !== null && sidebarTab !== "sessions" && <div className="workbenchSlotError" role="alert">中央工作台未能接管当前区域，已保留官方会话界面。{slotError}</div>}
         <div className={cx("regionPane", !sessionsVisible && "hidden")}>
-          <div
-            className="sessionBrowser"
-            data-surface="session-browser"
-            style={sessionToolbarLabelStyle}
-          >
+          <div className="sessionBrowser" data-surface="session-browser">
             {renderSlot("sidebar.workspaces", {
               wide,
               expandSidebar: () => { if (collapsed) toggleSidebar(); },
