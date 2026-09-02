@@ -6,11 +6,11 @@
 
 Desktop 2.0.4 的私有 `<user-data>/profile-selection/state.json` 固定为 `{ "version": 2, "active": "web" }`；`<user-data>/desktop-market/state.json` 固定请求 `disabled`；`<desktop-home>/settings.yaml` 固定 `dsh-desktop.mode: compatibility`。2.0.4 会把旧版选择状态视为损坏并回退到 launcher-owned `desktop` Profile，因此版本和字段必须精确匹配。三项状态与可执行文件的 `ProductName`、`FileVersion`、`ProductVersion` 都在 Electron spawn 前重新读取、严格比对；发现同一可执行文件已有进程时拒绝启动，防止单实例交接把验收请求送进个人 Profile。启动参数显式包含 `--user-data-dir=<.lab/desktop-user-data>`；子进程的 `DSH_HOME`、`HOME`、`USERPROFILE` 指向 `.lab/desktop-home`，应用数据、遥测、凭据与外部能力保持隔离。脚本拒绝路径逃逸及其他符号链接/联接点，凭据为空且 `externalActionsEnabled` 固定为 `false`。Lab 不安装软件、不发布、不同步、不归档；本地 `.tgz` 成品路径只可做 `.lab/packages/` 下的准备性校验，安装与 Desktop 实机启动仍是单独验收步骤。
 
-Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token。宿主 DSH 对话、设置、审批、详情和 shell layout 仍由官方组件所有；插件通过 `@deepseek-ai/dsh-client-ui-theme` 的 `ThemeRuntime.overrideTokens()` 覆盖 `--dsw-*` 表现令牌，并用 `body[data-muzi-host-skin="animal-island"]` 下的固定 2.0.4 兼容样式补齐圆角、焦点、长文本、Portal 和响应式规则。外观规则排除插件自己的 Animal Island 根；唯一例外是 640 px 以下的布局规则，它让展开的 360 px 侧栏覆盖会话而不把会话挤成窄列。兼容样式不使用生成哈希类、不隐藏功能元素，也不注册宿主事件。
+Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token。宿主 DSH 会话状态、设置、审批、详情和 shell layout 仍由官方组件所有；插件通过 `@deepseek-ai/dsh-client-ui-theme` 的 `ThemeRuntime.overrideTokens()` 覆盖 `--dsw-*` 表现令牌，并用 `body[data-muzi-host-skin="animal-island"]` 下的固定 2.0.4 兼容样式补齐圆角、焦点、长文本、Portal 和响应式规则。外观规则排除插件自己的 Animal Island 根；唯一例外是 640 px 以下的布局规则，它让展开的 360 px 侧栏覆盖中央区域。兼容样式不使用生成哈希类、不隐藏功能元素，也不注册宿主事件。
 
-Inspector 只控制自身 Overlay 的位置和宽度，不查询对话滚动容器，也不向对话 DOM 写入 padding 或 transition；宽屏内的 480 px 分栏由 Inspector 容器查询切换内部单列布局，不依赖窗口宽度。组件映射、主题令牌、固定版本选择器、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
+`ConversationWorkbenchController` 只在热点、内容、知识和项目入口注册一个优先级 `-10` 的根 `conversation` 组件；功能间切换保留这个根，切回会话则立即释放。Slot 注册失败时官方会话继续显示。业务详情已移除 `shell.overlay`、宽度持久化、拖拽条、固定定位和遮罩，只保留原有查询、发布准备、Atlas 只读与归档确认逻辑。组件映射、主题令牌、固定版本选择器、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
 
-`dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的单个运行插件。它把选题、创作、知识、热点、项目进度和受控发布入口放进同一界面，同时保留 Agent 对话。
+`dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的单个运行插件。它把选题、创作、知识、热点、项目进度和受控发布入口放进同一界面；Agent 可在后台继续运行，用户通过“会话”入口恢复完整官方界面。
 
 安装：`npx @deepseek-ai/dsh plugin --profile web add github:MuziGeek/dsh-muzi-creator`（本地开发用目录路径）
 
@@ -48,14 +48,14 @@ DeepSeek Harness 负责 Agent、会话、工具、一次性审批和 Workspace�
 
 | 环节 | 现状 |
 | --- | --- |
-| 列表与检查器 | 自定义侧栏「内容」页；检查器叠在对话左边，聊天不关；概览用状态标签标明阶段，只展开当前步骤的操作 |
+| 列表与内容详情 | 自定义侧栏「内容」页；详情在中央工作台显示；概览用状态标签标明阶段，只展开当前步骤的操作 |
 | 建内容、选题笔记 | 面板新建；`oil_create_content` 建文件夹；选题写 `topic.md` |
 | 绑定 / 打开工程 | 面板换绑、打开；`oil_open_studio` |
 | 等导出 | `oil_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
 | 字幕预览、烧录、生成 | 按钮和同名工具会拉起 `oil-subtitle` 脚本 |
 | 生成封面 | 按钮和工具拉起 `oil-cover` 脚本；标题先用文件夹名 |
 | 发布状态 | 读 `{标题}.auto-publish.json`；点状态胶囊从菜单里选未发布 / 草稿 / 已发布，手写优先 |
-| 已发布数据 | 检查器「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
+| 已发布数据 | 内容详情的「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
 | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
 | 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
 | 剪辑、多平台上传 | 剪辑仍从对话调用 Skill；`muzi.creator/2` 项目已接入 Windows 四平台准备、逐平台提交和状态查询 |
@@ -101,7 +101,7 @@ Desktop 2.0.4 内置 Harness `0.1.2-alpha.1` 从 Host 的 `settings.describe` �
 执行分工：
 
 - **磁盘文件**：片子的正文。约定见 [files.md](files.md)。模型用系统自带的列文件 / 读文件 / 写文件。
-- **插件**：侧栏、检查器、阶段推导、官方凭据、给模型的文件约定（`systemPrompt` 段落 `oil:library`）。核心界面和 `oil_*` 工具不依赖专用 Agent Preset。
+- **插件**：侧栏、中央工作台与详情、阶段推导、官方凭据、给模型的文件约定（`systemPrompt` 段落 `oil:library`）。核心界面和 `oil_*` 工具不依赖专用 Agent Preset。
 - **内置 Skill**：`creator-workbench` 负责首次体检、配置预览、目录整理和发布安全流程。普通带 Skill 与文件工具的 Agent 就能使用，推荐 `standard` 或 `code`；`minimal` 不适合这条引导。专用 Creator Preset 以后只作为可选入口。
 - **Harness 工具**：用官方 `defineTool` 注册。只做文件做不到的事，或启动一项已经约定好的脚本。长任务立刻返回，完成与否看文件夹里有没有产物。`oil_wait_export` 也是启动监视，不把 `execute` 阻塞到导出结束。
 - **Skill 脚本**：ASR、FFmpeg 烧录、选帧生图。不要把 Python 和 SOP 整份搬进 `execute()`。
@@ -113,7 +113,7 @@ Desktop 2.0.4 内置 Harness `0.1.2-alpha.1` 从 Host 的 `settings.describe` �
 
 `oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Chrome 缺失时页面准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Chrome。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 
-检查器中间栏默认 640px，可在 480–800px 内拖动，并至少给右侧对话保留 440px；空间不足时自动全屏。它走 `shell.overlay`，不占用官方右侧「详情」栏。官方详情栏保持关闭。发布区拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
+热点、内容、知识和项目共用中央工作台，官方右侧「详情」栏保持不变。工作台顶部提供数据状态、刷新和返回概览，内容区在概览与详情间切换。UI schema 2 在 `dsh-muzi-creator/ui/v2` 下分别保存四类选择；旧单一 `selectedId` 迁移到内容或知识，旧 Inspector 宽度仅被丢弃。首次打开按功能加载一次，只读请求会合并，手动刷新时保留最后有效数据，不新增后台轮询。发布区仍拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
 
 ## 状态存在哪里
 

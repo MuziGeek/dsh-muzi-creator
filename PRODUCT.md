@@ -12,7 +12,7 @@ Muzi is the primary user. The workbench is used locally to move between agent co
 
 ## Product Purpose
 
-Muzi Creator keeps the information needed for personal knowledge work and content production in one local-first workspace. Success means relevant facts remain easy to scan and inspect without obscuring the active Agent conversation.
+Muzi Creator keeps the information needed for personal knowledge work and content production in one local-first workspace. Success means each feature has a useful central overview and detail path while active Agent work continues safely in the background.
 
 ## Positioning
 
@@ -20,14 +20,15 @@ The workbench connects read-only personal knowledge, repository-backed project p
 
 ## Operating Context
 
-The plugin runs inside the DSH web client. It reads Creator Studio data, Muzi Atlas, configured Git and Trellis projects, and the public AIHOT feed. Content and project details share a resizable inspector beside the conversation.
+The plugin runs inside the DSH web client. It reads Creator Studio data, Muzi Atlas, configured Git and Trellis projects, and the public AIHOT feed. Sessions restore the complete official Agent surface; Hot, Content, Knowledge and Projects share one central workbench root with independent remembered selections.
 
 ## Capabilities and Constraints
 
 - External hotspots are read-only inputs grouped for attention and review.
 - A hotspot never creates content, tasks, Agent prompts, or publication actions automatically.
 - Source links and evidence remain visible so important figures, policies, and quotations can be checked against original material.
-- The Agent conversation remains visible in desktop split mode; narrow screens use the existing full-width inspector.
+- The Agent can continue running while another feature is open; the Sessions entry reports pending or running counts and restores the official Agent surface without creating, sending, stopping or switching a session.
+- Feature navigation never uses an overlay Inspector or the official details column. Missing restored objects return to their feature overview.
 - Remote source failures must not block conversations, content, knowledge, or project views.
 
 ## Brand Commitments
