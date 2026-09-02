@@ -1,38 +1,38 @@
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] {
   list-style: none;
-  border: 1px solid var(--muzi-island-line);
-  border-radius: var(--muzi-island-radius-lg);
-  background: var(--muzi-island-paper);
-  color: var(--muzi-island-text);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-3);
+  transition: border-color 0.16s, background 0.16s;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"]:hover {
+  border-color: var(--dsw-alias-label-dimmed);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"].open {
-  background: var(--muzi-island-sidebar);
-  border-color: var(--muzi-island-leaf);
+  background: var(--dsw-alias-bg-layer-2);
+  border-color: var(--dsw-alias-label-dimmed);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   width: 100%;
-  height: auto;
-  min-height: 64px;
-  padding: 10px 20px;
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
   text-align: left;
-  white-space: normal;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .header > span {
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .header:focus-visible {
-  outline: 2px solid var(--muzi-island-focus);
+  outline: 2px solid var(--dsw-alias-brand-primary);
   outline-offset: -2px;
 }
 
@@ -45,24 +45,25 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .name {
-  color: var(--muzi-island-text);
+  color: var(--dsw-alias-label-primary);
   font-size: 15px;
   font-weight: 600;
   line-height: 1.4;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .description {
-  color: var(--muzi-island-text-muted);
+  color: var(--dsw-alias-label-tertiary);
   font-size: 13px;
   line-height: 1.5;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .pending {
   flex: none;
+  white-space: nowrap;
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--muzi-island-mint);
-  color: var(--muzi-island-leaf-dark);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-secondary);
   font-size: 11px;
   font-weight: 500;
   line-height: 17px;
@@ -70,10 +71,16 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .chevron {
   flex: none;
-  color: var(--muzi-island-text-muted);
+  color: var(--dsw-alias-label-tertiary);
+  transition: transform 0.16s;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .chevron.open {
+  transform: rotate(180deg);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .body {
+  border-top: 1px solid var(--dsw-alias-border-l2);
   margin: 0 16px;
   padding-bottom: 8px;
 }
@@ -224,7 +231,7 @@
     z-index: 1;
     top: 0;
     padding-inline: 12px;
-    background: var(--muzi-island-sidebar);
+    background: var(--dsw-alias-bg-layer-2);
   }
   [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .body { margin: 0 12px; }
   [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .capabilityGrid { grid-template-columns: 1fr; }

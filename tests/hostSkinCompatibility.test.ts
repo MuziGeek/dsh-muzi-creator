@@ -16,14 +16,18 @@ const layoutClientPath = resolve(
 );
 
 describe("DSH Desktop 2.0.4 host skin compatibility", () => {
-  it("keeps the selector inventory semantic, versioned, and scoped to an explicit host opt-in", () => {
+  it("keeps the selector inventory versioned and scoped to an explicit host opt-in", () => {
     expect(dsh204HostSkinSelectors).not.toHaveLength(0);
 
     for (const selector of dsh204HostSkinSelectors) {
       expect(selector.version).toBe(DSH_HOST_SKIN_VERSION);
-      expect(selector.kind).toBe("semantic");
       expect(selector.selector).toContain('body[data-muzi-host-skin="animal-island"]');
-      if (!selector.surface.startsWith("narrow") && selector.surface !== "page") {
+      if (selector.kind === "structural") {
+        expect(selector.selector).toContain('[data-surface="session-browser"]');
+        expect(selector.selector).toContain('[data-slot="sidebar.workspaces"]');
+        expect(selector.selector).not.toContain("[aria-label=");
+        expect(selector.selector).not.toMatch(/\.[A-Za-z0-9-]*_[A-Za-z0-9_-]{5,}/);
+      } else if (!selector.surface.startsWith("narrow") && selector.surface !== "page") {
         expect(selector.selector).toContain(':not([data-plugin="dsh-muzi-creator"] *)');
         expect(selector.selector).toContain(':not([data-plugin-modal="dsh-muzi-creator"] *)');
       }
@@ -46,7 +50,32 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
         </div>
         <div id="narrow-conversation"><div data-slot="conversation"></div></div>
       </main>
-      <section data-plugin="dsh-muzi-creator"><textarea id="plugin-textarea"></textarea></section>
+      <section data-plugin="dsh-muzi-creator" data-surface="sidebar" id="plugin-sidebar">
+        <div data-surface="session-browser">
+          <div data-slot="sidebar.workspaces">
+            <div id="session-browser-root">
+              <div id="session-browser-header">
+                <span>Workspaces</span>
+                <div><div id="session-browser-search"><button id="session-search" aria-expanded="false"><svg /></button><input id="session-search-input" type="text" tabindex="-1" /></div></div>
+                <div id="session-actions"><button id="session-view"><svg /></button><button id="session-add"><svg /></button></div>
+              </div>
+              <div id="session-list"></div>
+            </div>
+          </div>
+        </div>
+        <textarea id="plugin-textarea"></textarea>
+      </section>
+      <section data-plugin="dsh-muzi-creator" data-surface="sidebar" class="collapsed" id="plugin-rail">
+        <div data-surface="session-browser">
+          <div data-slot="sidebar.workspaces">
+            <div>
+              <div><div><button id="rail-add"><svg /></button></div></div>
+              <div><button id="rail-search"><svg /></button></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+      </section>
       <section data-plugin-modal="dsh-muzi-creator"><div role="dialog" id="plugin-dialog"></div></section>
     `;
 
@@ -60,6 +89,14 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
     expect(select("menu")?.id).toBe("host-menu");
     expect(select("tooltip")?.id).toBe("host-tooltip");
     expect(select("aside")?.id).toBe("host-aside");
+    expect(select("session browser")?.id).toBe("session-browser-root");
+    expect(select("session browser actions")?.id).toBe("session-actions");
+    expect(select("session browser controls")?.id).toBe("session-search");
+    expect(select("session browser icons")?.tagName).toBe("svg");
+    expect(select("session browser search slot")?.querySelector("input")?.type).toBe("text");
+    expect(select("session browser search")?.id).toBe("session-browser-search");
+    expect(select("session browser search input")?.id).toBe("session-search-input");
+    expect(document.querySelectorAll(selectorBySurface.get("session browser rail controls")!)).toHaveLength(2);
     expect(select("narrow conversation")?.id).toBe("narrow-conversation");
     expect(select("narrow sidebar")?.id).toBe("narrow-sidebar");
 

@@ -1,6 +1,7 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useState, type ChangeEvent } from "react";
 import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
+import { IconChevronDownOutline14 } from "@deepseek-ai/dsh-client-ui-primitives";
 
 import { normalizeEnabledPlatforms, PUBLISH_PLATFORMS } from "../platforms.ts";
 import { COVER_KEY_REFS, SUBTITLE_KEY_REFS } from "../secrets.ts";
@@ -72,6 +73,7 @@ export function CreatorSettingsCard({
   credentials,
 }: CreatorSettingsCardProps) {
   const [open, setOpen] = useState(false);
+  const bodyId = useId();
   const [savedRoot, setSavedRoot] = useState("");
   const [draftRoot, setDraftRoot] = useState("");
   const [savedProfile, setSavedProfile] = useState<CreatorProfile>(EMPTY_PROFILE);
@@ -246,11 +248,12 @@ export function CreatorSettingsCard({
 
   return (
     <li data-plugin="dsh-muzi-creator" data-surface="settings-card" className={open ? "card open" : "card"}>
-      <IslandButton
-        type="text"
+      <button
+        type="button"
         className="header"
         aria-expanded={open}
-        aria-label={`${t((open ? "settings.collapse" : "settings.expand") as CreatorKey)}: ${title}`}
+        aria-controls={bodyId}
+        aria-label={t((open ? "settings.collapse" : "settings.expand") as CreatorKey)}
         onClick={() => { setOpen(!open); }}
       >
         <span className="headText">
@@ -258,10 +261,10 @@ export function CreatorSettingsCard({
           <span className="description">{t("settings.description" as CreatorKey)}</span>
         </span>
         {dirty && <span className="pending">{t("settings.save" as CreatorKey)}</span>}
-        <span className="chevron" aria-hidden="true">{open ? "收起" : "展开"}</span>
-      </IslandButton>
+        <IconChevronDownOutline14 className={open ? "chevron open" : "chevron"} aria-hidden="true" />
+      </button>
       {open && (
-        <div className="body">
+        <div id={bodyId} className="body">
           {capabilities !== undefined && (
             <div className="field">
               <span className="fieldLabel">{t("settings.capabilities" as CreatorKey)}</span>

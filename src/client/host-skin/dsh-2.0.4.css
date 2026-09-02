@@ -99,7 +99,125 @@ body[data-muzi-host-skin="animal-island"] :not([data-plugin="dsh-muzi-creator"])
   border-radius: 999px;
 }
 
+/* Desktop 2.0.4 WorkspaceBrowser exposes no language-neutral control marker.
+   These rules stay inside the registered slot and the plugin-owned wrapper. */
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child {
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child {
+  min-inline-size: 0;
+  block-size: 40px;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child:not(:has(input[type="text"]:not([tabindex="-1"]))) > :has(button):not(:has(input[type="text"])) {
+  max-inline-size: 76px;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button {
+  inline-size: 36px;
+  min-inline-size: 36px;
+  block-size: 36px;
+  min-block-size: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--dsw-alias-button-tool-bar-fill-invisible);
+  color: var(--dsw-alias-label-secondary);
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 100ms ease;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button:hover {
+  background: var(--dsw-alias-button-tool-bar-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button[aria-expanded="true"] {
+  border-color: var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-interactive-bg-active);
+  color: var(--dsw-alias-label-primary);
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button:active {
+  transform: translateY(1px);
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button:focus-visible {
+  outline: 2px solid var(--dsw-alias-focus);
+  outline-offset: 2px;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button > svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]) {
+  max-inline-size: 36px;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]:not([tabindex="-1"])) {
+  max-inline-size: 100%;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]) > :has(> input[type="text"]) {
+  inline-size: 36px;
+  block-size: 36px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]) > :has(> input[type="text"]:not([tabindex="-1"])) {
+  inline-size: 100%;
+  padding-inline-end: 3px;
+  border-color: var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]) > :has(> input[type="text"]:not([tabindex="-1"])) button {
+  border-color: transparent;
+  background: transparent;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]) > :has(> input[type="text"]) > input[type="text"] {
+  min-block-size: 0;
+  border-radius: 0;
+}
+
+body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :is(:first-child, :nth-child(2)) button {
+  inline-size: 40px;
+  min-inline-size: 40px;
+  block-size: 40px;
+  min-block-size: 40px;
+}
+
 @media (max-width: 640px) {
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child {
+    block-size: 44px;
+  }
+
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button,
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]) > :has(> input[type="text"]) {
+    inline-size: 40px;
+    min-inline-size: 40px;
+    block-size: 40px;
+    min-block-size: 40px;
+  }
+
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]) {
+    max-inline-size: 40px;
+  }
+
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child > :has(input[type="text"]:not([tabindex="-1"])) {
+    max-inline-size: 100%;
+  }
+
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child:not(:has(input[type="text"]:not([tabindex="-1"]))) > :has(button):not(:has(input[type="text"])) {
+    max-inline-size: 84px;
+  }
+
   body[data-muzi-host-skin="animal-island"] [data-details-collapsed]:has([data-plugin="dsh-muzi-creator"][data-surface="sidebar"][data-sidebar-expanded="true"]) > :has(> [data-slot="conversation"]) {
     position: absolute;
     inset: 0;
@@ -126,6 +244,10 @@ body[data-muzi-host-skin="animal-island"] :not([data-plugin="dsh-muzi-creator"])
     scroll-behavior: auto;
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+
+  body[data-muzi-host-skin="animal-island"] [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child > :first-child button {
     transition-duration: 0.01ms;
   }
 }

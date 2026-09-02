@@ -1,7 +1,5 @@
 import {
-  useEffect,
   useId,
-  useRef,
   useState,
   type ChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -48,30 +46,14 @@ export function PanelSectionHeader({
 }: PanelSectionHeaderProps) {
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
-  const viewRoot = useRef<HTMLDivElement>(null);
   const viewId = useId();
   const searchInputId = useId();
   const searchButtonId = useId();
   const viewButtonId = useId();
-
-  useEffect(() => {
-    if (!viewOpen) return;
-    const close = (event: PointerEvent): void => {
-      if (event.target instanceof Node && !viewRoot.current?.contains(event.target)) setViewOpen(false);
-    };
-    const closeWithKeyboard = (event: KeyboardEvent): void => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setViewOpen(false);
-      document.getElementById(viewButtonId)?.focus();
-    };
-    document.addEventListener("pointerdown", close);
-    document.addEventListener("keydown", closeWithKeyboard);
-    return () => {
-      document.removeEventListener("pointerdown", close);
-      document.removeEventListener("keydown", closeWithKeyboard);
-    };
-  }, [viewOpen]);
+  const closeView = (): void => {
+    setViewOpen(false);
+    window.requestAnimationFrame(() => { document.getElementById(viewButtonId)?.focus(); });
+  };
 
   const expandSearch = (): void => {
     setViewOpen(false);
@@ -86,67 +68,73 @@ export function PanelSectionHeader({
   };
 
   return (
-    <div className="muziSectionHeader">
-      <span className={searchExpanded ? "muziSectionLabel hidden" : "muziSectionLabel"}>
-        <span>{label}</span>
-        {count !== undefined && <IslandTag className="muziSectionCount" size="small" color="brown" variant="soft">{count}</IslandTag>}
-      </span>
-      <div className={searchExpanded ? "muziSearchSlot expanded" : "muziSearchSlot"}>
-        <div className={searchExpanded ? "muziSearch expanded" : "muziSearch"}>
-          <IslandButton id={searchButtonId} type="text" size="small" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
-            {searchExpanded ? "搜索中" : "搜索"}
-          </IslandButton>
-          <IslandInput
-            id={searchInputId}
-            className="muziSearchInput"
-            type="text"
-            name={searchName}
-            aria-label={searchLabel}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={searchPlaceholder}
-            value={query}
-            tabIndex={searchExpanded ? 0 : -1}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => { onQueryChange(event.target.value); }}
-            onKeyDown={(event: ReactKeyboardEvent<HTMLInputElement>) => { if (event.key === "Escape") closeSearch(); }}
-          />
-          {searchExpanded && (
-            <IslandButton type="text" size="small" className="muziClearButton" aria-label="清除搜索" onClick={(event: ReactMouseEvent<HTMLButtonElement>) => { event.stopPropagation(); closeSearch(); }}>
-              清除
+    <div className="muziPanelHeader">
+      <div className="muziSectionHeader">
+        <span className={searchExpanded ? "muziSectionLabel hidden" : "muziSectionLabel"}>
+          <span>{label}</span>
+          {count !== undefined && <IslandTag className="muziSectionCount" size="small" color="brown" variant="soft">{count}</IslandTag>}
+        </span>
+        <div className={searchExpanded ? "muziSearchSlot expanded" : "muziSearchSlot"}>
+          <div className={searchExpanded ? "muziSearch expanded" : "muziSearch"}>
+            <IslandButton id={searchButtonId} type="text" size="small" className="muziSearchButton" aria-label={searchLabel} aria-expanded={searchExpanded} onClick={expandSearch}>
+              {searchExpanded ? "搜索中" : "搜索"}
+            </IslandButton>
+            <IslandInput
+              id={searchInputId}
+              className="muziSearchInput"
+              type="text"
+              name={searchName}
+              aria-label={searchLabel}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={searchPlaceholder}
+              value={query}
+              tabIndex={searchExpanded ? 0 : -1}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => { onQueryChange(event.target.value); }}
+              onKeyDown={(event: ReactKeyboardEvent<HTMLInputElement>) => { if (event.key === "Escape") closeSearch(); }}
+            />
+            {searchExpanded && (
+              <IslandButton type="text" size="small" className="muziClearButton" aria-label="清除搜索" onClick={(event: ReactMouseEvent<HTMLButtonElement>) => { event.stopPropagation(); closeSearch(); }}>
+                清除
+              </IslandButton>
+            )}
+          </div>
+        </div>
+        <div className={searchExpanded ? "muziHeaderActions hidden" : "muziHeaderActions"}>
+          {refreshLabel !== undefined && viewContent === undefined && (
+            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={refreshLabel} onClick={onRefresh}>
+              刷新
+            </IslandButton>
+          )}
+          {viewLabel !== undefined && viewContent !== undefined && (
+            <IslandButton id={viewButtonId} type="text" size="small" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} aria-controls={viewId} onClick={() => { setViewOpen((open) => !open); }}>
+              视图
+            </IslandButton>
+          )}
+          {previewLabel !== undefined && onPreview !== undefined && (
+            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={previewLabel} onClick={onPreview}>
+              预览
+            </IslandButton>
+          )}
+          {addLabel !== undefined && onAdd !== undefined && (
+            <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
+              新增
             </IslandButton>
           )}
         </div>
       </div>
-      <div className={searchExpanded ? "muziHeaderActions hidden" : "muziHeaderActions"}>
-        {refreshLabel !== undefined && (
-          <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={refreshLabel} onClick={onRefresh}>
-            刷新
+      {viewOpen && viewLabel !== undefined && viewContent !== undefined && (
+        <IslandCard id={viewId} className="muziViewDisclosure" role="group" aria-label={viewLabel} onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          closeView();
+        }}>
+          {viewContent}
+          <IslandButton type="text" size="small" className="muziViewRefresh" aria-label={refreshLabel ?? "刷新"} onClick={onRefresh}>
+              刷新
           </IslandButton>
-        )}
-        {viewLabel !== undefined && viewContent !== undefined && <div className="muziViewRoot" ref={viewRoot}>
-          <IslandButton id={viewButtonId} type="text" size="small" className="muziHeaderIcon" aria-label={viewLabel} aria-expanded={viewOpen} aria-controls={viewId} onClick={() => { setViewOpen((open) => !open); }}>
-            视图
-          </IslandButton>
-          {viewOpen && (
-            <IslandCard id={viewId} className="muziViewMenu" role="group" aria-label={viewLabel}>
-              {viewContent}
-              <IslandButton type="text" size="small" className="muziViewMenuItem" onClick={() => { setViewOpen(false); onRefresh(); }}>
-                刷新
-              </IslandButton>
-            </IslandCard>
-          )}
-        </div>}
-        {previewLabel !== undefined && onPreview !== undefined && (
-          <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={previewLabel} onClick={onPreview}>
-            预览
-          </IslandButton>
-        )}
-        {addLabel !== undefined && onAdd !== undefined && (
-          <IslandButton type="text" size="small" className="muziHeaderIcon" aria-label={addLabel} onClick={onAdd}>
-            新增
-          </IslandButton>
-        )}
-      </div>
+        </IslandCard>
+      )}
     </div>
   );
 }

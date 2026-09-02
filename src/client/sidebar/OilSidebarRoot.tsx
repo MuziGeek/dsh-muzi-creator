@@ -188,6 +188,17 @@ export function OilSidebarRoot({
             <OilBrand tagline={t("brand.tagline")} />
           </IslandButton>
         )}
+        {wide && sidebarTab === "sessions" && (
+          <IslandButton
+            type="text"
+            size="small"
+            className={cx("iconButton", "topNewSession")}
+            aria-label={t("session.new.label")}
+            onClick={() => { startSession(); }}
+          >
+            <IslandIcon name="icon-chat" size={18} />
+          </IslandButton>
+        )}
         <IslandButton
           type="text"
           className={cx("iconButton", "toggle")}
@@ -224,9 +235,14 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("sessions"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "sessions"); }}
             >
-              <IslandIcon name="icon-chat" size={18} />
+              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-chat" size={18} /></span>
               <span className="tabLabel">{tabLabels.sessions}</span>
-              {sessionActivity !== null && <span className={`sessionActivityBadge ${sessionActivity.kind}`} aria-hidden="true"><i />{sessionActivity.label}</span>}
+              {sessionActivity !== null && (
+                <span className={`sessionActivityBadge ${sessionActivity.kind}`} aria-hidden="true">
+                  <i />
+                  <span className="sessionActivityText">{sessionActivity.label}</span>
+                </span>
+              )}
             </IslandButton>
             <IslandButton
               type={sidebarTab === "hot" ? "primary" : "text"}
@@ -238,8 +254,8 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("hot"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "hot"); }}
             >
-              <IslandIcon name="icon-miles" size={18} />
-              {tabLabels.hot}
+              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-miles" size={18} /></span>
+              <span className="tabLabel">{tabLabels.hot}</span>
             </IslandButton>
             <IslandButton
               type={sidebarTab === "content" ? "primary" : "text"}
@@ -251,8 +267,8 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("content"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "content"); }}
             >
-              <IslandIcon name="icon-diy" size={18} />
-              {tabLabels.content}
+              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-diy" size={18} /></span>
+              <span className="tabLabel">{tabLabels.content}</span>
             </IslandButton>
             <IslandButton
               type={sidebarTab === "knowledge" ? "primary" : "text"}
@@ -264,8 +280,8 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("knowledge"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "knowledge"); }}
             >
-              <IslandIcon name="icon-critterpedia" size={18} />
-              {tabLabels.knowledge}
+              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-critterpedia" size={18} /></span>
+              <span className="tabLabel">{tabLabels.knowledge}</span>
             </IslandButton>
             <IslandButton
               type={sidebarTab === "projects" ? "primary" : "text"}
@@ -277,8 +293,8 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("projects"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "projects"); }}
             >
-              <IslandIcon name="icon-map" size={18} />
-              {tabLabels.projects}
+              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-map" size={18} /></span>
+              <span className="tabLabel">{tabLabels.projects}</span>
             </IslandButton>
           </div>
         </div>
@@ -287,23 +303,12 @@ export function OilSidebarRoot({
       <div className="regionArea">
         {slotError !== null && sidebarTab !== "sessions" && <div className="workbenchSlotError" role="alert">中央工作台未能接管当前区域，已保留官方会话界面。{slotError}</div>}
         <div className={cx("regionPane", !sessionsVisible && "hidden")}>
-          {wide && (
-            <div className="headerNewSession">
-              <IslandButton
-                type="text"
-                size="small"
-                className="iconButton"
-                aria-label={t("session.new.label")}
-                onClick={() => { startSession(); }}
-              >
-                <IslandIcon name="icon-chat" size={18} />
-              </IslandButton>
-            </div>
-          )}
-          {renderSlot("sidebar.workspaces", {
-            wide,
-            expandSidebar: () => { if (collapsed) toggleSidebar(); },
-          })}
+          <div className="sessionBrowser" data-surface="session-browser">
+            {renderSlot("sidebar.workspaces", {
+              wide,
+              expandSidebar: () => { if (collapsed) toggleSidebar(); },
+            })}
+          </div>
         </div>
         {hotMounted && (
           <div className={cx("regionPane", !hotVisible && "hidden")}>

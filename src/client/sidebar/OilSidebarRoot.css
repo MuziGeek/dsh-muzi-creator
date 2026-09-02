@@ -133,6 +133,11 @@
   padding-inline: 8px;
 }
 
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .topNewSession {
+  width: 40px;
+  padding: 0;
+}
+
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .toggle {
   white-space: nowrap;
 }
@@ -189,27 +194,57 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton {
+  position: relative;
   display: inline-flex;
   width: 100%;
   min-height: 40px;
   align-items: center;
-  justify-content: flex-start;
-  gap: 9px;
+  justify-content: center;
   padding-inline: 12px;
-  text-align: left;
+  text-align: center;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabLabel { min-width: 0; }
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton > span {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabIcon {
+  position: absolute;
+  inset-inline-start: 0;
+  display: grid;
+  width: 22px;
+  flex: none;
+  place-items: center;
+  line-height: 0;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabLabel {
+  min-width: 0;
+  max-width: calc(100% - 116px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge {
+  position: absolute;
+  inset-inline-end: 0;
   display: inline-flex;
+  max-width: 104px;
   min-width: 0;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
+  overflow: hidden;
   color: var(--muzi-island-text-muted);
   font-size: 11px;
   font-weight: 600;
   line-height: 16px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge i {
@@ -220,6 +255,11 @@
   border: 2px solid currentcolor;
   border-radius: 50%;
   background: transparent;
+}
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge.pending { color: var(--muzi-island-warning); }
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge.running { color: var(--muzi-island-leaf); }
@@ -257,24 +297,12 @@
   display: none;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .headerNewSession {
-  position: absolute;
-  z-index: 3;
-  top: 0;
-  right: 12px;
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionBrowser {
   display: flex;
-  max-width: 40px;
-  overflow: hidden;
-  opacity: 1;
-  transform: translateX(0) scale(1);
-  transform-origin: right center;
-  transition: opacity 120ms ease, transform 180ms ease;
-}
-
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .regionArea:has(input:not([tabindex="-1"])) .headerNewSession {
-  opacity: 0;
-  transform: translateX(8px) scale(0.9);
-  pointer-events: none;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed .regionArea {

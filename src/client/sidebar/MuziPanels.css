@@ -8,7 +8,6 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSectionHeader {
-  position: relative;
   display: flex;
   min-width: 0;
   min-height: 44px;
@@ -100,31 +99,26 @@
   gap: 2px;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziViewRoot {
-  position: relative;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziViewMenu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 6px);
-  right: 0;
+[data-plugin="dsh-muzi-creator"] .muziViewDisclosure {
   display: grid;
-  width: min(216px, calc(100vw - 32px));
-  gap: 4px;
-  padding: 10px;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 8px 4px;
+  padding: 8px 10px;
 }
 
-[data-plugin="dsh-muzi-creator"] .muziViewMenuItem {
-  width: 100%;
+[data-plugin="dsh-muzi-creator"] .muziViewRefresh {
+  flex: none;
   min-height: 36px;
-  justify-content: flex-start;
-  text-align: left;
+  color: var(--muzi-island-paper-text);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziViewToggle {
+  min-width: 0;
   width: 100%;
-  padding-block: 6px;
+  padding-block: 4px;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziPanelList {
@@ -400,6 +394,16 @@
   [data-plugin="dsh-muzi-creator"] .muziListRow {
     gap: 9px;
     padding: 10px;
+  }
+}
+
+@media (max-width: 390px) {
+  [data-plugin="dsh-muzi-creator"] .muziViewDisclosure {
+    grid-template-columns: 1fr;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .muziViewRefresh {
+    width: 100%;
   }
 }
 

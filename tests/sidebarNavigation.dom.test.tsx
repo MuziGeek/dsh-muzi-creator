@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import type { ComponentProps } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -68,22 +68,26 @@ describe("Muzi Creator sidebar navigation", () => {
   });
 
   it("keeps all five entries in product order with roving keyboard focus", async () => {
-    const user = userEvent.setup();
     render(<OilSidebarRoot {...sidebarProps()} />);
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(["会话", "热点", "内容", "知识", "项目"]);
     expect(tabs.map((tab) => tab.getAttribute("tabindex"))).toEqual(["0", "-1", "-1", "-1", "-1"]);
+    expect(tabs.map((tab) => tab.getAttribute("data-sidebar-tab"))).toEqual(["sessions", "hot", "content", "knowledge", "projects"]);
+    for (const tab of tabs) {
+      expect(tab.querySelector(".tabIcon")?.getAttribute("aria-hidden")).toBe("true");
+      expect(tab.querySelector(".tabLabel")?.textContent).not.toBe("");
+    }
 
     tabs[0]?.focus();
-    await user.keyboard("{ArrowDown}");
+    fireEvent.keyDown(tabs[0]!, { key: "ArrowDown" });
     const hot = screen.getByRole("tab", { name: "热点" });
     await waitFor(() => {
       expect(hot.getAttribute("aria-selected")).toBe("true");
       expect(document.activeElement).toBe(hot);
     });
 
-    await user.keyboard("{Home}");
+    fireEvent.keyDown(hot, { key: "Home" });
     const sessions = screen.getByRole("tab", { name: "会话" });
     await waitFor(() => { expect(document.activeElement).toBe(sessions); });
   });
@@ -111,5 +115,24 @@ describe("Muzi Creator sidebar navigation", () => {
     const sessions = screen.getByRole("tab", { name: "会话，待处理 1" });
     expect(sessions.textContent).toContain("待处理 1");
     expect(sessions.querySelector(".sessionActivityBadge.pending i")).not.toBeNull();
+  });
+
+  it("keeps the expanded new-session action in the brand row and the official browser in a stable wrapper", async () => {
+    const user = userEvent.setup();
+    const startSession = vi.fn();
+    const props = sidebarProps();
+    render(<OilSidebarRoot {...props} startSession={startSession} />);
+
+    const topAction = document.querySelector<HTMLButtonElement>(".logoRow > .topNewSession");
+    expect(topAction).not.toBeNull();
+    expect(document.querySelector(".regionArea .topNewSession")).toBeNull();
+    expect(document.querySelector(".headerNewSession")).toBeNull();
+    expect(document.querySelector('[data-surface="session-browser"]')).not.toBeNull();
+
+    await user.click(topAction!);
+    expect(startSession).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("tab", { name: "内容" }));
+    expect(document.querySelector(".topNewSession")).toBeNull();
   });
 });

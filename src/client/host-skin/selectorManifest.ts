@@ -25,12 +25,21 @@ const hostTarget = (target: string) => `${host} ${target}${outsidePlugin}`;
 const expandedNarrowSidebar = `${host} [data-plugin="dsh-muzi-creator"][data-surface="sidebar"][data-sidebar-expanded="true"]`;
 const expandedNarrowFrame = `${host} [data-details-collapsed]:has([data-plugin="dsh-muzi-creator"][data-surface="sidebar"][data-sidebar-expanded="true"])`;
 const expandedNarrowConversation = `${expandedNarrowFrame} > :has(> [data-slot="conversation"])`;
+const sessionBrowserSlot = `${host} [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"]`;
+const sessionBrowserRoot = `${sessionBrowserSlot} > :first-child`;
+const sessionBrowserHeader = `${sessionBrowserRoot} > :first-child`;
+const sessionBrowserActions = `${sessionBrowserHeader}:not(:has(input[type="text"]:not([tabindex="-1"]))) > :has(button):not(:has(input[type="text"]))`;
+const sessionBrowserSearchSlot = `${sessionBrowserHeader} > :has(input[type="text"])`;
+const sessionBrowserSearch = `${sessionBrowserSearchSlot} > :has(> input[type="text"])`;
+const collapsedSessionBrowserRoot = `${host} [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed [data-surface="session-browser"] [data-slot="sidebar.workspaces"] > :first-child`;
 
 /**
  * The full selector inventory for the fixed DSH Desktop 2.0.4 compatibility skin.
  *
- * No structural selector is needed: the host exposes sufficient data and ARIA
- * semantics for each surface this skin adjusts.
+ * WorkspaceBrowser has no language-neutral control marker in Desktop 2.0.4.
+ * Its scoped structural entries are pinned to the registered slot and the
+ * plugin-owned session-browser wrapper; upgrading Desktop requires rechecking
+ * them against the host artifact.
  */
 export const dsh204HostSkinSelectors = [
   { selector: host, surface: "page", purpose: "constrain page overflow", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
@@ -48,6 +57,15 @@ export const dsh204HostSkinSelectors = [
   { selector: hostTarget(':where(button, input, select, textarea, [tabindex]):focus-visible'), surface: "focus", purpose: "provide a token-backed visible focus ring", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: hostTarget(":where(p, li, dd, dt, pre, code, blockquote)"), surface: "long text", purpose: "wrap unbroken host content", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: `${hostElement}`, surface: "scrollbar", purpose: "use host token colors for scrollbars", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
+  { selector: sessionBrowserRoot, surface: "session browser", purpose: "preserve the official browser flex seat inside the Muzi sidebar", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: sessionBrowserHeader, surface: "session browser header", purpose: "reserve room for the official toolbar controls", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: sessionBrowserActions, surface: "session browser actions", purpose: "fit the official view and add controls without clipping", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: `${sessionBrowserHeader} button`, surface: "session browser controls", purpose: "align official search, view, add and clear controls", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: `${sessionBrowserHeader} button > svg`, surface: "session browser icons", purpose: "normalize official header icon size", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: sessionBrowserSearchSlot, surface: "session browser search slot", purpose: "reserve the expanded search control width", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: sessionBrowserSearch, surface: "session browser search", purpose: "apply the warm inline search capsule", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: `${sessionBrowserSearch} > input[type="text"]`, surface: "session browser search input", purpose: "keep the official search field compact and readable", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: `${collapsedSessionBrowserRoot} > :is(:first-child, :nth-child(2)) button`, surface: "session browser rail controls", purpose: "provide a 40px target for official rail actions", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: expandedNarrowConversation, surface: "narrow conversation", purpose: "preserve the full conversation width while the sidebar is expanded", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: expandedNarrowSidebar, surface: "narrow sidebar", purpose: "overlay the expanded sidebar without hiding its collapse control", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
 ] as const satisfies readonly HostSkinSelector[];
