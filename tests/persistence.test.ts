@@ -12,99 +12,118 @@ function memoryStorage(seed: Record<string, string> = {}): CreatorStorage {
   const data = { ...seed };
   return {
     getItem: (key) => data[key] ?? null,
-    setItem: (key, value) => {
-      data[key] = value;
-    },
+    setItem: (key, value) => { data[key] = value; },
   };
 }
 
 describe("loadCreatorUiState", () => {
-  it("returns defaults when storage is missing", () => {
+  it("returns isolated schema 2 defaults when storage is absent or broken", () => {
     expect(loadCreatorUiState(undefined)).toEqual(DEFAULT_UI_STATE);
+    expect(loadCreatorUiState(memoryStorage({ [CREATOR_STORAGE_KEY]: "{" }))).toEqual(DEFAULT_UI_STATE);
   });
 
-  it("returns defaults for broken json", () => {
-    expect(loadCreatorUiState(memoryStorage({ [CREATOR_STORAGE_KEY]: "{" }))).toEqual(
-      DEFAULT_UI_STATE,
-    );
-  });
-
-  it("keeps only known fields", () => {
+  it("migrates a legacy content selection and discards inspector width", () => {
     const storage = memoryStorage({
       [CREATOR_STORAGE_KEY]: JSON.stringify({
         schemaVersion: 1,
         selectedId: "2026-01-23_demo",
         filter: "cover",
         query: "harness",
-        extra: true,
+        sidebarTab: "content",
+        inspectorWidth: 720,
       }),
     });
     expect(loadCreatorUiState(storage)).toEqual({
-      schemaVersion: 1,
-      selectedId: "2026-01-23_demo",
+      schemaVersion: 2,
+      selections: {
+        hotId: null,
+        contentId: "2026-01-23_demo",
+        knowledge: null,
+        project: null,
+      },
       filter: "cover",
       query: "harness",
-      sidebarTab: "sessions",
+      sidebarTab: "content",
     });
   });
 
-  it("keeps a saved sidebar tab", () => {
-    const storage = memoryStorage({
+  it("migrates legacy knowledge details and maps knowledge-preview to the overview", () => {
+    const page = memoryStorage({
       [CREATOR_STORAGE_KEY]: JSON.stringify({
         schemaVersion: 1,
-        selectedId: null,
-        filter: "all",
-        query: "",
-        sidebarTab: "content",
+        selectedId: "knowledge:atlas://wiki/topics/testing.md",
+        sidebarTab: "knowledge",
       }),
     });
-    expect(loadCreatorUiState(storage).sidebarTab).toBe("content");
-  });
+    expect(loadCreatorUiState(page).selections.knowledge).toEqual({
+      kind: "page",
+      locator: "atlas://wiki/topics/testing.md",
+    });
 
-  it("keeps the projects tab and clears an incompatible content selection", () => {
-    const storage = memoryStorage({
+    const overview = memoryStorage({
       [CREATOR_STORAGE_KEY]: JSON.stringify({
         schemaVersion: 1,
-        selectedId: "creator-project",
-        filter: "all",
-        query: "",
+        selectedId: "knowledge-preview",
+        sidebarTab: "knowledge",
+      }),
+    });
+    expect(loadCreatorUiState(overview).selections.knowledge).toBeNull();
+  });
+
+  it("restores all independent schema 2 selections", () => {
+    const storage = memoryStorage({
+      [CREATOR_STORAGE_KEY]: JSON.stringify({
+        schemaVersion: 2,
+        selections: {
+          hotId: "hot-1",
+          contentId: "content-1",
+          knowledge: { kind: "pending", id: "pk_1" },
+          project: { projectId: "project-1", taskKey: "task-1" },
+        },
+        filter: "article",
+        query: "muzi",
         sidebarTab: "projects",
       }),
     });
-    expect(loadCreatorUiState(storage)).toMatchObject({ sidebarTab: "projects", selectedId: null });
+    expect(loadCreatorUiState(storage)).toEqual({
+      schemaVersion: 2,
+      selections: {
+        hotId: "hot-1",
+        contentId: "content-1",
+        knowledge: { kind: "pending", id: "pk_1" },
+        project: { projectId: "project-1", taskKey: "task-1" },
+      },
+      filter: "article",
+      query: "muzi",
+      sidebarTab: "projects",
+    });
   });
 
-  it("keeps the Hot tab and clears persisted content selection", () => {
+  it("sanitizes unknown fields without losing the selected feature", () => {
     const storage = memoryStorage({
       [CREATOR_STORAGE_KEY]: JSON.stringify({
-        schemaVersion: 1,
-        selectedId: "creator-project",
-        filter: "all",
-        query: "",
+        schemaVersion: 2,
+        selections: { hotId: 1, contentId: false, knowledge: { kind: "other" }, project: {} },
+        filter: "published",
+        query: null,
         sidebarTab: "hot",
       }),
     });
-    expect(loadCreatorUiState(storage)).toMatchObject({ sidebarTab: "hot", selectedId: null });
-  });
-
-  it("falls back when filter is unknown", () => {
-    const storage = memoryStorage({
-      [CREATOR_STORAGE_KEY]: JSON.stringify({
-        selectedId: 1,
-        filter: "published",
-        query: null,
-      }),
-    });
-    expect(loadCreatorUiState(storage)).toEqual(DEFAULT_UI_STATE);
+    expect(loadCreatorUiState(storage)).toEqual({ ...DEFAULT_UI_STATE, sidebarTab: "hot" });
   });
 });
 
 describe("saveCreatorUiState", () => {
-  it("round-trips through storage", () => {
+  it("round-trips schema 2 without adding legacy geometry", () => {
     const storage = memoryStorage();
     const state = {
-      schemaVersion: 1 as const,
-      selectedId: "demo",
+      schemaVersion: 2 as const,
+      selections: {
+        hotId: "hot-2",
+        contentId: "demo",
+        knowledge: { kind: "page" as const, locator: "atlas://wiki/topics/demo.md" },
+        project: null,
+      },
       filter: "subtitle" as const,
       query: "油",
       sidebarTab: "content" as const,

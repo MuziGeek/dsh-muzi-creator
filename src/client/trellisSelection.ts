@@ -1,14 +1,33 @@
 import { useEffect, useState } from "react";
 
 import type { TrellisProjectId, TrellisTaskKey } from "../trellisTypes.ts";
+import { browserCreatorStorage, loadCreatorUiState, saveCreatorUiState } from "./persistence.ts";
 
 type Listener = () => void;
 
 const selectionListeners = new Set<Listener>();
 const revisionListeners = new Set<Listener>();
-let selectedProjectId: TrellisProjectId | null = null;
-let selectedTaskKey: TrellisTaskKey | null = null;
+const initialProject = loadCreatorUiState(browserCreatorStorage()).selections.project;
+let selectedProjectId = (initialProject?.projectId ?? null) as TrellisProjectId | null;
+let selectedTaskKey = (initialProject?.taskKey ?? null) as TrellisTaskKey | null;
 let trellisEpoch = 0;
+
+function persist(): void {
+  const storage = browserCreatorStorage();
+  const state = loadCreatorUiState(storage);
+  saveCreatorUiState(storage, {
+    ...state,
+    selections: {
+      ...state.selections,
+      project: selectedProjectId === null
+        ? null
+        : {
+            projectId: selectedProjectId,
+            ...(selectedTaskKey === null ? {} : { taskKey: selectedTaskKey }),
+          },
+    },
+  });
+}
 
 function emitSelection(): void {
   for (const listener of selectionListeners) listener();
@@ -23,15 +42,17 @@ export function getSelectedTrellisTaskKey(): TrellisTaskKey | null {
 }
 
 export function selectTrellisProject(projectId: TrellisProjectId | null): void {
-  if (selectedProjectId === projectId && (projectId !== null || selectedTaskKey === null)) return;
+  if (selectedProjectId === projectId) return;
   selectedProjectId = projectId;
   selectedTaskKey = null;
+  persist();
   emitSelection();
 }
 
 export function selectTrellisTask(taskKey: TrellisTaskKey | null): void {
   if (selectedTaskKey === taskKey) return;
   selectedTaskKey = taskKey;
+  persist();
   emitSelection();
 }
 

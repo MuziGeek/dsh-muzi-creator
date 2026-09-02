@@ -5,9 +5,13 @@ import {
   bumpProfile,
   getLibraryEpoch,
   getProfileEpoch,
+  getContentSelection,
+  getKnowledgeSelection,
   getSelectedContentId,
   getSidebarTab,
   inspectorIsOpen,
+  setContentSelection,
+  setKnowledgeSelection,
   setSelectedContentId,
   setSidebarTab,
   subscribeLibrary,
@@ -19,11 +23,13 @@ import {
 describe("content selection", () => {
   afterEach(() => {
     setSidebarTab("sessions");
-    setSelectedContentId(null);
+    setContentSelection(null);
+    setKnowledgeSelection(null);
     vi.unstubAllGlobals();
   });
 
   it("notifies subscribers and persists", () => {
+    setSidebarTab("content");
     const seen: Array<string | null> = [];
     const stop = subscribeSelectedContentId(() => {
       seen.push(getSelectedContentId());
@@ -35,7 +41,7 @@ describe("content selection", () => {
     stop();
   });
 
-  it("keeps the inspector when switching to sessions", () => {
+  it("releases the active detail in sessions and restores it when content returns", () => {
     setSidebarTab("content");
     setSelectedContentId("2026-01-23_demo");
     expect(inspectorIsOpen()).toBe(true);
@@ -51,9 +57,14 @@ describe("content selection", () => {
     expect(getSidebarTab()).toBe("sessions");
     expect(chrome).toBe(1);
     stopChrome();
+    expect(getSelectedContentId()).toBeNull();
+    expect(inspectorIsOpen()).toBe(false);
+    expect(getContentSelection()).toBe("2026-01-23_demo");
+    expect(seen).toEqual([null]);
+    setSidebarTab("content");
     expect(getSelectedContentId()).toBe("2026-01-23_demo");
     expect(inspectorIsOpen()).toBe(true);
-    expect(seen).toEqual([]);
+    expect(seen).toEqual([null, "2026-01-23_demo"]);
     stop();
   });
 
@@ -132,5 +143,22 @@ describe("content selection", () => {
     releaseShellChrome();
     expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("11px");
     expect(querySelector).not.toHaveBeenCalled();
+  });
+
+  it("keeps content and knowledge selections independently", () => {
+    setContentSelection("content-one");
+    setKnowledgeSelection({ kind: "page", locator: "atlas://wiki/topics/one.md" });
+    expect(getContentSelection()).toBe("content-one");
+    expect(getKnowledgeSelection()).toEqual({ kind: "page", locator: "atlas://wiki/topics/one.md" });
+    for (const tab of ["hot", "projects", "sessions", "content"] as const) {
+      setSidebarTab(tab);
+      expect(getContentSelection()).toBe("content-one");
+      expect(getKnowledgeSelection()).toEqual({ kind: "page", locator: "atlas://wiki/topics/one.md" });
+    }
+    setSidebarTab("knowledge");
+    expect(getSelectedContentId()).toBe("knowledge:atlas://wiki/topics/one.md");
+    setSelectedContentId(null);
+    expect(getKnowledgeSelection()).toBeNull();
+    expect(getContentSelection()).toBe("content-one");
   });
 });

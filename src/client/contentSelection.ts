@@ -4,35 +4,50 @@ import {
   browserCreatorStorage,
   loadCreatorUiState,
   saveCreatorUiState,
+  type FeatureSelections,
+  type KnowledgeSelection,
   type SidebarTab,
 } from "./persistence.ts";
-import {
-  clampInspectorPreference,
-  INSPECTOR_DEFAULT,
-  INSPECTOR_MAX,
-  INSPECTOR_MIN,
-} from "./inspectorLayout.ts";
-
-export { INSPECTOR_DEFAULT, INSPECTOR_MAX, INSPECTOR_MIN } from "./inspectorLayout.ts";
 
 type Listener = () => void;
 
-const listeners = new Set<Listener>();
+const selectionListeners = new Set<Listener>();
 const libraryListeners = new Set<Listener>();
 const profileListeners = new Set<Listener>();
+const chromeListeners = new Set<Listener>();
+const statusListeners = new Set<Listener>();
 const initialUi = loadCreatorUiState(browserCreatorStorage());
-let selectedId = initialUi.selectedId;
+let selections: FeatureSelections = initialUi.selections;
 let sidebarTab: SidebarTab = initialUi.sidebarTab;
 let libraryEpoch = 0;
 let profileEpoch = 0;
 let sidebarWidthPx = 360;
-let inspectorWidthPx = clampInspectorPreference(initialUi.inspectorWidth ?? INSPECTOR_DEFAULT);
-
-const chromeListeners = new Set<Listener>();
+let workbenchSlotError: string | null = null;
 
 let sidebarWidthStyleCaptured = false;
 let previousSidebarWidthStyle = "";
 let previousSidebarWidthPriority = "";
+
+function persist(patch: Partial<ReturnType<typeof loadCreatorUiState>> = {}): void {
+  const current = loadCreatorUiState(browserCreatorStorage());
+  const mergedSelections = {
+    ...current.selections,
+    contentId: selections.contentId,
+    knowledge: selections.knowledge,
+  };
+  saveCreatorUiState(browserCreatorStorage(), {
+    ...current,
+    ...patch,
+    schemaVersion: 2,
+    selections: mergedSelections,
+    sidebarTab,
+  });
+  selections = mergedSelections;
+}
+
+function emitSelection(): void {
+  for (const listener of selectionListeners) listener();
+}
 
 function emitChrome(): void {
   for (const listener of chromeListeners) listener();
@@ -40,9 +55,7 @@ function emitChrome(): void {
 
 export function subscribeSidebarChrome(listener: Listener): () => void {
   chromeListeners.add(listener);
-  return () => {
-    chromeListeners.delete(listener);
-  };
+  return () => { chromeListeners.delete(listener); };
 }
 
 export function setSidebarChromeWidth(px: number): void {
@@ -60,17 +73,15 @@ export function setSidebarChromeWidth(px: number): void {
 }
 
 export function releaseShellChrome(): void {
-  if (typeof document !== "undefined") {
-    if (sidebarWidthStyleCaptured) {
-      if (previousSidebarWidthStyle === "") {
-        document.documentElement.style.removeProperty("--oil-sidebar-width");
-      } else {
-        document.documentElement.style.setProperty(
-          "--oil-sidebar-width",
-          previousSidebarWidthStyle,
-          previousSidebarWidthPriority,
-        );
-      }
+  if (typeof document !== "undefined" && sidebarWidthStyleCaptured) {
+    if (previousSidebarWidthStyle === "") {
+      document.documentElement.style.removeProperty("--oil-sidebar-width");
+    } else {
+      document.documentElement.style.setProperty(
+        "--oil-sidebar-width",
+        previousSidebarWidthStyle,
+        previousSidebarWidthPriority,
+      );
     }
   }
   sidebarWidthStyleCaptured = false;
@@ -85,35 +96,13 @@ export function getSidebarChromeWidth(): number {
 /** Subscribe React views to the current sidebar width. */
 export function useSidebarChromeWidth(): number {
   const [width, setWidth] = useState(getSidebarChromeWidth);
-  useEffect(() => subscribeSidebarChrome(() => {
-    setWidth(getSidebarChromeWidth());
-  }), []);
+  useEffect(() => subscribeSidebarChrome(() => { setWidth(getSidebarChromeWidth()); }), []);
   return width;
-}
-
-export function setInspectorWidth(px: number): void {
-  const next = clampInspectorPreference(px);
-  if (inspectorWidthPx === next) return;
-  inspectorWidthPx = next;
-  const state = loadCreatorUiState(browserCreatorStorage());
-  saveCreatorUiState(browserCreatorStorage(), { ...state, inspectorWidth: next });
-}
-
-export function getInspectorWidth(): number {
-  return inspectorWidthPx;
-}
-
-function emit(): void {
-  for (const listener of listeners) listener();
-}
-
-function emitLibrary(): void {
-  for (const listener of libraryListeners) listener();
 }
 
 export function bumpLibrary(): void {
   libraryEpoch += 1;
-  emitLibrary();
+  for (const listener of libraryListeners) listener();
 }
 
 export function getLibraryEpoch(): number {
@@ -122,16 +111,12 @@ export function getLibraryEpoch(): number {
 
 export function subscribeLibrary(listener: Listener): () => void {
   libraryListeners.add(listener);
-  return () => {
-    libraryListeners.delete(listener);
-  };
+  return () => { libraryListeners.delete(listener); };
 }
 
 export function useLibraryEpoch(): number {
   const [epoch, setEpoch] = useState(getLibraryEpoch);
-  useEffect(() => subscribeLibrary(() => {
-    setEpoch(getLibraryEpoch());
-  }), []);
+  useEffect(() => subscribeLibrary(() => { setEpoch(getLibraryEpoch()); }), []);
   return epoch;
 }
 
@@ -146,16 +131,12 @@ export function getProfileEpoch(): number {
 
 export function subscribeProfile(listener: Listener): () => void {
   profileListeners.add(listener);
-  return () => {
-    profileListeners.delete(listener);
-  };
+  return () => { profileListeners.delete(listener); };
 }
 
 export function useProfileEpoch(): number {
   const [epoch, setEpoch] = useState(getProfileEpoch);
-  useEffect(() => subscribeProfile(() => {
-    setEpoch(getProfileEpoch());
-  }), []);
+  useEffect(() => subscribeProfile(() => { setEpoch(getProfileEpoch()); }), []);
   return epoch;
 }
 
@@ -166,46 +147,119 @@ export function getSidebarTab(): SidebarTab {
 export function setSidebarTab(tab: SidebarTab): void {
   if (sidebarTab === tab) return;
   sidebarTab = tab;
-  const state = loadCreatorUiState(browserCreatorStorage());
-  saveCreatorUiState(browserCreatorStorage(), { ...state, sidebarTab });
+  persist();
   emitChrome();
+  emitSelection();
 }
 
 export function useSidebarTab(): SidebarTab {
   const [tab, setTab] = useState(getSidebarTab);
-  useEffect(() => subscribeSidebarChrome(() => {
-    setTab(getSidebarTab());
-  }), []);
+  useEffect(() => subscribeSidebarChrome(() => { setTab(getSidebarTab()); }), []);
   return tab;
 }
 
-export function inspectorIsOpen(): boolean {
-  return selectedId !== null;
+function encodedKnowledgeSelection(selection: KnowledgeSelection): string | null {
+  if (selection === null) return null;
+  return selection.kind === "page"
+    ? `knowledge:${selection.locator}`
+    : `knowledge-pending:${selection.id}`;
 }
 
+export function getFeatureSelections(): FeatureSelections {
+  return selections;
+}
+
+export function getContentSelection(): string | null {
+  return selections.contentId;
+}
+
+export function getKnowledgeSelection(): KnowledgeSelection {
+  return selections.knowledge;
+}
+
+export function setContentSelection(id: string | null): void {
+  if (selections.contentId === id) return;
+  selections = { ...selections, contentId: id };
+  persist();
+  emitSelection();
+}
+
+export function setKnowledgeSelection(selection: KnowledgeSelection): void {
+  const current = encodedKnowledgeSelection(selections.knowledge);
+  const next = encodedKnowledgeSelection(selection);
+  if (current === next) return;
+  selections = { ...selections, knowledge: selection };
+  persist();
+  emitSelection();
+}
+
+/** Compatibility face used by existing content and knowledge views. */
 export function getSelectedContentId(): string | null {
-  return selectedId;
+  if (sidebarTab === "content") return selections.contentId;
+  if (sidebarTab === "knowledge") return encodedKnowledgeSelection(selections.knowledge);
+  return null;
 }
 
+/** Route the legacy encoded id into the independent content or knowledge selection. */
 export function setSelectedContentId(id: string | null): void {
-  if (selectedId === id) return;
-  selectedId = id;
-  const state = loadCreatorUiState(browserCreatorStorage());
-  saveCreatorUiState(browserCreatorStorage(), { ...state, selectedId });
-  emit();
+  if (id !== null && id.startsWith("knowledge-pending:")) {
+    setKnowledgeSelection({ kind: "pending", id: id.slice("knowledge-pending:".length) });
+    return;
+  }
+  if (id !== null && id.startsWith("knowledge:")) {
+    setKnowledgeSelection({ kind: "page", locator: id.slice("knowledge:".length) });
+    return;
+  }
+  if (id === "knowledge-preview") {
+    setKnowledgeSelection(null);
+    return;
+  }
+  if (id === null && sidebarTab === "knowledge") {
+    setKnowledgeSelection(null);
+    return;
+  }
+  setContentSelection(id);
+}
+
+export function inspectorIsOpen(): boolean {
+  return getSelectedContentId() !== null;
 }
 
 export function subscribeSelectedContentId(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+  selectionListeners.add(listener);
+  return () => { selectionListeners.delete(listener); };
 }
+
+export const subscribeWorkbenchState = subscribeSelectedContentId;
 
 export function useSelectedContentId(): [string | null, (id: string | null) => void] {
   const [selectedId, setSelectedId] = useState(getSelectedContentId);
-  useEffect(() => subscribeSelectedContentId(() => {
-    setSelectedId(getSelectedContentId());
-  }), []);
+  useEffect(() => subscribeSelectedContentId(() => { setSelectedId(getSelectedContentId()); }), []);
   return [selectedId, setSelectedContentId];
+}
+
+export function useFeatureSelections(): FeatureSelections {
+  const [current, setCurrent] = useState(getFeatureSelections);
+  useEffect(() => subscribeWorkbenchState(() => { setCurrent(getFeatureSelections()); }), []);
+  return current;
+}
+
+export function getWorkbenchSlotError(): string | null {
+  return workbenchSlotError;
+}
+
+export function setWorkbenchSlotError(error: string | null): void {
+  if (workbenchSlotError === error) return;
+  workbenchSlotError = error;
+  for (const listener of statusListeners) listener();
+}
+
+export function useWorkbenchSlotError(): string | null {
+  const [error, setError] = useState(getWorkbenchSlotError);
+  useEffect(() => {
+    statusListeners.add(setErrorFromStore);
+    function setErrorFromStore(): void { setError(getWorkbenchSlotError()); }
+    return () => { statusListeners.delete(setErrorFromStore); };
+  }, []);
+  return error;
 }
