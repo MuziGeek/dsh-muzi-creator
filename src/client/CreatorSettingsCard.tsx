@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
 import { IconChevronDownOutline14 } from "@deepseek-ai/dsh-client-ui-primitives";
@@ -28,6 +28,8 @@ const EMPTY_SECRETS: CreatorSecrets = {
 };
 
 const EMPTY_PROFILE: CreatorProfile = { enabledPlatforms: [...PUBLISH_PLATFORMS] };
+
+type DirectoryField = "library" | "trellis";
 
 const CAPABILITY_ROWS: ReadonlyArray<{ id: keyof CreatorCapabilities; label: CreatorKey }> = [
   { id: "library", label: "settings.capability.library" },
@@ -94,6 +96,11 @@ export function CreatorSettingsCard({
   const [failed, setFailed] = useState(false);
   const [saved, setSaved] = useState(false);
   const [keyFailed, setKeyFailed] = useState(false);
+  const [pickingDirectory, setPickingDirectory] = useState<DirectoryField | undefined>(undefined);
+  const [directoryPickError, setDirectoryPickError] = useState<DirectoryField | undefined>(undefined);
+  const pickingDirectoryRef = useRef(false);
+  const libraryPickErrorId = useId();
+  const trellisPickErrorId = useId();
 
   useEffect(() => {
     if (!ready()) return;
@@ -165,20 +172,27 @@ export function CreatorSettingsCard({
   const dirty = dirtyRoot || dirtyTrellisRoot || dirtyObsidian || dirtyProfile || dirtyRules || dirtyKeys;
   const title = t("settings.title" as CreatorKey);
 
-  const onPick = async () => {
-    const path = await pickDirectory();
-    if (path === null) return;
-    setDraftRoot(path);
-    setSaved(false);
-    setFailed(false);
-  };
-
-  const onPickTrellis = async () => {
-    const path = await pickDirectory();
-    if (path === null) return;
-    setDraftTrellisRoot(path);
-    setSaved(false);
-    setFailed(false);
+  const pickDirectoryFor = async (field: DirectoryField) => {
+    if (pickingDirectoryRef.current) return;
+    pickingDirectoryRef.current = true;
+    setPickingDirectory(field);
+    setDirectoryPickError(undefined);
+    try {
+      const path = await pickDirectory();
+      if (path === null) return;
+      if (field === "library") {
+        setDraftRoot(path);
+      } else {
+        setDraftTrellisRoot(path);
+      }
+      setSaved(false);
+      setFailed(false);
+    } catch {
+      setDirectoryPickError(field);
+    } finally {
+      pickingDirectoryRef.current = false;
+      setPickingDirectory(undefined);
+    }
   };
   const patchProfile = (platform: PublishPlatform, enabled: boolean) => {
     setDraftProfile((current) => {
@@ -291,10 +305,20 @@ export function CreatorSettingsCard({
               <span className={draftRoot === "" ? "path empty" : "path"}>
                 {draftRoot === "" ? t("settings.libraryRootEmpty" as CreatorKey) : draftRoot}
               </span>
-              <IslandButton type="default" onClick={() => { void onPick(); }}>
+              <IslandButton
+                type="default"
+                disabled={pickingDirectory !== undefined}
+                aria-describedby={directoryPickError === "library" ? libraryPickErrorId : undefined}
+                onClick={() => { void pickDirectoryFor("library"); }}
+              >
                 {t("settings.pick" as CreatorKey)}
               </IslandButton>
             </span>
+            {directoryPickError === "library" && (
+              <span id={libraryPickErrorId} className="pickerFailed" role="alert">
+                {t("settings.pickFailed" as CreatorKey)}
+              </span>
+            )}
           </div>
           <div className="field">
             <span className="fieldLabel">{t("settings.trellisRoot" as CreatorKey)}</span>
@@ -303,10 +327,20 @@ export function CreatorSettingsCard({
               <span className={draftTrellisRoot === "" ? "path empty" : "path"}>
                 {draftTrellisRoot === "" ? t("settings.trellisRootEmpty" as CreatorKey) : draftTrellisRoot}
               </span>
-              <IslandButton type="default" onClick={() => { void onPickTrellis(); }}>
+              <IslandButton
+                type="default"
+                disabled={pickingDirectory !== undefined}
+                aria-describedby={directoryPickError === "trellis" ? trellisPickErrorId : undefined}
+                onClick={() => { void pickDirectoryFor("trellis"); }}
+              >
                 {t("settings.pick" as CreatorKey)}
               </IslandButton>
             </span>
+            {directoryPickError === "trellis" && (
+              <span id={trellisPickErrorId} className="pickerFailed" role="alert">
+                {t("settings.pickFailed" as CreatorKey)}
+              </span>
+            )}
           </div>
           <div className="field">
             <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>

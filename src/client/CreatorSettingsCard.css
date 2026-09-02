@@ -149,6 +149,12 @@
   color: var(--muzi-island-text-muted);
 }
 
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .pickerFailed {
+  color: var(--muzi-island-danger);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .footer {
   display: flex;
   align-items: center;

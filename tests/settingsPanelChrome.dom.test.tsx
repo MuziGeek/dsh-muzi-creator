@@ -11,6 +11,7 @@ vi.mock("@deepseek-ai/dsh-client-ui-primitives", () => ({
 }));
 
 import { CreatorSettingsCard } from "../src/client/CreatorSettingsCard.tsx";
+import { pickSettingsDirectory } from "../src/client/directoryPicker.ts";
 import { en, zh, type CreatorKey } from "../src/client/locales.ts";
 import { PanelSectionHeader } from "../src/client/sidebar/PanelSectionHeader.tsx";
 import { IslandCheckbox } from "../src/client/ui/IslandControls.tsx";
@@ -149,5 +150,89 @@ describe("settings and content-panel disclosure chrome", () => {
 
     await user.click(pickButtons[1]!);
     expect(pickDirectory).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses one pending picker for both directory fields and keeps successful picks as drafts", async () => {
+    const user = userEvent.setup();
+    let resolvePick: ((path: string | null) => void) | undefined;
+    const pickDirectory = vi.fn(() => new Promise<string | null>((resolve) => { resolvePick = resolve; }));
+    const props = settingsCardProps(zh);
+    const setLibraryRoot = vi.fn();
+    const setTrellisProjectsRoot = vi.fn();
+    render(<CreatorSettingsCard
+      {...props}
+      pickDirectory={pickDirectory}
+      setLibraryRoot={setLibraryRoot}
+      setTrellisProjectsRoot={setTrellisProjectsRoot}
+    />);
+
+    await user.click(screen.getByRole("button", { name: "展开设置" }));
+    const pickButtons = await screen.findAllByRole("button", { name: "选择" });
+    await user.click(pickButtons[0]!);
+    expect(pickDirectory).toHaveBeenCalledTimes(1);
+    expect(pickButtons[0]!.hasAttribute("disabled")).toBe(true);
+    expect(pickButtons[1]!.hasAttribute("disabled")).toBe(true);
+
+    await user.click(pickButtons[1]!);
+    expect(pickDirectory).toHaveBeenCalledTimes(1);
+
+    resolvePick?.("D:\\New Creator");
+    await screen.findByText("D:\\New Creator");
+    expect(setLibraryRoot).not.toHaveBeenCalled();
+    expect(setTrellisProjectsRoot).not.toHaveBeenCalled();
+    expect(pickButtons[0]!.hasAttribute("disabled")).toBe(false);
+    expect(pickButtons[1]!.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("keeps paths on cancellation and announces picker failures next to the affected field", async () => {
+    const user = userEvent.setup();
+    const pickDirectory = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("chooser unavailable"));
+    render(<CreatorSettingsCard {...settingsCardProps(en)} pickDirectory={pickDirectory} />);
+
+    await user.click(screen.getByRole("button", { name: "Show settings" }));
+    const pickButtons = await screen.findAllByRole("button", { name: "Choose" });
+    await user.click(pickButtons[0]!);
+    expect(screen.getByText("D:\\Creator")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    await user.click(pickButtons[1]!);
+    const error = await screen.findByRole("alert");
+    expect(error.textContent).toContain("Couldn't open the folder picker. Try again.");
+    expect(pickButtons[0]!.getAttribute("aria-describedby")).toBeNull();
+    expect(pickButtons[1]!.getAttribute("aria-describedby")).toBe(error.id);
+    expect(pickButtons[0]!.hasAttribute("disabled")).toBe(false);
+    expect(pickButtons[1]!.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("uses the Desktop native bridge and keeps uiWorkspace as the browser fallback", async () => {
+    const uiWorkspace = { pickDirectory: vi.fn(async () => "D:\\Browser") };
+    const desktopPicker = vi.fn(async () => "D:\\Desktop");
+
+    await expect(pickSettingsDirectory(uiWorkspace, {
+      location: { search: "?dsh-desktop-platform=win32" },
+      __DSH_DESKTOP_PICK_DIRECTORY__: desktopPicker,
+    })).resolves.toBe("D:\\Desktop");
+    expect(desktopPicker).toHaveBeenCalledTimes(1);
+    expect(uiWorkspace.pickDirectory).not.toHaveBeenCalled();
+
+    await expect(pickSettingsDirectory(uiWorkspace, {
+      location: { search: "" },
+    })).resolves.toBe("D:\\Browser");
+    expect(uiWorkspace.pickDirectory).toHaveBeenCalledTimes(1);
+
+    await expect(pickSettingsDirectory(uiWorkspace, {
+      location: { search: "?dsh-desktop-platform=win32" },
+    })).rejects.toThrow("DSH Desktop native directory picker is unavailable");
+  });
+
+  it("routes the settings face through the host-aware directory picker", async () => {
+    const client = await readFile(resolve(process.cwd(), "src/client/index.tsx"), "utf8");
+
+    expect(client).toMatch(/export const inject = \[[^\]]*"uiWorkspace"/s);
+    expect(client).toContain("pickSettingsDirectory(");
+    expect(client).toContain('ctx.get("uiWorkspace") as UiWorkspaceDirectoryPicker');
+    expect(client).not.toContain("ctx.workspaces.pickDirectory()");
   });
 });

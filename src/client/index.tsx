@@ -17,6 +17,10 @@ import { releaseShellChrome } from "./contentSelection.ts";
 import { registerMuziTriggers } from "./contentTriggers.ts";
 import { installMuziHostSkin } from "./host-skin/index.ts";
 import { stageSessionHandoff } from "./sessionHandoff.ts";
+import {
+  pickSettingsDirectory,
+  type UiWorkspaceDirectoryPicker,
+} from "./directoryPicker.ts";
 import type {
   ContentDetail,
   ContentFilter,
@@ -216,7 +220,7 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
   return answer.value;
 }
 
-export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection", "conversation", "theme"];
+export const inject = ["slots", "locale", "remote", "workspaces", "uiWorkspace", "layout", "connection", "conversation", "theme"];
 
 export function apply(ctx: ClientContext): void {
   installMuziHostSkin(ctx);
@@ -287,7 +291,9 @@ export function apply(ctx: ClientContext): void {
       const answer = await remote.getSubtitleText({ id });
       return answer.ok && answer.value !== undefined ? answer.value : { text: "", cues: [] };
     },
-    pickDirectory: () => ctx.workspaces.pickDirectory(),
+    pickDirectory: () => pickSettingsDirectory(
+      ctx.get("uiWorkspace") as UiWorkspaceDirectoryPicker,
+    ),
     openPath: (path) => ctx.workspaces.openPath(path),
     getSettings: async () => {
       const remote = remoteOf();
