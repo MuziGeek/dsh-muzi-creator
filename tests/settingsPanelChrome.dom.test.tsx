@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { ComponentProps, SVGProps } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -107,9 +107,7 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("group", { name: "内容视图选项" })).toBeTruthy();
 
-    const checkbox = screen.getByRole("checkbox", { name: "显示归档目录" });
-    checkbox.focus();
-    await user.keyboard("{Escape}");
+    fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => {
       expect(screen.queryByRole("group", { name: "内容视图选项" })).toBeNull();
       expect(document.activeElement).toBe(viewButton);

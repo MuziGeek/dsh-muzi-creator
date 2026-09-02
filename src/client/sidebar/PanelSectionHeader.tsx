@@ -1,4 +1,6 @@
 import {
+  useCallback,
+  useEffect,
   useId,
   useState,
   type ChangeEvent,
@@ -50,10 +52,21 @@ export function PanelSectionHeader({
   const searchInputId = useId();
   const searchButtonId = useId();
   const viewButtonId = useId();
-  const closeView = (): void => {
+  const closeView = useCallback((): void => {
     setViewOpen(false);
     window.requestAnimationFrame(() => { document.getElementById(viewButtonId)?.focus(); });
-  };
+  }, [viewButtonId]);
+
+  useEffect(() => {
+    if (!viewOpen) return undefined;
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      closeView();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => { document.removeEventListener("keydown", handleEscape); };
+  }, [closeView, viewOpen]);
 
   const expandSearch = (): void => {
     setViewOpen(false);
@@ -124,11 +137,7 @@ export function PanelSectionHeader({
         </div>
       </div>
       {viewOpen && viewLabel !== undefined && viewContent !== undefined && (
-        <IslandCard id={viewId} className="muziViewDisclosure" role="group" aria-label={viewLabel} onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
-          if (event.key !== "Escape") return;
-          event.preventDefault();
-          closeView();
-        }}>
+        <IslandCard id={viewId} className="muziViewDisclosure" role="group" aria-label={viewLabel}>
           {viewContent}
           <IslandButton type="text" size="small" className="muziViewRefresh" aria-label={refreshLabel ?? "刷新"} onClick={onRefresh}>
               刷新

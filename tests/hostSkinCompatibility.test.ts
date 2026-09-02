@@ -50,14 +50,14 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
         </div>
         <div id="narrow-conversation"><div data-slot="conversation"></div></div>
       </main>
-      <section data-plugin="dsh-muzi-creator" data-surface="sidebar" id="plugin-sidebar">
+      <section data-plugin="dsh-muzi-creator" data-surface="sidebar" data-sidebar-expanded="true" id="plugin-sidebar">
         <div data-surface="session-browser">
           <div data-slot="sidebar.workspaces">
             <div id="session-browser-root">
               <div id="session-browser-header">
                 <span>Workspaces</span>
-                <div><div id="session-browser-search"><button id="session-search" aria-expanded="false"><svg /></button><input id="session-search-input" type="text" tabindex="-1" /></div></div>
-                <div id="session-actions"><button id="session-view"><svg /></button><button id="session-add"><svg /></button></div>
+                <div id="session-search-slot"><div id="session-browser-search"><button id="session-search" aria-expanded="false"><svg /></button><input id="session-search-input" type="text" tabindex="-1" /></div></div>
+                <div id="session-actions"><span id="session-view-menu"><button id="session-view"><svg /></button></span><button id="session-add"><svg /></button></div>
               </div>
               <div id="session-list"></div>
             </div>
@@ -96,6 +96,12 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
     expect(select("session browser search slot")?.querySelector("input")?.type).toBe("text");
     expect(select("session browser search")?.id).toBe("session-browser-search");
     expect(select("session browser search input")?.id).toBe("session-search-input");
+    expect(select("session browser closed search slot")?.id).toBe("session-search-slot");
+    expect(select("session browser search label")?.id).toBe("session-search");
+    expect(select("session browser view label")?.id).toBe("session-view");
+    expect(select("session browser add label")?.id).toBe("session-add");
+    document.querySelector("#session-search-input")?.removeAttribute("tabindex");
+    expect(select("session browser search label")).toBeNull();
     expect(document.querySelectorAll(selectorBySurface.get("session browser rail controls")!)).toHaveLength(2);
     expect(select("narrow conversation")?.id).toBe("narrow-conversation");
     expect(select("narrow sidebar")?.id).toBe("narrow-sidebar");
@@ -118,6 +124,10 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
     expect(css).toContain(':not([data-plugin-modal="dsh-muzi-creator"] *)');
     expect(css).toContain("overflow-wrap: anywhere");
     expect(css).toContain(":focus-visible");
+    expect(css).not.toContain(":lang(");
+    expect(css).toContain("content: var(--muzi-session-search-label)");
+    expect(css).toContain("content: var(--muzi-session-view-label)");
+    expect(css).toContain("content: var(--muzi-session-add-label)");
     expect(css).toContain("@media (max-width: 640px)");
     expect(css).toContain("@media (max-width: 390px)");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");

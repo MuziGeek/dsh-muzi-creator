@@ -135,4 +135,33 @@ describe("Muzi Creator sidebar navigation", () => {
     await user.click(screen.getByRole("tab", { name: "内容" }));
     expect(document.querySelector(".topNewSession")).toBeNull();
   });
+
+  it("keeps the official session toolbar controls event-complete", async () => {
+    const user = userEvent.setup();
+    const onSearch = vi.fn();
+    const onView = vi.fn();
+    const onAdd = vi.fn();
+    const props = sidebarProps();
+    render(<OilSidebarRoot {...props} renderSlot={(slot) => slot === "sidebar.workspaces" ? (
+      <div>
+        <div>
+          <span>Workspaces</span>
+          <div><div><button id="official-search" onClick={onSearch}><svg /></button><input type="text" tabIndex={-1} /></div></div>
+          <div><button id="official-view" onClick={onView}><svg /></button><button id="official-add" onClick={onAdd}><svg /></button></div>
+        </div>
+      </div>
+    ) : null} />);
+
+    const sessionBrowser = document.querySelector<HTMLElement>('[data-surface="session-browser"]');
+    expect(sessionBrowser?.style.getPropertyValue("--muzi-session-search-label")).toBe('"session.toolbar.search"');
+    expect(sessionBrowser?.style.getPropertyValue("--muzi-session-view-label")).toBe('"session.toolbar.view"');
+    expect(sessionBrowser?.style.getPropertyValue("--muzi-session-add-label")).toBe('"session.toolbar.add"');
+
+    await user.click(document.querySelector<HTMLButtonElement>("#official-search")!);
+    await user.click(document.querySelector<HTMLButtonElement>("#official-view")!);
+    await user.click(document.querySelector<HTMLButtonElement>("#official-add")!);
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(onView).toHaveBeenCalledTimes(1);
+    expect(onAdd).toHaveBeenCalledTimes(1);
+  });
 });
