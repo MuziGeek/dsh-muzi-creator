@@ -51,7 +51,7 @@ describe("Muzi host theme tokens", () => {
     expect(MUZI_HOST_THEME_TOKENS["--dsw-alias-focus"]!.dark).toContain("--muzi-host-focus");
   });
 
-  it("covers every DSH 0.1.1-rc.2 alias and component-specific color token", async () => {
+  it("covers the compile-time theme contract verified against Desktop 2.0.4", async () => {
     const css = await readFile(
       resolve(process.cwd(), "node_modules/@deepseek-ai/dsh-client-ui-theme/lib/client.js"),
       "utf8",

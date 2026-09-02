@@ -73,9 +73,9 @@ describe("DeepSeek Harness bundle packaging", () => {
       "@deepseek-ai/dsh-client-ui-settings-plugins",
     ]));
     expect(manifest.peerDependencies?.["@deepseek-ai/dsh-settings"])
-      .toBe("0.1.1-rc.2");
+      .toBe("0.1.2-alpha.1");
     expect(manifest.peerDependencies?.["@deepseek-ai/dsh-client-ui-settings-plugins"])
-      .toBe("0.1.1-rc.2");
+      .toBe("0.1.2-alpha.1");
     const normalizedPatch = patch.replaceAll("\r\n", "\n");
     expect(normalizedPatch).toMatch(/^- id: ui-sidebar\n  disabled: true$/m);
     expect(normalizedPatch).toMatch(/^- insert:\n    - id: dsh-muzi-creator\n      name: dsh-muzi-creator$/m);

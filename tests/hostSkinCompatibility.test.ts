@@ -6,20 +6,20 @@ import { describe, expect, it } from "vitest";
 
 import {
   DSH_HOST_SKIN_VERSION,
-  dsh202HostSkinSelectors,
+  dsh204HostSkinSelectors,
 } from "../src/client/host-skin/selectorManifest.ts";
 
-const cssPath = resolve(process.cwd(), "src/client/host-skin/dsh-2.0.2.css");
+const cssPath = resolve(process.cwd(), "src/client/host-skin/dsh-2.0.4.css");
 const layoutClientPath = resolve(
   process.cwd(),
   "node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js",
 );
 
-describe("DSH Desktop 2.0.2 host skin compatibility", () => {
+describe("DSH Desktop 2.0.4 host skin compatibility", () => {
   it("keeps the selector inventory semantic, versioned, and scoped to an explicit host opt-in", () => {
-    expect(dsh202HostSkinSelectors).not.toHaveLength(0);
+    expect(dsh204HostSkinSelectors).not.toHaveLength(0);
 
-    for (const selector of dsh202HostSkinSelectors) {
+    for (const selector of dsh204HostSkinSelectors) {
       expect(selector.version).toBe(DSH_HOST_SKIN_VERSION);
       expect(selector.kind).toBe("semantic");
       expect(selector.selector).toContain('body[data-muzi-host-skin="animal-island"]');
@@ -51,7 +51,7 @@ describe("DSH Desktop 2.0.2 host skin compatibility", () => {
     `;
 
     const selectorBySurface = new Map<string, string>(
-      dsh202HostSkinSelectors.map((entry) => [entry.surface, entry.selector]),
+      dsh204HostSkinSelectors.map((entry) => [entry.surface, entry.selector]),
     );
     const select = (surface: string) => document.querySelector(selectorBySurface.get(surface)!);
 
@@ -63,7 +63,7 @@ describe("DSH Desktop 2.0.2 host skin compatibility", () => {
     expect(select("narrow conversation")?.id).toBe("narrow-conversation");
     expect(select("narrow sidebar")?.id).toBe("narrow-sidebar");
 
-    const textareaSelector = dsh202HostSkinSelectors.find((entry) => entry.surface === "composer" && entry.purpose.includes("textareas"))?.selector;
+    const textareaSelector = dsh204HostSkinSelectors.find((entry) => entry.surface === "composer" && entry.purpose.includes("textareas"))?.selector;
     const dialogSelector = selectorBySurface.get("dialog");
     expect(document.querySelectorAll(textareaSelector!)).toHaveLength(1);
     expect(document.querySelectorAll(dialogSelector!)).toHaveLength(1);
@@ -108,7 +108,7 @@ describe("DSH Desktop 2.0.2 host skin compatibility", () => {
     const compact = (value: string) => value.replace(/\s+/g, " ").trim();
     const compactCss = compact(css);
 
-    for (const entry of dsh202HostSkinSelectors) {
+    for (const entry of dsh204HostSkinSelectors) {
       expect(compactCss).toContain(compact(entry.selector));
     }
 

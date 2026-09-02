@@ -2,11 +2,11 @@
 
 ## UI Lab 与 Animal Island 约束
 
-界面 Lab 是项目内的隔离开发环境，并在 `.lab/dsh-home/profiles/web` 创建一次性 DSH Web profile。Desktop 2.0.2 另用 `.lab/desktop-home/profiles/web` 与 `.lab/desktop-user-data`，不共享个人 DSH home 或 Electron user-data。两条 profile 都只含一个指向当前源码 checkout 的受控插件链接；每次启动前逐项核对 manifest、patch、workspace、受限写入路径、源码链接和 `lib/index.js`、`lib/client.js`、`lib/typert.host.js`、`lib/collect-publish.mjs` 构建产物，任一文件偏离生成值即拒绝启动。
+界面 Lab 是项目内的隔离开发环境，并在 `.lab/dsh-home/profiles/web` 创建一次性 DSH Web profile。Desktop 2.0.4 另用 `.lab/desktop-home/profiles/web` 与 `.lab/desktop-user-data`，不共享个人 DSH home 或 Electron user-data。两条 profile 都只含一个指向当前源码 checkout 的受控插件链接；每次启动前逐项核对 manifest、patch、workspace、受限写入路径、源码链接和 `lib/index.js`、`lib/client.js`、`lib/typert.host.js`、`lib/collect-publish.mjs` 构建产物，任一文件偏离生成值即拒绝启动。
 
-Desktop 2.0.2 的私有 `<user-data>/profile-selection/state.json` 固定为 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`；`<user-data>/desktop-market/state.json` 固定请求 `disabled`；`<desktop-home>/settings.yaml` 固定 `dsh-desktop.mode: compatibility`。三项状态都在 Electron spawn 前重新读取、严格比对。启动参数显式包含 `--user-data-dir <.lab/desktop-user-data>`；子进程的 `DSH_HOME`、`HOME`、`USERPROFILE` 指向 `.lab/desktop-home`，应用数据、遥测、凭据与外部能力保持隔离。脚本拒绝路径逃逸及其他符号链接/联接点，凭据为空且 `externalActionsEnabled` 固定为 `false`。Lab 不安装软件、不发布、不同步、不归档；本地 `.tgz` 成品路径只可做 `.lab/packages/` 下的准备性校验，安装与 Desktop 实机启动仍是单独验收步骤。
+Desktop 2.0.4 的私有 `<user-data>/profile-selection/state.json` 固定为 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`；`<user-data>/desktop-market/state.json` 固定请求 `disabled`；`<desktop-home>/settings.yaml` 固定 `dsh-desktop.mode: compatibility`。三项状态与可执行文件的 `ProductName`、`FileVersion`、`ProductVersion` 都在 Electron spawn 前重新读取、严格比对；发现同一可执行文件已有进程时拒绝启动，防止单实例交接把验收请求送进个人 Profile。启动参数显式包含 `--user-data-dir=<.lab/desktop-user-data>`；子进程的 `DSH_HOME`、`HOME`、`USERPROFILE` 指向 `.lab/desktop-home`，应用数据、遥测、凭据与外部能力保持隔离。脚本拒绝路径逃逸及其他符号链接/联接点，凭据为空且 `externalActionsEnabled` 固定为 `false`。Lab 不安装软件、不发布、不同步、不归档；本地 `.tgz` 成品路径只可做 `.lab/packages/` 下的准备性校验，安装与 Desktop 实机启动仍是单独验收步骤。
 
-Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token。宿主 DSH 对话、设置、审批、详情和 shell layout 仍由官方组件所有；插件通过 `@deepseek-ai/dsh-client-ui-theme` 的 `ThemeRuntime.overrideTokens()` 覆盖 `--dsw-*` 表现令牌，并用 `body[data-muzi-host-skin="animal-island"]` 下的固定 2.0.2 兼容样式补齐圆角、焦点、长文本、Portal 和响应式规则。外观规则排除插件自己的 Animal Island 根；唯一例外是 640 px 以下的布局规则，它让展开的 360 px 侧栏覆盖会话而不把会话挤成窄列。兼容样式不使用生成哈希类、不隐藏功能元素，也不注册宿主事件。
+Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token。宿主 DSH 对话、设置、审批、详情和 shell layout 仍由官方组件所有；插件通过 `@deepseek-ai/dsh-client-ui-theme` 的 `ThemeRuntime.overrideTokens()` 覆盖 `--dsw-*` 表现令牌，并用 `body[data-muzi-host-skin="animal-island"]` 下的固定 2.0.4 兼容样式补齐圆角、焦点、长文本、Portal 和响应式规则。外观规则排除插件自己的 Animal Island 根；唯一例外是 640 px 以下的布局规则，它让展开的 360 px 侧栏覆盖会话而不把会话挤成窄列。兼容样式不使用生成哈希类、不隐藏功能元素，也不注册宿主事件。
 
 Inspector 只控制自身 Overlay 的位置和宽度，不查询对话滚动容器，也不向对话 DOM 写入 padding 或 transition；宽屏内的 480 px 分栏由 Inspector 容器查询切换内部单列布局，不依赖窗口宽度。组件映射、主题令牌、固定版本选择器、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
 
@@ -96,7 +96,7 @@ Windows 的 `prepare_only`、`publish_now`、`schedule`、`metrics` 按账号分
 保持 **一个** Harness 插件。官方要求：只有能力需要独立替换时才拆包，不要预防性拆分。见 DeepSeek Harness `docs/user/develop/practice/index.zh.md`。
 
 设置位 `settings.plugin.item` 的含义是「一个插件一张卡」，不是一个功能一张卡。
-Harness `0.1.1-rc.2` 从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留列表槽位使用的 `id` 兼容坐标。当前设置值仍统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源；两类槽位都由锁定的 rc.2 包执行测试。
+Desktop 2.0.4 内置 Harness `0.1.2-alpha.1` 从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留列表槽位使用的 `id` 兼容坐标。当前设置值仍统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源。因为该 alpha 版本尚未发布到 npm，自动测试使用 `0.1.1-rc.2` 类型基线，真实客户端行为另由 Desktop 2.0.4 内置运行时验收。
 
 执行分工：
 

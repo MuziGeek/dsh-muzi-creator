@@ -87,12 +87,12 @@ export function createLabProfilePatch(config) {
   ].join("\n");
 }
 
-/** Returns the Desktop-owned selected-profile state used by Desktop 2.0.2. */
+/** Returns the Desktop-owned selected-profile state used by Desktop 2.0.4. */
 export function createDesktopProfileSelectionState() {
   return { ...DESKTOP_PROFILE_SELECTION_STATE };
 }
 
-/** Returns Desktop 2.0.2's explicit disabled-Market selection. */
+/** Returns Desktop 2.0.4's explicit disabled-Market selection. */
 export function createDesktopMarketSelectionState() {
   return { ...DESKTOP_MARKET_SELECTION_STATE };
 }

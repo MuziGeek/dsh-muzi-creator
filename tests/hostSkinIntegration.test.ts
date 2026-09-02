@@ -15,10 +15,11 @@ describe("Muzi host skin client integration", () => {
     const client = await readFile(resolve(root, "src/client/index.tsx"), "utf8");
 
     expect(packageJson.dsh.client.inject).toContain("@deepseek-ai/dsh-client-ui-theme");
-    expect(packageJson.peerDependencies["@deepseek-ai/dsh-client-ui-theme"]).toBe("0.1.1-rc.2");
+    expect(packageJson.peerDependencies["@deepseek-ai/dsh-client-ui-theme"]).toBe("0.1.2-alpha.1");
     expect(packageJson.devDependencies["@deepseek-ai/dsh-client-ui-theme"]).toBe("0.1.1-rc.2");
+    expect(packageJson.dsh.client.inject).not.toContain("@deepseek-ai/dsh-client-runtime");
     expect(client.match(/animal-island-ui\/style/g)).toHaveLength(1);
-    expect(client.match(/host-skin\/dsh-2\.0\.2\.css/g)).toHaveLength(1);
+    expect(client.match(/host-skin\/dsh-2\.0\.4\.css/g)).toHaveLength(1);
     expect(client).toContain("installMuziHostSkin(ctx)");
     expect(client).toMatch(/export const inject = \[[^\]]*"theme"/s);
   });

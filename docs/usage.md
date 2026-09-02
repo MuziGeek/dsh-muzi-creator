@@ -4,7 +4,7 @@
 
 Lab 用于本地检查界面组件和响应式布局，不执行发布、同步或归档。先运行 `pnpm build`，再用 `pnpm lab:setup` 创建项目内 `.lab/` fixture，随后运行 `pnpm lab:config` 写入隔离 Web profile。使用 `pnpm lab:start -- --cli <已构建 DSH CLI 路径> --port 51873` 启动 Web；源码版 DSH 应传 `apps/cli/lib/bin.js`，不能直接传 TypeScript 入口。不提供 CLI 时脚本会明确提示，不能把未启动当作通过。
 
-Desktop 2.0.2 使用独立的 `.lab/desktop-home` 与 `.lab/desktop-user-data`：脚本写入并在每次启动前严格核对 `<user-data>/profile-selection/state.json` 的 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`、`desktop-market/state.json` 的显式 `disabled` 状态，以及 `<desktop-home>/settings.yaml` 的 `dsh-desktop.mode: compatibility`。`lab:desktop -- --desktop <路径>` 仅接受已安装 Desktop 的显式普通可执行文件，传入独立 `--user-data-dir`，并将 `DSH_HOME`、`HOME`、`USERPROFILE`、应用数据、遥测、凭据与外部能力隔离；任一 profile、源码链接、可写路径、选择状态或 `lib/` 构建产物偏离时拒绝启动，不会接管个人 Desktop 或 `~/.dsh`。Desktop 缺失时验收为 `UNVERIFIED`。
+Desktop 2.0.4 使用独立的 `.lab/desktop-home` 与 `.lab/desktop-user-data`：脚本写入并在每次启动前严格核对 `<user-data>/profile-selection/state.json` 的 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`、`desktop-market/state.json` 的显式 `disabled` 状态，以及 `<desktop-home>/settings.yaml` 的 `dsh-desktop.mode: compatibility`。`lab:desktop -- --desktop <路径>` 仅接受版本资源严格匹配 2.0.4 且当前没有同路径进程的已安装 Desktop 普通可执行文件，传入独立 `--user-data-dir`，并将 `DSH_HOME`、`HOME`、`USERPROFILE`、应用数据、遥测、凭据与外部能力隔离；任一版本、运行实例、profile、源码链接、可写路径、选择状态或 `lib/` 构建产物偏离时拒绝启动，不会接管个人 Desktop 或 `~/.dsh`。Desktop 缺失时验收为 `UNVERIFIED`。
 
 源码联调继续使用受控的源码链接 Web profile。为本地成品安装验收做准备时，只能把已有 `.tgz` 放进 `.lab/packages/`，再运行 `pnpm lab:desktop -- --prepare-tgz .lab/packages/<包名>.tgz`；该命令只核对隔离条件和归档位置，不下载、不安装、不启动 Desktop。详见 [DESIGN.md](../DESIGN.md)。
 
@@ -37,7 +37,7 @@ Muzi Creator 加载后会把 DSH Web 内容统一为 Animal Island 视觉：侧�
 
 设置在 Harness 的设置 → 插件 → 内容工作台。这里可以配置影片目录、`enabledPlatforms`、脚本规则（人设）和凭据。影片目录默认是 `~/Movies/视频项目`。`enabledPlatforms` 有小红书、抖音、B 站、视频号四个开关，默认全部启用；AI 发布和数据同步只处理启用的平台，全部关闭时不执行这两项操作。脚本规则是写 `script.md` 时 AI 必须遵循的语气、结构和禁忌，也可以直接在对话里让 AI 记录，AI 会用 `oil_script_rules` 存到同一个地方。字幕转录使用百炼 `DASHSCOPE_API_KEY`，封面使用 ZenMux `ZENMUX_API_KEY`，两者和视觉识别共用官方凭据；页面只显示已配置或未配置，不会把 Key 读回来。
 
-宿主皮肤固定针对 DSH Desktop 2.0.2 / Harness 0.1.1-rc.2。升级 Desktop 前先在隔离 Lab 重新检查会话、输入、审批、设置、菜单和弹层；固定版本选择器不匹配时应停止验收，而不是继续扩大 CSS 覆盖。
+宿主皮肤固定针对 DSH Desktop 2.0.4 / 内置 Harness 0.1.2-alpha.1。升级 Desktop 前先在隔离 Lab 重新检查会话、输入、审批、设置、菜单和弹层；固定版本选择器不匹配时应停止验收，而不是继续扩大 CSS 覆盖。
 
 首次使用推荐选 Harness 的 `standard` 或 `code` Agent preset，再直接说「检查并配置内容工作台」。内置 `creator-workbench` Skill 会让 AI 先调用 `oil_creator_setup` 检查环境。AI 能从系统发现的目录和能力不再逐项追问；任何写入都会先预览，用户确认后才应用。`minimal` preset 没有 Skill 和文件工具，不适合首次引导、自动整理目录或修改正文。
 

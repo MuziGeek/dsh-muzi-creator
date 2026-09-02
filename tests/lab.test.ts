@@ -24,7 +24,7 @@ import { setupLab } from "../scripts/lab-setup.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
 import { assertDesktopLabConfiguration, assertLabConfiguration, findDshCli, startLab } from "../scripts/lab-start.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
-import { prepareLocalTgzAcceptance, startDesktop } from "../scripts/lab-desktop.mjs";
+import { DSH_DESKTOP_FILE_VERSION, DSH_DESKTOP_PRODUCT_NAME, DSH_DESKTOP_PRODUCT_VERSION, prepareLocalTgzAcceptance, startDesktop } from "../scripts/lab-desktop.mjs";
 
 const sourceRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
@@ -177,10 +177,22 @@ describe("isolated UI Lab", () => {
     const { paths } = await writeLabConfig(repositoryRoot);
     const fakeDesktop = join(repositoryRoot, "fake-desktop.exe");
     await writeFile(fakeDesktop, "fixture\n", "utf8");
+    const identity = {
+      fileVersion: DSH_DESKTOP_FILE_VERSION,
+      productVersion: DSH_DESKTOP_PRODUCT_VERSION,
+      productName: DSH_DESKTOP_PRODUCT_NAME,
+    };
 
-    const invocation = await startDesktop({ repositoryRoot, desktop: fakeDesktop, dryRun: true });
+    const invocation = await startDesktop({
+      repositoryRoot,
+      desktop: fakeDesktop,
+      dryRun: true,
+      inspectVersion: async () => identity,
+      inspectInstances: async () => [],
+    });
 
-    expect(invocation.args).toEqual(["--user-data-dir", paths.desktopUserData]);
+    expect(invocation.identity).toEqual(identity);
+    expect(invocation.args).toEqual([`--user-data-dir=${paths.desktopUserData}`]);
     expect(invocation.cwd).toBe(paths.root);
     expect(invocation.env.DSH_HOME).toBe(paths.desktopHome);
     expect(invocation.env.HOME).toBe(paths.desktopHome);
@@ -189,6 +201,41 @@ describe("isolated UI Lab", () => {
     expect(invocation.env.DSH_TELEMETRY_DISABLED).toBe("1");
     expect(invocation.env.DSH_EXTERNAL_ACTIONS_ENABLED).toBe("0");
     expect(invocation.env.DEEPSEEK_API_KEY).toBe("");
+  }, 15_000);
+
+  it("fails closed before launch when the executable is not Desktop 2.0.4", async () => {
+    await writeLabConfig(repositoryRoot);
+    const fakeDesktop = join(repositoryRoot, "fake-desktop.exe");
+    await writeFile(fakeDesktop, "fixture\n", "utf8");
+
+    await expect(startDesktop({
+      repositoryRoot,
+      desktop: fakeDesktop,
+      dryRun: true,
+      inspectVersion: async () => ({
+        fileVersion: "2.0.2",
+        productVersion: "2.0.2.0",
+        productName: DSH_DESKTOP_PRODUCT_NAME,
+      }),
+    })).rejects.toThrow("要求 DSH Desktop 2.0.4");
+  }, 15_000);
+
+  it("fails closed when Electron could hand the launch to an existing Desktop instance", async () => {
+    await writeLabConfig(repositoryRoot);
+    const fakeDesktop = join(repositoryRoot, "fake-desktop.exe");
+    await writeFile(fakeDesktop, "fixture\n", "utf8");
+
+    await expect(startDesktop({
+      repositoryRoot,
+      desktop: fakeDesktop,
+      dryRun: true,
+      inspectVersion: async () => ({
+        fileVersion: DSH_DESKTOP_FILE_VERSION,
+        productVersion: DSH_DESKTOP_PRODUCT_VERSION,
+        productName: DSH_DESKTOP_PRODUCT_NAME,
+      }),
+      inspectInstances: async () => [{ processId: 204 }],
+    })).rejects.toThrow("避免 Electron 把请求交给正式 Profile");
   }, 15_000);
 
   it("fails closed when Desktop no longer selects the Web profile", async () => {

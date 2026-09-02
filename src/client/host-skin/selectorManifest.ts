@@ -1,5 +1,5 @@
 /** The DSH Desktop release whose host selectors this skin has been checked against. */
-export const DSH_HOST_SKIN_VERSION = "2.0.2" as const;
+export const DSH_HOST_SKIN_VERSION = "2.0.4" as const;
 
 export type HostSkinSelectorKind = "semantic" | "structural";
 
@@ -27,12 +27,12 @@ const expandedNarrowFrame = `${host} [data-details-collapsed]:has([data-plugin="
 const expandedNarrowConversation = `${expandedNarrowFrame} > :has(> [data-slot="conversation"])`;
 
 /**
- * The full selector inventory for the fixed DSH Desktop 2.0.2 compatibility skin.
+ * The full selector inventory for the fixed DSH Desktop 2.0.4 compatibility skin.
  *
  * No structural selector is needed: the host exposes sufficient data and ARIA
  * semantics for each surface this skin adjusts.
  */
-export const dsh202HostSkinSelectors = [
+export const dsh204HostSkinSelectors = [
   { selector: host, surface: "page", purpose: "constrain page overflow", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: hostElement, surface: "host typography", purpose: "apply the host font outside the plugin", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: hostTarget(':where(button, input, select)'), surface: "controls", purpose: "align native control size and corner radius", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
