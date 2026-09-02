@@ -5,7 +5,12 @@ import { extname, resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { confinedPath, labPaths } from "./lab-paths.mjs";
-import { assertDesktopLabConfiguration, isolatedDesktopEnvironment } from "./lab-start.mjs";
+import {
+  assertDesktopLabConfiguration,
+  assertPersonalLabConfiguration,
+  isolatedDesktopEnvironment,
+  personalDesktopEnvironment,
+} from "./lab-start.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -100,6 +105,8 @@ export async function inspectRunningDesktopProcesses(desktop) {
 export async function startDesktop({
   repositoryRoot,
   desktop,
+  personal = false,
+  personalPaths,
   dryRun = false,
   inspectVersion = inspectDesktopExecutable,
   inspectInstances = inspectRunningDesktopProcesses,
@@ -126,9 +133,11 @@ export async function startDesktop({
     );
   }
   const paths = labPaths(repositoryRoot);
-  await assertDesktopLabConfiguration(paths);
-  const args = [`--user-data-dir=${paths.desktopUserData}`];
-  const env = isolatedDesktopEnvironment(paths);
+  if (personal) await assertPersonalLabConfiguration(paths, personalPaths);
+  else await assertDesktopLabConfiguration(paths);
+  const userData = personal ? paths.personalUserData : paths.desktopUserData;
+  const args = [`--user-data-dir=${userData}`];
+  const env = personal ? personalDesktopEnvironment(paths) : isolatedDesktopEnvironment(paths);
   if (dryRun) return { executable, identity, args, cwd: paths.root, env };
   const child = spawn(executable, args, {
     cwd: paths.root,

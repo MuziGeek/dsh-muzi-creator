@@ -284,7 +284,7 @@ export function CreatorSettingsCard({
               </div>
             </div>
           )}
-          <label className="field">
+          <div className="field">
             <span className="fieldLabel">{t("settings.libraryRoot" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.libraryRootHint" as CreatorKey)}</span>
             <span className="pathRow">
@@ -295,8 +295,8 @@ export function CreatorSettingsCard({
                 {t("settings.pick" as CreatorKey)}
               </IslandButton>
             </span>
-          </label>
-          <label className="field">
+          </div>
+          <div className="field">
             <span className="fieldLabel">{t("settings.trellisRoot" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.trellisRootHint" as CreatorKey)}</span>
             <span className="pathRow">
@@ -307,7 +307,7 @@ export function CreatorSettingsCard({
                 {t("settings.pick" as CreatorKey)}
               </IslandButton>
             </span>
-          </label>
+          </div>
           <div className="field">
             <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.enabledPlatformsHint" as CreatorKey)}</span>

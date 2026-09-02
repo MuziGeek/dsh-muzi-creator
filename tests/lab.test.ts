@@ -18,15 +18,38 @@ import { fileURLToPath } from "node:url";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
 import { writeLabConfig } from "../scripts/lab-config.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
+import { writePersonalLabConfig } from "../scripts/lab-personal-config.mjs";
+// @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
 import { confinedPath, labPaths } from "../scripts/lab-paths.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
 import { setupLab } from "../scripts/lab-setup.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
-import { assertDesktopLabConfiguration, assertLabConfiguration, findDshCli, startLab } from "../scripts/lab-start.mjs";
+import { assertDesktopLabConfiguration, assertLabConfiguration, assertPersonalLabConfiguration, findDshCli, startLab } from "../scripts/lab-start.mjs";
 // @ts-expect-error JavaScript Lab helper is intentionally tested at runtime.
 import { DSH_DESKTOP_FILE_VERSION, DSH_DESKTOP_PRODUCT_NAME, DSH_DESKTOP_PRODUCT_VERSION, prepareLocalTgzAcceptance, startDesktop } from "../scripts/lab-desktop.mjs";
 
 const sourceRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+
+async function createPersonalTargets(repositoryRoot: string): Promise<{
+  libraryRoot: string;
+  creatorRoot: string;
+  atlasRoot: string;
+  trellisProjectsRoot: string;
+  obsidianExecutable: string;
+}> {
+  const creatorRoot = join(repositoryRoot, "real", "creator-studio");
+  const libraryRoot = join(creatorRoot, "10-active");
+  const atlasRoot = join(repositoryRoot, "real", "muzi-atlas");
+  const trellisProjectsRoot = join(repositoryRoot, "real", "projects");
+  const obsidianExecutable = join(repositoryRoot, "real", "Obsidian.exe");
+  await Promise.all([
+    mkdir(libraryRoot, { recursive: true }),
+    mkdir(atlasRoot, { recursive: true }),
+    mkdir(trellisProjectsRoot, { recursive: true }),
+  ]);
+  await writeFile(obsidianExecutable, "fixture\n", "utf8");
+  return { libraryRoot, creatorRoot, atlasRoot, trellisProjectsRoot, obsidianExecutable };
+}
 
 async function sourceFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -52,11 +75,13 @@ describe("isolated UI Lab", () => {
   });
 
   afterEach(async () => {
-    const pluginLink = labPaths(repositoryRoot).pluginLink;
-    try {
-      if ((await lstat(pluginLink)).isSymbolicLink()) await unlink(pluginLink);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    const paths = labPaths(repositoryRoot);
+    for (const pluginLink of [paths.pluginLink, paths.desktopPluginLink, paths.personalPluginLink]) {
+      try {
+        if ((await lstat(pluginLink)).isSymbolicLink()) await unlink(pluginLink);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
     }
     await rm(repositoryRoot, { recursive: true, force: true });
   });
@@ -101,6 +126,10 @@ describe("isolated UI Lab", () => {
       legacyDefaulted: false,
     });
     expect(await readFile(paths.desktopSettings, "utf8")).toBe("dsh-desktop:\n  mode: compatibility\n");
+    for (const directory of [...paths.homeShellDirectories, ...paths.desktopHomeShellDirectories]) {
+      expect((await lstat(directory)).isDirectory()).toBe(true);
+      expect((await lstat(directory)).isSymbolicLink()).toBe(false);
+    }
     expect(patch).toContain("- id: dsh-muzi-creator");
     expect(patch).toContain("externalActionsEnabled: false");
     expect(config.credentials).toEqual({});
@@ -119,6 +148,129 @@ describe("isolated UI Lab", () => {
     }
     await expect(assertLabConfiguration(paths)).resolves.toEqual(config);
     await expect(assertDesktopLabConfiguration(paths)).resolves.toEqual(config);
+  }, 15_000);
+
+  it("fails closed when an isolated Windows shell directory is unavailable", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    await rm(paths.desktopHomeShellDirectories[0], { recursive: true });
+
+    await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("Windows 用户目录不可用");
+  }, 15_000);
+
+  it("writes an isolated personal profile for validated real roots without overwriting it", async () => {
+    const targets = await createPersonalTargets(repositoryRoot);
+    const { paths, config } = await writePersonalLabConfig(repositoryRoot, targets);
+    const firstConfig = await readFile(paths.personalConfig, "utf8");
+
+    expect(config).toMatchObject({
+      version: 1,
+      mode: "personal",
+      externalActionsEnabled: false,
+      enabledPublishTargets: [],
+      credentials: {},
+      ...targets,
+    });
+    expect(config.dataDir).toBe(paths.personalData);
+    expect(paths.personalHome).not.toBe(paths.desktopHome);
+    expect(paths.personalUserData).not.toBe(paths.desktopUserData);
+    expect(await realpath(paths.personalPluginLink)).toBe(await realpath(paths.root));
+    await expect(assertPersonalLabConfiguration(paths, targets)).resolves.toEqual(config);
+
+    const persistedSafeSettings = [
+      "dsh-desktop:",
+      "  mode: compatibility",
+      "  windowsMaterial: off",
+      "  openBrowser: false",
+      "  networkExposure: loopback",
+      "ui-theme:",
+      "  preference: dark",
+      "",
+    ].join("\n");
+    await writeFile(paths.personalSettings, persistedSafeSettings, "utf8");
+    await writePersonalLabConfig(repositoryRoot, targets);
+    expect(await readFile(paths.personalConfig, "utf8")).toBe(firstConfig);
+    expect(await readFile(paths.personalSettings, "utf8")).toBe(persistedSafeSettings);
+  }, 15_000);
+
+  it("launches personal Desktop with real shell discovery and isolated application state", async () => {
+    const targets = await createPersonalTargets(repositoryRoot);
+    const { paths } = await writePersonalLabConfig(repositoryRoot, targets);
+    const fakeDesktop = join(repositoryRoot, "fake-personal-desktop.exe");
+    await writeFile(fakeDesktop, "fixture\n", "utf8");
+
+    const invocation = await startDesktop({
+      repositoryRoot,
+      desktop: fakeDesktop,
+      personal: true,
+      personalPaths: targets,
+      dryRun: true,
+      inspectVersion: async () => ({
+        fileVersion: DSH_DESKTOP_FILE_VERSION,
+        productVersion: DSH_DESKTOP_PRODUCT_VERSION,
+        productName: DSH_DESKTOP_PRODUCT_NAME,
+      }),
+      inspectInstances: async () => [],
+    });
+
+    expect(invocation.args).toEqual([`--user-data-dir=${paths.personalUserData}`]);
+    expect(invocation.env.DSH_HOME).toBe(paths.personalHome);
+    expect(invocation.env.APPDATA).toBe(paths.personalUserData);
+    expect(invocation.env.LOCALAPPDATA).toBe(paths.personalUserData);
+    expect(invocation.env.XDG_CONFIG_HOME).toBe(paths.personalUserData);
+    expect(invocation.env.HOME).toBe(process.env.HOME);
+    expect(invocation.env.USERPROFILE).toBe(process.env.USERPROFILE);
+    expect(invocation.env.DEEPSEEK_API_KEY).toBe("");
+    expect(invocation.env.DSH_EXTERNAL_ACTIONS_ENABLED).toBe("0");
+  }, 15_000);
+
+  it("rejects conflicting personal configuration and overlay files without replacing them", async () => {
+    const targets = await createPersonalTargets(repositoryRoot);
+    const { paths } = await writePersonalLabConfig(repositoryRoot, targets);
+    const originalConfig = await readFile(paths.personalConfig, "utf8");
+    const conflictingConfig = "{\"mode\":\"unexpected\"}\n";
+    await writeFile(paths.personalConfig, conflictingConfig, "utf8");
+
+    await expect(writePersonalLabConfig(repositoryRoot, targets)).rejects.toThrow("已拒绝覆盖");
+    expect(await readFile(paths.personalConfig, "utf8")).toBe(conflictingConfig);
+
+    await writeFile(paths.personalConfig, originalConfig, "utf8");
+    const overlayPath = join(paths.personalData, "overlay.json");
+    const conflictingOverlay = `${JSON.stringify({
+      schemaVersion: 1,
+      libraryRoot: join(repositoryRoot, "other-library"),
+      items: {},
+    })}\n`;
+    await writeFile(overlayPath, conflictingOverlay, "utf8");
+    await expect(writePersonalLabConfig(repositoryRoot, targets)).rejects.toThrow("overlay 的 libraryRoot");
+    expect(await readFile(overlayPath, "utf8")).toBe(conflictingOverlay);
+
+    await unlink(overlayPath);
+    const unsafeSettings = "dsh-desktop:\n  mode: advanced\n";
+    await writeFile(paths.personalSettings, unsafeSettings, "utf8");
+    await expect(writePersonalLabConfig(repositoryRoot, targets)).rejects.toThrow("个人 Desktop 设置已存在且不安全");
+    expect(await readFile(paths.personalSettings, "utf8")).toBe(unsafeSettings);
+  }, 15_000);
+
+  it("rejects missing real roots, linked roots, and non-executable Obsidian paths", async () => {
+    const targets = await createPersonalTargets(repositoryRoot);
+    await rm(targets.atlasRoot, { recursive: true });
+    await expect(writePersonalLabConfig(repositoryRoot, targets)).rejects.toThrow("Atlas 根目录不存在");
+
+    const validTargets = await createPersonalTargets(repositoryRoot);
+    const linkedRoot = join(repositoryRoot, "linked-creator");
+    await symlink(validTargets.creatorRoot, linkedRoot, process.platform === "win32" ? "junction" : "dir");
+    await expect(writePersonalLabConfig(repositoryRoot, {
+      ...validTargets,
+      creatorRoot: linkedRoot,
+      libraryRoot: join(linkedRoot, "10-active"),
+    })).rejects.toThrow("Creator 根目录必须是普通目录");
+
+    const invalidExecutable = join(repositoryRoot, "real", "Obsidian.txt");
+    await writeFile(invalidExecutable, "fixture\n", "utf8");
+    await expect(writePersonalLabConfig(repositoryRoot, {
+      ...validTargets,
+      obsidianExecutable: invalidExecutable,
+    })).rejects.toThrow("普通 .exe 文件");
   }, 15_000);
 
   it("starts the built DSH CLI with the isolated profile contract", async () => {

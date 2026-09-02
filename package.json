@@ -73,6 +73,8 @@
     "lab:config": "node scripts/lab-config.mjs",
     "lab:start": "node scripts/lab-start.mjs",
     "lab:desktop": "node scripts/lab-desktop.mjs",
+    "lab:personal:config": "node scripts/lab-personal-config.mjs",
+    "lab:personal:desktop": "node scripts/lab-personal-desktop.mjs",
     "release:check": "node scripts/check-release.mjs",
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },

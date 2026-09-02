@@ -5,8 +5,8 @@ import { access, lstat, readFile, realpath } from "node:fs/promises";
 import { delimiter, extname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { fileURLToPath } from "node:url";
-import { parse as parseYaml } from "yaml";
 import {
+  assertSafeDesktopSettings,
   createLabProfileManifest,
   createLabProfilePatch,
   createLabSafetyConfig,
@@ -15,6 +15,14 @@ import {
   LAB_PROFILE_WORKSPACE,
   LAB_WRITABLE_PATH_KEYS,
 } from "./lab-config.mjs";
+import {
+  assertPersonalOverlayDoesNotConflict,
+  assertPersonalTargetPaths,
+  createPersonalConfig,
+  createPersonalProfileManifest,
+  createPersonalProfilePatch,
+  PERSONAL_WINDOWS_PATHS,
+} from "./lab-personal-config.mjs";
 import { confinedPath, labPaths } from "./lab-paths.mjs";
 
 async function executable(candidate) {
@@ -38,12 +46,10 @@ export async function findDshCli(explicit) {
   throw new Error("未发现 DSH CLI；请用 --cli <dsh 路径> 或先安装/配置 DSH CLI。Lab 未启动。");
 }
 
-export function isolatedEnvironment(paths) {
+function protectedEnvironment(baseEnvironment, dshHome) {
   return {
-    ...process.env,
-    DSH_HOME: paths.home,
-    HOME: paths.home,
-    USERPROFILE: paths.home,
+    ...baseEnvironment,
+    DSH_HOME: dshHome,
     DSH_TELEMETRY_DISABLED: "1",
     DO_NOT_TRACK: "1",
     DSH_EXTERNAL_ACTIONS_ENABLED: "0",
@@ -56,14 +62,35 @@ export function isolatedEnvironment(paths) {
   };
 }
 
-/** Returns Desktop's isolated process environment and private Electron user-data root. */
-export function isolatedDesktopEnvironment(paths) {
+export function isolatedEnvironment(paths, baseEnvironment = process.env) {
   return {
-    ...isolatedEnvironment({ ...paths, home: paths.desktopHome }),
+    ...protectedEnvironment(baseEnvironment, paths.home),
+    HOME: paths.home,
+    USERPROFILE: paths.home,
+  };
+}
+
+/** Returns Desktop's isolated process environment and private Electron user-data root. */
+export function isolatedDesktopEnvironment(paths, baseEnvironment = process.env) {
+  return {
+    ...isolatedEnvironment({ ...paths, home: paths.desktopHome }, baseEnvironment),
     APPDATA: paths.desktopUserData,
     LOCALAPPDATA: paths.desktopUserData,
     XDG_CONFIG_HOME: paths.desktopUserData,
   };
+}
+
+/** Keeps native shell discovery on the real user while isolating DSH and Electron state. */
+export function personalDesktopEnvironment(paths, baseEnvironment = process.env) {
+  const env = {
+    ...protectedEnvironment(baseEnvironment, paths.personalHome),
+    APPDATA: paths.personalUserData,
+    LOCALAPPDATA: paths.personalUserData,
+    XDG_CONFIG_HOME: paths.personalUserData,
+  };
+  if (baseEnvironment.HOME === undefined) delete env.HOME;
+  if (baseEnvironment.USERPROFILE === undefined) delete env.USERPROFILE;
+  return env;
 }
 
 const LAB_BUILD_ARTIFACTS = Object.freeze([
@@ -90,7 +117,18 @@ async function assertWritableDirectory(target) {
   }
 }
 
-async function assertProfile(paths, profile) {
+async function assertShellDirectories(home, directories, configureCommand) {
+  for (const directory of directories) {
+    await confinedPath(home, directory);
+    try {
+      await assertWritableDirectory(directory);
+    } catch (error) {
+      throw new Error(`Windows 用户目录不可用；请重新运行 ${configureCommand}。${String(error)}`);
+    }
+  }
+}
+
+async function assertProfile(paths, profile, expected = {}) {
   const profileFiles = profile === "desktop"
     ? {
       manifest: paths.desktopProfileManifest,
@@ -99,7 +137,15 @@ async function assertProfile(paths, profile) {
       modules: paths.desktopProfileModules,
       pluginLink: paths.desktopPluginLink,
     }
-    : {
+    : profile === "personal"
+      ? {
+        manifest: paths.personalProfileManifest,
+        patch: paths.personalProfilePatch,
+        workspace: paths.personalProfileWorkspace,
+        modules: paths.personalProfileModules,
+        pluginLink: paths.personalPluginLink,
+      }
+      : {
       manifest: paths.profileManifest,
       patch: paths.profilePatch,
       workspace: paths.profileWorkspace,
@@ -115,16 +161,19 @@ async function assertProfile(paths, profile) {
   } catch (error) {
     throw new Error(`Lab ${profile} profile manifest 不可读。${String(error)}`);
   }
-  if (!isDeepStrictEqual(manifest, createLabProfileManifest(paths))) {
-    throw new Error(`Lab ${profile} profile manifest 已偏离隔离配置；请重新运行 pnpm lab:config。`);
+  const expectedManifest = expected.manifest ?? createLabProfileManifest(paths);
+  const expectedPatch = expected.patch ?? createLabProfilePatch(createLabSafetyConfig(paths));
+  const configureCommand = expected.configureCommand ?? "pnpm lab:config";
+  if (!isDeepStrictEqual(manifest, expectedManifest)) {
+    throw new Error(`Lab ${profile} profile manifest 已偏离隔离配置；请重新运行 ${configureCommand}。`);
   }
   const patch = await readFile(profileFiles.patch, "utf8");
-  if (patch !== createLabProfilePatch(createLabSafetyConfig(paths))) {
-    throw new Error(`Lab ${profile} profile patch 已偏离隔离配置；请重新运行 pnpm lab:config。`);
+  if (patch !== expectedPatch) {
+    throw new Error(`Lab ${profile} profile patch 已偏离隔离配置；请重新运行 ${configureCommand}。`);
   }
   const workspace = await readFile(profileFiles.workspace, "utf8");
   if (workspace !== LAB_PROFILE_WORKSPACE) {
-    throw new Error(`Lab ${profile} profile workspace 已偏离隔离配置；请重新运行 pnpm lab:config。`);
+    throw new Error(`Lab ${profile} profile workspace 已偏离隔离配置；请重新运行 ${configureCommand}。`);
   }
   await confinedPath(paths.lab, profileFiles.modules);
   const pluginLink = await lstat(profileFiles.pluginLink);
@@ -133,7 +182,7 @@ async function assertProfile(paths, profile) {
   }
   const [linkedPlugin, repository] = await Promise.all([realpath(profileFiles.pluginLink), realpath(paths.root)]);
   if (linkedPlugin !== repository) {
-    throw new Error(`Lab ${profile} 插件入口未指向当前源码 checkout；请重新运行 pnpm lab:setup。`);
+    throw new Error(`Lab ${profile} 插件入口未指向当前源码 checkout；请重新运行 ${configureCommand}。`);
   }
 }
 
@@ -141,39 +190,6 @@ async function assertLabBuildArtifacts(paths) {
   for (const relativePath of LAB_BUILD_ARTIFACTS) {
     const target = join(paths.root, relativePath);
     await assertRegularFile(target, `Lab 构建产物缺失或不安全：${relativePath}；请先运行 pnpm build。`);
-  }
-}
-
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function desktopSettingMatches(settings, key, expected) {
-  return !Object.hasOwn(settings, key) || settings[key] === expected;
-}
-
-function assertSafeDesktopSettings(document) {
-  let parsed;
-  try {
-    parsed = parseYaml(document);
-  } catch (error) {
-    throw new Error(`Desktop settings.yaml 不可读。${String(error)}`);
-  }
-  const desktop = isRecord(parsed) && isRecord(parsed["dsh-desktop"])
-    ? parsed["dsh-desktop"]
-    : undefined;
-  const notifications = isRecord(parsed) && isRecord(parsed["dsh-desktop-notifications"])
-    ? parsed["dsh-desktop-notifications"]
-    : undefined;
-  if (
-    !desktop
-    || desktop.mode !== "compatibility"
-    || !desktopSettingMatches(desktop, "windowsMaterial", "off")
-    || !desktopSettingMatches(desktop, "openBrowser", false)
-    || !desktopSettingMatches(desktop, "networkExposure", "loopback")
-    || (notifications && notifications.enabled !== false)
-  ) {
-    throw new Error("Desktop settings.yaml 未保持隔离兼容配置；请重新检查 Desktop 设置。");
   }
 }
 
@@ -195,55 +211,117 @@ export async function assertLabConfiguration(paths) {
     await confinedPath(paths.lab, safety[key]);
     await assertWritableDirectory(safety[key]);
   }
+  await assertShellDirectories(paths.home, paths.homeShellDirectories, "pnpm lab:setup");
   await assertProfile(paths, "web");
   await assertLabBuildArtifacts(paths);
   return safety;
 }
 
-/** Validates every Desktop-only isolation boundary before an Electron spawn. */
-export async function assertDesktopLabConfiguration(paths) {
-  const safety = await assertLabConfiguration(paths);
-  await confinedPath(paths.lab, paths.desktopHome);
-  await confinedPath(paths.lab, paths.desktopUserData);
-  await assertWritableDirectory(paths.desktopHome);
-  await assertWritableDirectory(paths.desktopUserData);
-  await assertWritableDirectory(paths.packageStaging);
-  await assertProfile(paths, "desktop");
-  await confinedPath(paths.desktopUserData, paths.desktopProfileSelection);
+async function assertDesktopState(paths, {
+  home,
+  userData,
+  profileSelection,
+  marketSelection,
+  settings,
+  configureCommand,
+}) {
+  await confinedPath(paths.lab, home);
+  await confinedPath(paths.lab, userData);
+  await assertWritableDirectory(home);
+  await assertWritableDirectory(userData);
+  await confinedPath(userData, profileSelection);
   await assertRegularFile(
-    paths.desktopProfileSelection,
-    "Desktop profile-selection state 不存在或不是普通文件；请重新运行 pnpm lab:config。",
+    profileSelection,
+    `Desktop profile-selection state 不存在或不是普通文件；请重新运行 ${configureCommand}。`,
   );
   let state;
   try {
-    state = JSON.parse(await readFile(paths.desktopProfileSelection, "utf8"));
+    state = JSON.parse(await readFile(profileSelection, "utf8"));
   } catch (error) {
     throw new Error(`Desktop profile-selection state 不可读。${String(error)}`);
   }
   if (!isDeepStrictEqual(state, createDesktopProfileSelectionState())) {
-    throw new Error("Desktop profile-selection state 未严格选择 web Profile；请重新运行 pnpm lab:config。");
+    throw new Error(`Desktop profile-selection state 未严格选择 web Profile；请重新运行 ${configureCommand}。`);
   }
-  await confinedPath(paths.desktopUserData, paths.desktopMarketSelection);
+  await confinedPath(userData, marketSelection);
   await assertRegularFile(
-    paths.desktopMarketSelection,
-    "Desktop Market state 不存在或不是普通文件；请重新运行 pnpm lab:config。",
+    marketSelection,
+    `Desktop Market state 不存在或不是普通文件；请重新运行 ${configureCommand}。`,
   );
   let market;
   try {
-    market = JSON.parse(await readFile(paths.desktopMarketSelection, "utf8"));
+    market = JSON.parse(await readFile(marketSelection, "utf8"));
   } catch (error) {
     throw new Error(`Desktop Market state 不可读。${String(error)}`);
   }
   if (!isDeepStrictEqual(market, createDesktopMarketSelectionState())) {
-    throw new Error("Desktop Market state 未严格禁用插件市场；请重新运行 pnpm lab:config。");
+    throw new Error(`Desktop Market state 未严格禁用插件市场；请重新运行 ${configureCommand}。`);
   }
-  await confinedPath(paths.desktopHome, paths.desktopSettings);
+  await confinedPath(home, settings);
   await assertRegularFile(
-    paths.desktopSettings,
-    "Desktop settings.yaml 不存在或不是普通文件；请重新运行 pnpm lab:config。",
+    settings,
+    `Desktop settings.yaml 不存在或不是普通文件；请重新运行 ${configureCommand}。`,
   );
-  assertSafeDesktopSettings(await readFile(paths.desktopSettings, "utf8"));
+  assertSafeDesktopSettings(await readFile(settings, "utf8"));
+}
+
+/** Validates every Desktop-only isolation boundary before an Electron spawn. */
+export async function assertDesktopLabConfiguration(paths) {
+  const safety = await assertLabConfiguration(paths);
+  await assertWritableDirectory(paths.packageStaging);
+  await assertShellDirectories(paths.desktopHome, paths.desktopHomeShellDirectories, "pnpm lab:setup");
+  await assertProfile(paths, "desktop");
+  await assertDesktopState(paths, {
+    home: paths.desktopHome,
+    userData: paths.desktopUserData,
+    profileSelection: paths.desktopProfileSelection,
+    marketSelection: paths.desktopMarketSelection,
+    settings: paths.desktopSettings,
+    configureCommand: "pnpm lab:config",
+  });
   return safety;
+}
+
+/** Validates the personal Desktop profile, isolated state, and fixed real roots. */
+export async function assertPersonalLabConfiguration(paths, configuredPaths = PERSONAL_WINDOWS_PATHS) {
+  let actual;
+  try {
+    actual = JSON.parse(await readFile(paths.personalConfig, "utf8"));
+  } catch (error) {
+    throw new Error(`个人模式配置不存在或不可读；请先运行 pnpm lab:personal:config。${String(error)}`);
+  }
+  const expected = createPersonalConfig(paths, configuredPaths);
+  if (!isDeepStrictEqual(actual, expected)) {
+    throw new Error("个人模式配置与固定真实路径或隔离策略不一致；已拒绝启动。");
+  }
+  await assertPersonalTargetPaths(actual);
+  await assertPersonalOverlayDoesNotConflict(paths, actual);
+  for (const target of [
+    paths.personal,
+    paths.personalData,
+    paths.personalSkills,
+    actual.subtitleSkillDir,
+    actual.coverSkillDir,
+    actual.videoPublisherSkillDir,
+  ]) {
+    await confinedPath(paths.personal, target);
+    await assertWritableDirectory(target);
+  }
+  await assertProfile(paths, "personal", {
+    manifest: createPersonalProfileManifest(paths),
+    patch: createPersonalProfilePatch(actual),
+    configureCommand: "pnpm lab:personal:config",
+  });
+  await assertLabBuildArtifacts(paths);
+  await assertDesktopState(paths, {
+    home: paths.personalHome,
+    userData: paths.personalUserData,
+    profileSelection: paths.personalProfileSelection,
+    marketSelection: paths.personalMarketSelection,
+    settings: paths.personalSettings,
+    configureCommand: "pnpm lab:personal:config",
+  });
+  return actual;
 }
 
 function cliInvocation(cli, dshArgs) {

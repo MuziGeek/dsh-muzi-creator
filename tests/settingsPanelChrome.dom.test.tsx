@@ -135,4 +135,19 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(panelsCss).toMatch(/\.muziViewDisclosure\s*\{[\s\S]*?margin:\s*0 12px 8px 4px/);
     expect(panelsCss).not.toMatch(/\.muziViewDisclosure\s*\{[^}]*position:\s*(?:absolute|fixed)/);
   });
+
+  it("opens each settings directory picker exactly once", async () => {
+    const user = userEvent.setup();
+    const pickDirectory = vi.fn(async () => null);
+    render(<CreatorSettingsCard {...settingsCardProps(zh)} pickDirectory={pickDirectory} />);
+
+    await user.click(screen.getByRole("button", { name: "展开设置" }));
+    const pickButtons = await screen.findAllByRole("button", { name: "选择" });
+
+    await user.click(pickButtons[0]!);
+    expect(pickDirectory).toHaveBeenCalledTimes(1);
+
+    await user.click(pickButtons[1]!);
+    expect(pickDirectory).toHaveBeenCalledTimes(2);
+  });
 });

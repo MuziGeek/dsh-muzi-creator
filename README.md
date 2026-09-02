@@ -211,9 +211,11 @@ pnpm lab:config
 pnpm lab:start -- --cli /path/to/dsh/lib/bin.js --port 51873
 ```
 
-Windows 源码版 DSH 示例：`pnpm lab:start -- --cli D:\\Muzi\\DSH\\apps\\cli\\lib\\bin.js --port 51873`。`lab:setup` 只在项目内创建 `.lab/` fixture、隔离 home，以及一个精确指向当前源码目录的插件联接点；`lab:config` 写入真实的 `.lab/dsh-home/profiles/web` 与安全清单 `.lab/config/safety.json`。其中 `externalActionsEnabled` 固定为 `false`、凭据为空、内容/知识/Trellis 路径均在 `.lab` 内。脚本拒绝逃逸路径和任何非受控符号链接/联接点，不读取或复制真实用户 profile、凭据或内容。
+Windows 源码版 DSH 示例：`pnpm lab:start -- --cli D:\\Muzi\\DSH\\apps\\cli\\lib\\bin.js --port 51873`。`lab:setup` 只在项目内创建 `.lab/` fixture、隔离 home、供系统目录选择器使用的 `Desktop` / `Documents` / `Downloads`，以及一个精确指向当前源码目录的插件联接点；`lab:config` 写入真实的 `.lab/dsh-home/profiles/web` 与安全清单 `.lab/config/safety.json`。其中 `externalActionsEnabled` 固定为 `false`、凭据为空、内容/知识/Trellis 路径均在 `.lab` 内。脚本拒绝逃逸路径和任何非受控符号链接/联接点，不读取或复制真实用户 profile、凭据或内容。
 
 `lab:desktop -- --desktop <已安装的 Desktop 路径>` 只在显式普通可执行文件存在时启动，不会安装软件。脚本在启动前严格要求 `ProductName=DSH Desktop`、`FileVersion=2.0.4` 和 `ProductVersion=2.0.4.0`；同一可执行文件已有进程时也会拒绝启动，避免 Electron 把请求交给正式 Profile。Desktop 使用独立的 `.lab/desktop-home` 和 `.lab/desktop-user-data`，固定选择隔离 `web` Profile、`compatibility` 上游兼容模式和 `disabled` 插件市场，并复核源码链接、可写目录、构建产物及 Desktop 2.0.4 的三个持久状态。没有匹配的 DSH CLI 或 Desktop 时，Lab 会给出明确错误；未完成原生窗口验收时状态为 `UNVERIFIED`，不代表产品失败。
+
+需要读取本机真实工作资料时，先运行 `pnpm lab:personal:config`，再运行 `pnpm lab:personal:desktop -- --desktop "D:\\DSH Desktop\\DSH Desktop.exe"`。个人模式把 DSH Profile、Electron user-data 和插件 overlay 分别保存在 `.lab/personal/dsh-home`、`.lab/personal/user-data` 和 `.lab/personal/data`，但保留真实 `HOME` / `USERPROFILE` 供 Windows 目录选择器使用。固定业务根为 `D:\\Muzi\\Workspace\\creator-studio\\10-active`、`D:\\Muzi\\Workspace\\creator-studio`、`D:\\Muzi\\Knowledge\\muzi-atlas`、`D:\\GitProject`，Obsidian 为 `D:\\WorkSoft\\Obsidian\\Obsidian.exe`。生成器只接受存在的普通目录与 `.exe`，遇到冲突配置或 overlay 会拒绝覆盖；外部动作、发布目标、凭据和遥测仍保持关闭。个人模式中的业务命令可能作用于真实文件，验收时不要执行创建、整理、归档、同步或发布。
 
 固定安装包为 `DSH-Desktop-2.0.4-x64-Setup.exe`，GitHub Release 公布的 SHA-256 为 `c5c8a5192549e389a040ccac5320776c97ffc49c46cd21b3dd8c7cccbf48dd80`。下载和校验不等于安装；安装程序必须在执行当次获得明确确认。成品包验收使用 `.lab/packages/` 下的本地 `.tgz` 和独立 Desktop Profile，不接触个人 DSH Profile。
 

@@ -3,6 +3,12 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const LAB_DIR_NAME = ".lab";
+export const WINDOWS_SHELL_DIRECTORY_NAMES = Object.freeze(["Desktop", "Documents", "Downloads"]);
+
+/** Returns the Windows shell directories expected below a chosen user home. */
+export function windowsShellDirectories(home) {
+  return WINDOWS_SHELL_DIRECTORY_NAMES.map((name) => join(home, name));
+}
 
 /** Returns the repository root and its private Lab directories. */
 export function labPaths(repositoryRoot = resolve(fileURLToPath(new URL("..", import.meta.url)))) {
@@ -13,6 +19,12 @@ export function labPaths(repositoryRoot = resolve(fileURLToPath(new URL("..", im
   const desktopHome = join(lab, "desktop-home");
   const desktopProfile = join(desktopHome, "profiles", "web");
   const desktopUserData = join(lab, "desktop-user-data");
+  const personal = join(lab, "personal");
+  const personalHome = join(personal, "dsh-home");
+  const personalProfile = join(personalHome, "profiles", "web");
+  const personalUserData = join(personal, "user-data");
+  const personalData = join(personal, "data");
+  const personalSkills = join(personal, "skills");
   const fixture = join(lab, "fixture");
   return {
     root,
@@ -35,6 +47,23 @@ export function labPaths(repositoryRoot = resolve(fileURLToPath(new URL("..", im
     desktopProfileSelection: join(desktopUserData, "profile-selection", "state.json"),
     desktopMarketSelection: join(desktopUserData, "desktop-market", "state.json"),
     desktopSettings: join(desktopHome, "settings.yaml"),
+    homeShellDirectories: windowsShellDirectories(home),
+    desktopHomeShellDirectories: windowsShellDirectories(desktopHome),
+    personal,
+    personalHome,
+    personalProfile,
+    personalProfileManifest: join(personalProfile, "package.json"),
+    personalProfilePatch: join(personalProfile, "cordis.patch.yml"),
+    personalProfileWorkspace: join(personalProfile, "pnpm-workspace.yaml"),
+    personalProfileModules: join(personalProfile, "node_modules"),
+    personalPluginLink: join(personalProfile, "node_modules", "dsh-muzi-creator"),
+    personalUserData,
+    personalProfileSelection: join(personalUserData, "profile-selection", "state.json"),
+    personalMarketSelection: join(personalUserData, "desktop-market", "state.json"),
+    personalSettings: join(personalHome, "settings.yaml"),
+    personalData,
+    personalSkills,
+    personalConfig: join(lab, "config", "personal.json"),
     packageStaging: join(lab, "packages"),
     safetyManifest: join(lab, "config", "safety.json"),
     fixture,

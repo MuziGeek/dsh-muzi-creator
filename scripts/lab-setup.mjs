@@ -15,6 +15,8 @@ export async function setupLab(repositoryRoot) {
     paths.desktopProfile,
     paths.desktopProfileModules,
     paths.desktopUserData,
+    ...paths.homeShellDirectories,
+    ...paths.desktopHomeShellDirectories,
     paths.packageStaging,
     paths.fixture,
     paths.library,
@@ -23,8 +25,7 @@ export async function setupLab(repositoryRoot) {
     paths.data,
     paths.skills,
   ]) {
-    await prepareLabPath(paths.root, directory);
-    await mkdir(directory, { recursive: true });
+    await prepareOrdinaryLabDirectory(paths.root, directory);
   }
   const project = join(paths.library, "2026-01-01_lab-fixture");
   await prepareLabPath(paths.root, project);
@@ -36,7 +37,17 @@ export async function setupLab(repositoryRoot) {
   return paths;
 }
 
-async function ensurePluginLink(link, repositoryRoot) {
+/** Creates one Lab-owned directory and rejects a link or non-directory already at that path. */
+export async function prepareOrdinaryLabDirectory(repositoryRoot, directory) {
+  await prepareLabPath(repositoryRoot, directory);
+  await mkdir(directory, { recursive: true });
+  const info = await lstat(directory);
+  if (!info.isDirectory() || info.isSymbolicLink()) {
+    throw new Error(`Lab 目录必须是普通目录，不能是文件、符号链接或目录联接：${directory}`);
+  }
+}
+
+export async function ensurePluginLink(link, repositoryRoot) {
   try {
     const info = await lstat(link);
     if (!info.isSymbolicLink()) {
