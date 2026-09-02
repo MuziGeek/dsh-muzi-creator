@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { TrellisProjectListResult, TrellisProjectSummary } from "../../trellisTypes.ts";
-import { setSelectedContentId } from "../contentSelection.ts";
 import type { TrellisViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
+import type { ReadonlyResource } from "../workbench/WorkbenchData.ts";
+import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
+import { sidebarItemElementId } from "../workbench/sidebarLayoutBridge.ts";
 import {
   getSelectedTrellisProjectId,
   selectTrellisProject,
@@ -29,39 +31,28 @@ function projectStateLabel(project: TrellisProjectSummary, t: (key: CreatorKey) 
 export interface TrellisProjectPanelProps {
   face: TrellisViewFace;
   t: (key: CreatorKey) => string;
+  resource: ReadonlyResource<TrellisProjectListResult>;
 }
 
-export function TrellisProjectPanel({ face, t }: TrellisProjectPanelProps) {
-  const [listed, setListed] = useState<TrellisProjectListResult | null>(null);
+export function TrellisProjectPanel({ t, resource }: TrellisProjectPanelProps) {
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: listed, loading, error } = useResourceSnapshot(resource);
   const selection = useTrellisSelection();
   const epoch = useTrellisEpoch();
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (force = false) => {
     try {
-      const result = await face.listProjects();
-      setListed(result);
-      setError(null);
+      const result = await resource.load(force);
       const selectedProjectId = getSelectedTrellisProjectId();
       if (selectedProjectId !== null && !result.projects.some((project) => project.projectId === selectedProjectId)) {
         selectTrellisProject(null);
       }
-    } catch (cause) {
-      setError(String(cause));
-    } finally {
-      setLoading(false);
+    } catch {
+      // The shared resource retains its last valid project list.
     }
-  }, [face]);
+  }, [resource]);
 
-  useEffect(() => { void load(); }, [load, epoch]);
-  useEffect(() => {
-    const refresh = (): void => { void load(); };
-    window.addEventListener("focus", refresh);
-    return () => { window.removeEventListener("focus", refresh); };
-  }, [load]);
+  useEffect(() => { void load(epoch > 0); }, [load, epoch]);
 
   const filtered = useMemo(() => {
     const projects = listed?.projects ?? [];
@@ -79,7 +70,7 @@ export function TrellisProjectPanel({ face, t }: TrellisProjectPanelProps) {
         searchPlaceholder={t("projects.search.placeholder")}
         refreshLabel={t("projects.refresh")}
         onQueryChange={setQuery}
-        onRefresh={() => { void load(); }}
+        onRefresh={() => { void load(true); }}
       />
       <div className="trellisProjectList">
         {listed !== null && <p className="trellisProjectsRoot"><span>{t("projects.root")}</span><code title={listed.projectsRoot}>{listed.projectsRoot}</code></p>}
@@ -92,11 +83,11 @@ export function TrellisProjectPanel({ face, t }: TrellisProjectPanelProps) {
           return (
             <IslandSelectableCard
               key={project.projectId}
+              id={sidebarItemElementId("projects", project.projectId)}
               className={`trellisProjectCard trellisProjectMain${selected ? " selected" : ""}`}
               selected={selected}
               onSelect={() => {
-                  selectTrellisProject(project.projectId);
-                  setSelectedContentId(null);
+                selectTrellisProject(project.projectId);
               }}
             >
                 <span className={`trellisConnectionMark ${project.status}`} aria-hidden="true" />

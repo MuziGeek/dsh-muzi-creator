@@ -141,13 +141,15 @@ describe("Trellis project UI behavior", () => {
     expect(archivePreviewCanExecute(preview("signed-token"), false)).toBe(true);
   });
 
-  it("includes full-width details with Animal modal and controlled priority selection", async () => {
+  it("includes central details with Animal modal and controlled priority selection", async () => {
     const [css, inspector] = await Promise.all([
       readFile(new URL("../src/client/TrellisProjectInspector.css", import.meta.url), "utf8"),
       readFile(new URL("../src/client/TrellisProjectInspector.tsx", import.meta.url), "utf8"),
     ]);
-    expect(css).toContain("@media (max-width: 880px)");
-    expect(css).toContain("[data-surface=\"trellis-inspector\"].full");
+    expect(css).toContain("@media (max-width: 620px)");
+    expect(css).not.toContain("[data-surface=\"trellis-inspector\"].full");
+    expect(css).not.toContain("--oil-sidebar-width");
+    expect(css).not.toContain("col-resize");
     expect(css).not.toContain("!important");
     expect(inspector).toContain("IslandModal");
     expect(inspector).toContain("maskClosable={!busy}");

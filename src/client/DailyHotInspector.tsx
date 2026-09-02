@@ -1,11 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
-
-import {
-  getInspectorWidth,
-  setInspectorWidth,
-  useSidebarChromeWidth,
-} from "./contentSelection.ts";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   dailyHotItemTimestamp,
   dailyHotPrimaryLink,
@@ -14,40 +7,18 @@ import {
   previewDailyHotSources,
 } from "./dailyHotUiModel.ts";
 import { useDailyHotSelection } from "./dailyHotSelection.ts";
-import {
-  clampInspectorPreference,
-  INSPECTOR_MIN,
-  resolveInspectorLayout,
-} from "./inspectorLayout.ts";
 import type { CreatorKey } from "./locales.ts";
 import { IslandButton, IslandTag } from "./ui/IslandControls.tsx";
 import "./DailyHotInspector.css";
 
-function useViewportWidth(): number {
-  const [width, setWidth] = useState(() => typeof window === "undefined" ? 1440 : window.innerWidth);
-  useEffect(() => {
-    const update = (): void => { setWidth(window.innerWidth); };
-    window.addEventListener("resize", update);
-    return () => { window.removeEventListener("resize", update); };
-  }, []);
-  return width;
+export interface DailyHotInspectorProps {
+  t: (key: CreatorKey) => string;
 }
 
-export type DailyHotInspectorProps = PropsRuntime<"shell.overlay"> & {
-  t: (key: CreatorKey) => string;
-  closeDetails: () => void;
-};
-
-/** Shared-width read-only detail view for one selected AIHOT item. */
-export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
+/** Central read-only detail view for one selected AIHOT item. */
+export function DailyHotInspector({ t }: DailyHotInspectorProps) {
   const item = useDailyHotSelection();
-  const [width, setWidth] = useState(getInspectorWidth);
-  const viewportWidth = useViewportWidth();
-  const sidebarWidth = useSidebarChromeWidth();
-  const layout = resolveInspectorLayout(viewportWidth, sidebarWidth, width);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ x: number; width: number; latestWidth: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sourceListId = useId();
 
@@ -55,45 +26,6 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
     setSourcesExpanded(false);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [item?.id]);
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (event: PointerEvent): void => {
-      if (drag.current === null) return;
-      const next = Math.min(
-        layout.maxWidth,
-        Math.max(INSPECTOR_MIN, drag.current.width + event.clientX - drag.current.x),
-      );
-      drag.current.latestWidth = next;
-      setWidth(next);
-    };
-    const up = (): void => {
-      if (drag.current !== null) setInspectorWidth(drag.current.latestWidth);
-      setDragging(false);
-      drag.current = null;
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up, { once: true });
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-  }, [dragging, layout.maxWidth]);
-
-  const resizeWithKeyboard = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (layout.mode !== "split") return;
-    const step = event.shiftKey ? 64 : 16;
-    const next = event.key === "Home" ? INSPECTOR_MIN
-      : event.key === "End" ? layout.maxWidth
-        : event.key === "ArrowLeft" ? layout.width - step
-          : event.key === "ArrowRight" ? layout.width + step
-            : null;
-    if (next === null) return;
-    event.preventDefault();
-    const clamped = Math.min(layout.maxWidth, clampInspectorPreference(next));
-    setWidth(clamped);
-    setInspectorWidth(clamped);
-  };
-
   if (item === null) return null;
   const primaryLink = dailyHotPrimaryLink(item);
   const timestamp = dailyHotItemTimestamp(item);
@@ -101,25 +33,11 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
   const sourcePreview = previewDailyHotSources(item.sourceNames, sourcesExpanded);
 
   return (
-    <aside
+    <article
       data-plugin="dsh-muzi-creator"
       data-surface="daily-hot-inspector"
-      data-layout={layout.mode}
-      className={`${layout.mode === "full" ? "full" : ""}${dragging ? " dragging" : ""}`}
-      style={{ width: layout.width }}
       aria-label={t("hot.detail")}
     >
-      <div className="dailyHotInspectorTop">
-        <div><span>{t("hot.detail")}</span></div>
-        <IslandButton
-          className="dailyHotClose"
-          type="text"
-          size="small"
-          aria-label={t("hot.close")}
-          onClick={closeDetails}
-        >关闭</IslandButton>
-      </div>
-
       <div ref={scrollRef} className="dailyHotInspectorScroll">
         <div className="dailyHotDetailLayout">
           <article className="dailyHotArticle">
@@ -135,7 +53,7 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
                 </IslandTag>
                 {item.categoryLabel !== null && <IslandTag color="brown" size="small" variant="soft">{item.categoryLabel}</IslandTag>}
               </div>
-              <h1>{item.title}</h1>
+              <h1 id="muzi-workbench-detail-title" tabIndex={-1}>{item.title}</h1>
               <p>{item.attention.reason}</p>
               {item.attention.domains.length > 0 && (
                 <div className="dailyHotDomains" aria-label={t("hot.domains")}>
@@ -213,23 +131,6 @@ export function DailyHotInspector({ t, closeDetails }: DailyHotInspectorProps) {
         </div>
       </div>
 
-      {layout.mode === "split" && (
-        <div
-          className="dailyHotResize"
-          role="separator"
-          aria-orientation="vertical"
-          aria-label={t("hot.resize")}
-          aria-valuemin={INSPECTOR_MIN}
-          aria-valuemax={layout.maxWidth}
-          aria-valuenow={layout.width}
-          tabIndex={0}
-          onKeyDown={resizeWithKeyboard}
-          onPointerDown={(event) => {
-            drag.current = { x: event.clientX, width: layout.width, latestWidth: layout.width };
-            setDragging(true);
-          }}
-        />
-      )}
-    </aside>
+    </article>
   );
 }

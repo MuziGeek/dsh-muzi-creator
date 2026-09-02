@@ -24,12 +24,15 @@ describe("Muzi host skin client integration", () => {
     expect(client).toMatch(/export const inject = \[[^\]]*"theme"/s);
   });
 
-  it("keeps the official conversation and settings shells in control", async () => {
+  it("switches only the conversation root and leaves inner official seats and settings untouched", async () => {
     const client = await readFile(resolve(root, "src/client/index.tsx"), "utf8");
 
-    expect(client).not.toMatch(/slots\.inject\(["']conversation["']/);
+    expect(client).toMatch(/slots\.inject\(["']conversation["']/);
+    expect(client).toContain("ConversationWorkbenchController");
+    expect(client).toContain("priority: -10");
     expect(client).not.toMatch(/slots\.inject\(["']conversation\.view["']/);
     expect(client).not.toMatch(/slots\.inject\(["']conversation\.composer\.bar["']/);
     expect(client).not.toMatch(/slots\.inject\(["']sidebar\.settings["']/);
+    expect(client).not.toContain("querySelector");
   });
 });

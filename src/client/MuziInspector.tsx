@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import {
   MarkdownText,
   type MarkdownFileMentions,
 } from "@deepseek-ai/dsh-client-ui-primitives";
-import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
 import type {
   KnowledgePage,
@@ -45,18 +44,10 @@ import {
   type VideoProductionStageStatus,
 } from "./videoProductionProgress.ts";
 import {
-  getInspectorWidth,
-  setInspectorWidth,
   setSelectedContentId,
   useLibraryEpoch,
   useSelectedContentId,
-  useSidebarChromeWidth,
 } from "./contentSelection.ts";
-import {
-  clampInspectorPreference,
-  INSPECTOR_MIN,
-  resolveInspectorLayout,
-} from "./inspectorLayout.ts";
 import {
   IslandButton,
   IslandCard,
@@ -175,6 +166,12 @@ const KNOWLEDGE_CATEGORY_LABELS: Record<string, string> = {
   synthesis: "综合",
   queries: "问题",
 };
+
+function missingSelectionMessage(message: string): boolean {
+  return message === "creator project not found"
+    || message === "knowledge page is unavailable or outside the formal Wiki categories"
+    || message === "待消化文件已处理、已移动或不存在，请刷新列表";
+}
 type Tab = "overview" | MuziDocumentKey | "evidence" | "production";
 const DETAIL_TABS: Tab[] = ["overview", ...DOCUMENTS.map((item) => item.key), "evidence", "production"];
 
@@ -224,23 +221,12 @@ function formatProjectDate(value: string): string {
   }).format(date);
 }
 
-function useViewportWidth(): number {
-  const [width, setWidth] = useState(() => typeof window === "undefined" ? 1440 : window.innerWidth);
-  useEffect(() => {
-    const update = (): void => { setWidth(window.innerWidth); };
-    window.addEventListener("resize", update);
-    return () => { window.removeEventListener("resize", update); };
-  }, []);
-  return width;
-}
-
-export type MuziInspectorProps = PropsRuntime<"shell.overlay"> & {
+export interface MuziInspectorProps {
   muziFace: MuziViewFace;
   oilFace: CreatorViewFace;
   startPendingProcessing: (file: PendingKnowledgeFile) => Promise<void>;
   startKnowledgeDiscussion: (page: KnowledgePage) => Promise<void>;
-  closeDetails: () => void;
-};
+}
 
 function isKnowledgeSelection(value: string): boolean {
   return value.startsWith("knowledge:atlas://wiki/");
@@ -270,7 +256,7 @@ function PendingKnowledgeDetail({ file, onProcess }: { file: PendingKnowledgeFil
               <IslandTag size="small" color="app-orange">{PENDING_STATE_LABELS[file.state]}</IslandTag>
               <time dateTime={file.updatedAt}>更新于 {formatKnowledgeDate(file.updatedAt)}</time>
             </div>
-          <h1>{file.title}</h1>
+          <h1 id="muzi-workbench-detail-title" tabIndex={-1}>{file.title}</h1>
           <p>{file.relativePath} · {(file.size / 1024).toFixed(file.size < 1024 ? 1 : 0)} KB · 指纹 <code>{file.sha256.slice(0, 12)}…</code></p>
         </div>
         <IslandButton type="primary" size="middle" className="knowledgeDiscuss" icon={<IslandIcon name="icon-diy" size={18} />} onClick={onProcess}>处理文件</IslandButton>
@@ -307,7 +293,7 @@ function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: 
               <IslandTag size="small" color="app-teal">{category}</IslandTag>
               <time dateTime={page.updatedAt}>更新于 {formatKnowledgeDate(page.updatedAt)}</time>
             </div>
-          <h1>{page.title}</h1>
+          <h1 id="muzi-workbench-detail-title" tabIndex={-1}>{page.title}</h1>
           <p>内容指纹 <code>{page.sha256.slice(0, 12)}…</code></p>
         </div>
         <IslandButton type="default" size="middle" className="knowledgeDiscuss" icon={<IslandIcon name="icon-chat" size={18} />} onClick={onDiscuss}>
@@ -328,7 +314,6 @@ export function MuziInspector({
   oilFace,
   startPendingProcessing,
   startKnowledgeDiscussion,
-  closeDetails,
 }: MuziInspectorProps) {
   const [selectedId] = useSelectedContentId();
   const epoch = useLibraryEpoch();
@@ -353,18 +338,6 @@ export function MuziInspector({
   const [acceptanceSession, setAcceptanceSession] = useState<VideoAcceptanceSessionResult | null>(null);
   const [acceptanceMetricsCollectedSessionId, setAcceptanceMetricsCollectedSessionId] = useState<string | null>(null);
   const [acceptanceBlocker, setAcceptanceBlocker] = useState<string | null>(null);
-  const [width, setWidth] = useState(getInspectorWidth);
-  const viewportWidth = useViewportWidth();
-  const sidebarWidth = useSidebarChromeWidth();
-  const layout = resolveInspectorLayout(viewportWidth, sidebarWidth, width);
-  const [expanded, setExpanded] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ x: number; width: number; latestWidth: number } | null>(null);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => { setExpanded(true); });
-    return () => { window.cancelAnimationFrame(frame); };
-  }, []);
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -392,7 +365,15 @@ export function MuziInspector({
       : isKnowledgeSelection(selectedId)
         ? muziFace.getKnowledgePage(selectedId.slice("knowledge:".length)).then((value) => { if (!cancelled) setPage(value); })
         : muziFace.getProject(selectedId).then((value) => { if (!cancelled) setProject(value); });
-    void load.catch((cause: unknown) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "读取失败"); });
+    void load.catch((cause: unknown) => {
+      if (cancelled) return;
+      const message = cause instanceof Error ? cause.message : "读取失败";
+      if (missingSelectionMessage(message)) {
+        setSelectedContentId(null);
+        return;
+      }
+      setError(message);
+    });
     return () => { cancelled = true; };
   }, [selectedId, epoch]);
 
@@ -456,43 +437,6 @@ export function MuziInspector({
     });
     return () => { cancelled = true; };
   }, [epoch, oilFace, project?.folderName]);
-
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (event: PointerEvent): void => {
-      if (drag.current === null) return;
-      const next = Math.min(layout.maxWidth, Math.max(INSPECTOR_MIN, drag.current.width + event.clientX - drag.current.x));
-      drag.current.latestWidth = next;
-      setWidth(next);
-    };
-    const up = (): void => {
-      if (drag.current !== null) setInspectorWidth(drag.current.latestWidth);
-      setDragging(false);
-      drag.current = null;
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up, { once: true });
-    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-  }, [dragging, layout.maxWidth]);
-
-  const resizeWithKeyboard = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (layout.mode !== "split") return;
-    const step = event.shiftKey ? 64 : 16;
-    const next = event.key === "Home"
-      ? INSPECTOR_MIN
-      : event.key === "End"
-        ? layout.maxWidth
-        : event.key === "ArrowLeft"
-          ? layout.width - step
-          : event.key === "ArrowRight"
-            ? layout.width + step
-            : null;
-    if (next === null) return;
-    event.preventDefault();
-    const clamped = Math.min(layout.maxWidth, clampInspectorPreference(next));
-    setWidth(clamped);
-    setInspectorWidth(clamped);
-  };
 
   const openInObsidian = async (document: MuziDocumentKey): Promise<void> => {
     if (project === null) return;
@@ -894,13 +838,8 @@ export function MuziInspector({
     && (acceptanceSession.capability === "publish_now" || acceptanceSession.capability === "schedule")
     && acceptancePrepared
     && !acceptanceCommitted;
-  const shownWidth = expanded ? layout.width : 0;
   return (
-    <div data-plugin="dsh-muzi-creator" data-surface="muzi-inspector" className={`${expanded ? "open" : ""}${layout.mode === "full" ? " full" : ""}${dragging ? " dragging" : ""}`} style={{ width: shownWidth }}>
-      <div className="muziInspectorTop">
-        <div className="muziInspectorTitle">{knowledgePreview !== null ? "知识预览" : page !== null || pending !== null ? "知识详情" : project === null ? "Muzi Creator" : "内容详情"}</div>
-        <IslandButton type="text" aria-label="关闭详情" onClick={closeDetails}>关闭</IslandButton>
-      </div>
+    <article data-plugin="dsh-muzi-creator" data-surface="muzi-inspector">
       {error !== null && <div className="muziInspectorEmpty error">{error}</div>}
       {error === null && page !== null && <KnowledgeDetail page={page} onDiscuss={() => {
         void startKnowledgeDiscussion(page).catch((cause: unknown) => {
@@ -927,11 +866,11 @@ export function MuziInspector({
               children: key === tab ? <div className="muziInspectorBody">
             {tab === "overview" && (
               <div className="muziOverview">
-                <IslandCard className="muziProjectHero" color="default" pattern="default" aria-labelledby="muzi-project-title">
+                <IslandCard className="muziProjectHero" color="default" pattern="default" aria-labelledby="muzi-workbench-detail-title">
                   <MuziProjectCover id={project.id} title={project.title} revision={project.coverRevision} load={muziFace.getProjectCover} className="muziProjectHeroCover" />
                   <div className="muziProjectHeroBody">
                     <div className="muziProjectHeroHeading">
-                      <h1 id="muzi-project-title">{project.title}</h1>
+                      <h1 id="muzi-workbench-detail-title" tabIndex={-1}>{project.title}</h1>
                       <StatusBadge status={project.stage} label={STAGE_LABELS[project.stage]} />
                     </div>
                     <p>最近更新于 {formatProjectDate(project.updatedAt)}</p>
@@ -1094,25 +1033,7 @@ export function MuziInspector({
         </>
       )}
       {notice !== null && <div className="muziNotice" role="status" aria-live="polite"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
-      {layout.mode === "split" && (
-        <div
-          className="muziResize"
-          role="separator"
-          tabIndex={0}
-          aria-label="调整详情宽度"
-          aria-orientation="vertical"
-          aria-valuemin={INSPECTOR_MIN}
-          aria-valuemax={Math.round(layout.maxWidth)}
-          aria-valuenow={Math.round(layout.width)}
-          onKeyDown={resizeWithKeyboard}
-          onPointerDown={(event) => {
-            event.preventDefault();
-            drag.current = { x: event.clientX, width: layout.width, latestWidth: layout.width };
-            setDragging(true);
-          }}
-        />
-      )}
-    </div>
+    </article>
   );
 }
 

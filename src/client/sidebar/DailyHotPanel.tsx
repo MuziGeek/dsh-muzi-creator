@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import type { DailyHotItem, DailyHotResult } from "../../dailyHotTypes.ts";
-import { setSelectedContentId } from "../contentSelection.ts";
 import {
   dailyHotItems,
   dailyHotItemTimestamp,
@@ -14,7 +13,9 @@ import {
 } from "../dailyHotSelection.ts";
 import type { DailyHotViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
-import { selectTrellisProject } from "../trellisSelection.ts";
+import type { ReadonlyResource } from "../workbench/WorkbenchData.ts";
+import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
+import { sidebarItemElementId } from "../workbench/sidebarLayoutBridge.ts";
 import {
   IslandButton,
   IslandSelectableCard,
@@ -34,13 +35,12 @@ interface DailyHotItemButtonProps {
 function DailyHotItemButton({ item, featured, selected, t }: DailyHotItemButtonProps) {
   return (
     <IslandSelectableCard
+      id={sidebarItemElementId("hot", item.id)}
       className={`dailyHotItem${featured ? " featured" : ""}${selected ? " selected" : ""}`}
       aria-label={`${t("hot.openDetail")}：${item.title}`}
       selected={selected}
       selectedColor="lime-green"
       onSelect={() => {
-        setSelectedContentId(null);
-        selectTrellisProject(null);
         selectDailyHotItem(item);
       }}
     >
@@ -93,53 +93,28 @@ function DailyHotTier({ id, items, label, featured = false, emptyLabel, selected
 export interface DailyHotPanelProps {
   face: DailyHotViewFace;
   t: (key: CreatorKey) => string;
+  resource: ReadonlyResource<DailyHotResult>;
 }
 
 /** Read-only AIHOT triage panel for the Muzi sidebar. */
-export function DailyHotPanel({ face, t }: DailyHotPanelProps) {
-  const [data, setData] = useState<DailyHotResult | null>(null);
-  const dataRef = useRef<DailyHotResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function DailyHotPanel({ t, resource }: DailyHotPanelProps) {
+  const { data, loading, refreshing, error } = useResourceSnapshot(resource);
   const [otherExpanded, setOtherExpanded] = useState(false);
-  const requestEpoch = useRef(0);
   const selected = useDailyHotSelection();
   const otherId = useId();
 
-  useEffect(() => { dataRef.current = data; }, [data]);
-
   const load = useCallback(async (refresh: boolean) => {
-    const epoch = requestEpoch.current + 1;
-    requestEpoch.current = epoch;
-    if (dataRef.current === null) setLoading(true);
-    if (refresh) setRefreshing(true);
     try {
-      if (!face.ready()) throw new Error(t("hot.error.connecting"));
-      const next = await face.getDailyHot(refresh);
-      if (requestEpoch.current !== epoch) return;
-      dataRef.current = next;
-      setData(next);
-      setError(null);
-      const current = getSelectedDailyHotItem();
-      if (current !== null) {
-        selectDailyHotItem(dailyHotItems(next).find((item) => item.id === current.id) ?? null);
-      }
-    } catch (cause) {
-      if (requestEpoch.current === epoch) {
-        setError(cause instanceof Error ? cause.message : String(cause));
-      }
-    } finally {
-      if (requestEpoch.current === epoch) {
-        setLoading(false);
-        setRefreshing(false);
-      }
+      const next = await resource.load(refresh);
+      const selectedId = getSelectedDailyHotItem()?.id;
+      if (selectedId !== undefined) selectDailyHotItem(dailyHotItems(next).find((item) => item.id === selectedId) ?? null);
+    } catch {
+      // The shared resource publishes the scoped error while retaining its last value.
     }
-  }, [face, t]);
+  }, [resource]);
 
   useEffect(() => {
     void load(false);
-    return () => { requestEpoch.current += 1; };
   }, [load]);
 
   const allItems = useMemo(() => data === null ? [] : dailyHotItems(data), [data]);

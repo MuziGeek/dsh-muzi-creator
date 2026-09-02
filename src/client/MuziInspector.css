@@ -1,21 +1,20 @@
+/* Hallmark · macrostructure: Central detail · tone: warm precise · anchor hue: leaf */
+
 [data-plugin="dsh-muzi-creator"][data-surface="muzi-inspector"] {
-  position: absolute;
-  inset: 0 auto 0 var(--oil-sidebar-width, 360px);
-  z-index: 8;
+  position: relative;
   display: flex;
+  width: 100%;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid var(--muzi-island-line);
   background: var(--muzi-surface);
   color: var(--muzi-island-text);
   box-sizing: border-box;
   container-name: muzi-inspector;
   container-type: inline-size;
 }
-
-[data-plugin="dsh-muzi-creator"][data-surface="muzi-inspector"].full { left: 0; }
-[data-plugin="dsh-muzi-creator"][data-surface="muzi-inspector"].dragging { user-select: none; }
 
 [data-plugin="dsh-muzi-creator"] .muziInspectorTop { display: flex; height: 52px; flex: none; align-items: center; justify-content: space-between; padding: 0 18px; border-bottom: 1px solid var(--muzi-island-line); }
 [data-plugin="dsh-muzi-creator"] .muziInspectorTitle { overflow: hidden; font-size: 15px; font-weight: 600; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
@@ -244,20 +243,9 @@
 [data-plugin="dsh-muzi-creator"] .muziNotice button { flex: none; }
 [data-plugin="dsh-muzi-creator"] .muziInspectorEmpty { padding: 40px 18px; color: var(--muzi-island-text-muted); text-align: center; }
 [data-plugin="dsh-muzi-creator"] .muziInspectorEmpty.error { color: var(--muzi-island-danger); }
-[data-plugin="dsh-muzi-creator"] .muziResize { position: absolute; top: 0; right: -6px; bottom: 0; z-index: 2; width: 12px; cursor: col-resize; touch-action: none; }
-[data-plugin="dsh-muzi-creator"] .muziResize::after { position: absolute; top: 50%; left: 5px; width: 2px; height: 36px; border-radius: 999px; background: var(--muzi-border-strong); content: ""; opacity: 0; transform: translateY(-50%); transition: opacity var(--muzi-motion-fast) var(--muzi-ease), background-color var(--muzi-motion-fast) var(--muzi-ease); }
-[data-plugin="dsh-muzi-creator"] .muziResize:hover::after,
-[data-plugin="dsh-muzi-creator"] .muziResize:focus-visible::after { background: var(--muzi-island-focus); opacity: 1; }
-[data-plugin="dsh-muzi-creator"] .muziResize:focus-visible { outline: 0; }
-
 @keyframes muziOverviewReveal {
   from { opacity: .72; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-@media (max-width: 880px) {
-  [data-plugin="dsh-muzi-creator"][data-surface="muzi-inspector"] { left: 0; }
-  [data-plugin="dsh-muzi-creator"] .muziResize { display: none; }
 }
 
 @media (max-width: 560px) {

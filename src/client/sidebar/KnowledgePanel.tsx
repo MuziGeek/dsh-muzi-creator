@@ -7,6 +7,7 @@ import type {
 import type { MuziViewFace } from "../face.ts";
 import { setSelectedContentId, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
+import { sidebarItemElementId } from "../workbench/sidebarLayoutBridge.ts";
 import {
   IslandIcon,
   IslandSelectableCard,
@@ -35,6 +36,7 @@ function KnowledgeRow({ item, selected }: { item: KnowledgePageSummary; selected
   const openKnowledge = (): void => { setSelectedContentId(knowledgeSelection(item.locator)); };
   return (
     <IslandSelectableCard
+      id={sidebarItemElementId("knowledge", `page:${item.locator}`)}
       className={selected ? "muziListRow muziKnowledgeRow selected" : "muziListRow muziKnowledgeRow"}
       selected={selected}
       onSelect={openKnowledge}

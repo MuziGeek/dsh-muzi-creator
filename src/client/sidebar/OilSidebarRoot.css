@@ -199,6 +199,41 @@
   text-align: left;
 }
 
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabLabel { min-width: 0; }
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--muzi-island-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border: 2px solid currentcolor;
+  border-radius: 50%;
+  background: transparent;
+}
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge.pending { color: var(--muzi-island-warning); }
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge.running { color: var(--muzi-island-leaf); }
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .workbenchSlotError {
+  margin: 0 12px 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--animal-error-color);
+  border-radius: var(--muzi-radius-md);
+  background: var(--animal-error-color-bg);
+  color: var(--animal-error-color-active);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .regionArea {
   position: relative;
   display: flex;

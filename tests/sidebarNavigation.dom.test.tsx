@@ -8,8 +8,13 @@ import { setSelectedContentId, setSidebarTab } from "../src/client/contentSelect
 import { selectDailyHotItem } from "../src/client/dailyHotSelection.ts";
 import { OilSidebarRoot } from "../src/client/sidebar/OilSidebarRoot.tsx";
 import { selectTrellisProject } from "../src/client/trellisSelection.ts";
+import type { SessionActivitySnapshot } from "../src/client/workbench/sessionActivity.ts";
+import { ReadonlyResource } from "../src/client/workbench/WorkbenchData.ts";
 
-function sidebarProps(): ComponentProps<typeof OilSidebarRoot> {
+const EMPTY_SESSIONS: SessionActivitySnapshot = { ids: [], byId: {} };
+
+function sidebarProps(sessionSnapshot: SessionActivitySnapshot = EMPTY_SESSIONS): ComponentProps<typeof OilSidebarRoot> {
+  const unavailable = <T,>() => new ReadonlyResource<T>(async () => { throw new Error("测试数据不可用"); });
   return {
     collapsed: false,
     width: 360,
@@ -32,6 +37,16 @@ function sidebarProps(): ComponentProps<typeof OilSidebarRoot> {
     muziFace: {} as never,
     trellisFace: {} as never,
     contentT: (key: string) => key,
+    resources: {
+      hot: unavailable(),
+      content: unavailable(),
+      knowledge: unavailable(),
+      projects: unavailable(),
+    },
+    sessionList: {
+      getSnapshot: () => sessionSnapshot,
+      subscribe: () => () => undefined,
+    },
   } as unknown as ComponentProps<typeof OilSidebarRoot>;
 }
 
@@ -82,5 +97,19 @@ describe("Muzi Creator sidebar navigation", () => {
     await waitFor(() => {
       expect(document.querySelector<HTMLElement>('[data-surface="sidebar"]')?.classList.contains("collapsed")).toBe(true);
     });
+  });
+
+  it("announces pending interactions before background running sessions", () => {
+    render(<OilSidebarRoot {...sidebarProps({
+      ids: ["running", "pending"],
+      byId: {
+        running: { running: true },
+        pending: { running: true, pendingInteraction: "approval" },
+      },
+    })} />);
+
+    const sessions = screen.getByRole("tab", { name: "会话，待处理 1" });
+    expect(sessions.textContent).toContain("待处理 1");
+    expect(sessions.querySelector(".sessionActivityBadge.pending i")).not.toBeNull();
   });
 });

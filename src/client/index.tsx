@@ -73,9 +73,6 @@ import type {
   TrellisProjectDetail,
   TrellisProjectListResult,
 } from "../trellisTypes.ts";
-import { MuziInspector } from "./MuziInspector.tsx";
-import { DailyHotInspector } from "./DailyHotInspector.tsx";
-import { TrellisProjectInspector } from "./TrellisProjectInspector.tsx";
 import {
   registerMuziHeroBrandMark,
   type CompatibleHeroBrandSlots,
@@ -84,18 +81,13 @@ import "./IslandWorkbench.css";
 import {
   bumpLibrary,
   bumpProfile,
-  getSelectedContentId,
-  setSelectedContentId,
+  getSidebarTab,
   setSidebarTab,
-  subscribeSelectedContentId,
+  setWorkbenchSlotError,
+  subscribeSidebarChrome,
 } from "./contentSelection.ts";
 import type { CredentialsClient } from "./credentialsApi.ts";
 import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
-import {
-  getSelectedDailyHotItem,
-  selectDailyHotItem,
-  subscribeDailyHotSelection,
-} from "./dailyHotSelection.ts";
 import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
 import { en, NS, type CreatorKey, zh } from "./locales.ts";
 import { OilSidebarRoot } from "./sidebar/OilSidebarRoot.tsx";
@@ -104,12 +96,10 @@ import {
   registerCreatorSettingsCard,
   type CompatibleSettingsSlots,
 } from "./settingsSlot.ts";
-import {
-  bumpTrellis,
-  getSelectedTrellisProjectId,
-  selectTrellisProject,
-  subscribeTrellisSelection,
-} from "./trellisSelection.ts";
+import { bumpTrellis } from "./trellisSelection.ts";
+import { createWorkbenchResources } from "./workbench/WorkbenchData.ts";
+import { MuziWorkbenchRoot } from "./workbench/MuziWorkbenchRoot.tsx";
+import { ConversationWorkbenchController } from "./workbench/conversationSlot.ts";
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
@@ -197,9 +187,16 @@ interface SkillCatalogApi {
 
 interface FreshSessionsClient {
   list: {
+    subscribe: (listener: () => void) => () => void;
     getSnapshot: () => {
+      ids: SessionId[];
       current: SessionId | undefined;
-      byId: Record<string, { id: SessionId; cwd?: string }>;
+      byId: Record<string, {
+        id: SessionId;
+        cwd?: string;
+        running: boolean;
+        pendingInteraction?: string;
+      }>;
     };
   };
   create: (options: { workspaceId: WorkspaceId }) => Promise<SessionId>;
@@ -625,6 +622,7 @@ export function apply(ctx: ClientContext): void {
       );
     },
   };
+  const workbenchResources = createWorkbenchResources(dailyHotFace, muziFace, trellisFace);
 
   const handoffWorkspace = (): WorkspaceId => {
     const workspaces = ctx.workspaces.list.getSnapshot();
@@ -640,7 +638,6 @@ export function apply(ctx: ClientContext): void {
 
   const revealHandoff = (sessionId: SessionId): void => {
     (ctx.get("sessions") as unknown as FreshSessionsClient).open(sessionId);
-    setSelectedContentId(null);
     setSidebarTab("sessions");
   };
 
@@ -720,6 +717,8 @@ export function apply(ctx: ClientContext): void {
         muziFace={muziFace}
         trellisFace={trellisFace}
         contentT={contentT}
+        sessionList={(ctx.get("sessions") as unknown as FreshSessionsClient).list}
+        resources={workbenchResources}
       />
     );
   }
@@ -753,89 +752,39 @@ export function apply(ctx: ClientContext): void {
     bumpProfile();
     bumpTrellis();
 
-    const stopOverlay = ctx.slots.inject("shell.overlay", () => {
-      let disposeOccupant: (() => void) | undefined;
-      let occupant: "content" | "hot" | "project" | null = null;
-      const release = (): void => {
-        disposeOccupant?.();
-        disposeOccupant = undefined;
-        occupant = null;
-      };
-      const sync = (): void => {
-        const contentSelected = getSelectedContentId() !== null;
-        const projectSelected = getSelectedTrellisProjectId() !== null;
-        const hotSelected = getSelectedDailyHotItem() !== null;
-        const next = contentSelected ? "content" : projectSelected ? "project" : hotSelected ? "hot" : null;
-        if (next === null) {
-          release();
-          return;
-        }
-        if (disposeOccupant !== undefined && occupant === next) return;
-        release();
-        if (next === "project") {
-          disposeOccupant = ctx.slots.register({
-            name: "shell.overlay",
-            id: "muzi-trellis-project-inspector",
-            order: 20,
-            locale: NS,
-            inject: () => ({
-              face: trellisFace,
-              t: ctx.locale.bind(NS),
-              closeDetails: () => { selectTrellisProject(null); },
+    const stopWorkbench = ctx.slots.inject("conversation", () => {
+      const controller = new ConversationWorkbenchController(
+        () => ctx.slots.register({
+          name: "conversation",
+          priority: -10,
+          locale: NS,
+          inject: () => ({
+            resources: workbenchResources,
+            muziFace,
+            oilFace: contentFace,
+            trellisFace,
+            t: ctx.locale.bind(NS),
+            startPendingProcessing: (file: PendingKnowledgeFile) => createHandoff({
+              prompt: "/llm-wiki 请消化所引用的待处理文件。先执行隐私自查与缓存检查；确认可处理后，按 llm-wiki 标准写入正式知识并更新索引。完成后报告新增或更新的正式知识定位符。",
+              label: "待消化文件",
+              ref: `pending:${file.id}:${file.sha256}`,
+              requireLlmWiki: true,
             }),
-          }, TrellisProjectInspector);
-          occupant = "project";
-          return;
-        }
-        if (next === "hot") {
-          disposeOccupant = ctx.slots.register({
-            name: "shell.overlay",
-            id: "muzi-daily-hot-inspector",
-            order: 20,
-            locale: NS,
-            inject: () => ({
-              t: ctx.locale.bind(NS),
-              closeDetails: () => { selectDailyHotItem(null); },
+            startKnowledgeDiscussion: (page: KnowledgePage) => createHandoff({
+              prompt: "请基于所引用的正式知识，先讨论核心观点、证据边界与可行的创作方向。除非我明确输入“总结成为母内容”或“整理为脚本”，否则不要写入 Creator Studio。",
+              label: page.title,
+              ref: `knowledge:${page.locator}`,
             }),
-          }, DailyHotInspector);
-          occupant = "hot";
-          return;
-        }
-        disposeOccupant = ctx.slots.register({
-            name: "shell.overlay",
-            id: "muzi-creator-inspector",
-            order: 20,
-            locale: NS,
-            inject: () => ({
-              muziFace,
-              oilFace: contentFace,
-              startPendingProcessing: (file: PendingKnowledgeFile) => createHandoff({
-                prompt: "/llm-wiki 请消化所引用的待处理文件。先执行隐私自查与缓存检查；确认可处理后，按 llm-wiki 标准写入正式知识并更新索引。完成后报告新增或更新的正式知识定位符。",
-                label: "待消化文件",
-                ref: `pending:${file.id}:${file.sha256}`,
-                requireLlmWiki: true,
-              }),
-              startKnowledgeDiscussion: (page: KnowledgePage) => createHandoff({
-                prompt: "请基于所引用的正式知识，先讨论核心观点、证据边界与可行的创作方向。除非我明确输入“总结成为母内容”或“整理为脚本”，否则不要写入 Creator Studio。",
-                label: page.title,
-                ref: `knowledge:${page.locator}`,
-              }),
-              closeDetails: () => {
-                setSelectedContentId(null);
-              },
-            }),
-          }, MuziInspector);
-        occupant = "content";
-      };
-      const stopContent = subscribeSelectedContentId(sync);
-      const stopProject = subscribeTrellisSelection(sync);
-      const stopHot = subscribeDailyHotSelection(sync);
+          }),
+        }, MuziWorkbenchRoot),
+        setWorkbenchSlotError,
+      );
+      const sync = (): void => { controller.sync(getSidebarTab()); };
+      const stopTab = subscribeSidebarChrome(sync);
       sync();
       return () => {
-        stopContent();
-        stopProject();
-        stopHot();
-        release();
+        stopTab();
+        controller.dispose();
       };
     });
     const stopSettings = ctx.slots.inject("settings.plugin.item", () =>
@@ -867,7 +816,7 @@ export function apply(ctx: ClientContext): void {
       stopLive();
       stopMuziLive();
       stopTrellisLive();
-      stopOverlay();
+      stopWorkbench();
       stopSettings();
       await disposeRemote();
     };

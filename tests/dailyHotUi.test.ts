@@ -14,6 +14,8 @@ import {
 } from "../src/client/dailyHotUiModel.ts";
 import {
   getSelectedDailyHotItem,
+  getSelectedDailyHotId,
+  resolveDailyHotSelection,
   selectDailyHotItem,
   subscribeDailyHotSelection,
 } from "../src/client/dailyHotSelection.ts";
@@ -135,6 +137,13 @@ describe("Daily Hot client model", () => {
     stop();
   });
 
+  it("returns a missing restored hotspot to the overview", () => {
+    selectDailyHotItem(item("removed"));
+    expect(getSelectedDailyHotId()).toBe("removed");
+    expect(resolveDailyHotSelection([])).toBeNull();
+    expect(getSelectedDailyHotId()).toBeNull();
+  });
+
   it("keeps Chinese and English locale keys paired", () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort());
     expect(zh["tab.hot"]).toBe("热点");
@@ -161,7 +170,8 @@ describe("Daily Hot UI contract", () => {
     expect(knowledge).toBeLessThan(projects);
     expect(sidebar).toContain('<IslandIcon name="icon-miles"');
     expect(sidebar).not.toContain("IconLightOutline16");
-    expect(sidebar).toContain('if (tab !== "hot") selectDailyHotItem(null)');
+    expect(sidebar).not.toContain('if (tab !== "hot") selectDailyHotItem(null)');
+    expect(sidebar).toContain("setSidebarTab(tab)");
     expect(panel).toContain("aria-busy={loading || refreshing}");
     expect(panel).toContain("aria-expanded={otherExpanded}");
     expect(panel).toContain("aria-controls={otherId}");
@@ -170,17 +180,18 @@ describe("Daily Hot UI contract", () => {
     expect(panel).toContain('target="_blank" rel="noreferrer"');
   });
 
-  it("reuses the shared inspector geometry and safe external links", async () => {
+  it("renders the hotspot detail in the central workbench with safe external links", async () => {
     const [inspector, css, client] = await Promise.all([
       readFile(new URL("../src/client/DailyHotInspector.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/client/DailyHotInspector.css", import.meta.url), "utf8"),
       readFile(new URL("../src/client/index.tsx", import.meta.url), "utf8"),
     ]);
-    expect(inspector).toContain("resolveInspectorLayout");
+    expect(inspector).not.toContain("resolveInspectorLayout");
     expect(inspector).not.toContain("applyConversationInset");
-    expect(inspector).toContain("setInspectorWidth");
-    expect(inspector).toContain('role="separator"');
-    expect(inspector).toContain("data-layout={layout.mode}");
+    expect(inspector).not.toContain("setInspectorWidth");
+    expect(inspector).not.toContain('role="separator"');
+    expect(inspector).not.toContain("data-layout={layout.mode}");
+    expect(inspector).toContain("<article");
     expect(inspector).toContain('className="dailyHotDetailLayout"');
     expect(inspector).toContain('className="dailyHotEvidenceRail"');
     expect(inspector).toContain('className="dailyHotLatest"');
@@ -195,12 +206,14 @@ describe("Daily Hot UI contract", () => {
     expect(inspector.match(/target="_blank" rel="noreferrer"/g)).toHaveLength(2);
     expect(css).toContain("@media (min-width: 1080px)");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr) 288px");
-    expect(css).toContain("@media (max-width: 880px)");
-    expect(css).toContain("[data-surface=\"daily-hot-inspector\"].full");
+    expect(css).not.toContain("col-resize");
+    expect(css).not.toContain("[data-surface=\"daily-hot-inspector\"].full");
+    expect(css).not.toContain("--oil-sidebar-width");
     expect(css).not.toContain("!important");
     expect(css).toContain("overflow: auto");
-    expect(client).toContain('occupant: "content" | "hot" | "project" | null');
-    expect(client).toContain("subscribeDailyHotSelection(sync)");
-    expect(client).toContain('id: "muzi-daily-hot-inspector"');
+    expect(client).toContain('ctx.slots.inject("conversation"');
+    expect(client).toContain("ConversationWorkbenchController");
+    expect(client).toContain("MuziWorkbenchRoot");
+    expect(client).not.toContain('id: "muzi-daily-hot-inspector"');
   });
 });

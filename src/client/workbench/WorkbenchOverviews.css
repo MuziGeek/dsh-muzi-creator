@@ -1,0 +1,183 @@
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 · macrostructure: Workbench · tone: warm precise · anchor hue: earth-mint */
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverview {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--muzi-island-line);
+  border-radius: var(--muzi-island-radius-lg);
+  background: var(--muzi-island-paper);
+  color: var(--muzi-island-text);
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader,
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader > div {
+  min-width: 0;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader h2,
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader h2 {
+  color: var(--muzi-island-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader p {
+  margin-top: 5px;
+  color: var(--muzi-island-text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewMetric {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--muzi-island-line);
+  border-radius: var(--muzi-island-radius-md);
+  background: var(--muzi-island-canvas);
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewMetric dt,
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewMetric small {
+  color: var(--muzi-island-text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewMetric dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--muzi-island-text);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewBreakdown {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--muzi-island-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewBreakdown > span:first-child {
+  margin-right: 2px;
+  color: var(--muzi-island-text-soft);
+  font-weight: 600;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewList {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCard {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  padding: 12px 14px;
+  color: var(--muzi-island-paper-text);
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCardHeading,
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCardMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCardHeading {
+  justify-content: space-between;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCardHeading strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muzi-island-paper-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCardHeading .animal-tag {
+  flex: none;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCardMeta {
+  justify-content: space-between;
+  color: var(--muzi-island-paper-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewCardMeta > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewExcerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muzi-island-paper-text);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (max-width: 430px) {
+  [data-plugin="dsh-muzi-creator"] .workbenchOverview {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .workbenchOverviewMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-plugin="dsh-muzi-creator"] .workbenchOverviewCardMeta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .workbenchOverviewCardMeta > span {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-plugin="dsh-muzi-creator"] .workbenchOverviewCard {
+    transition: none;
+  }
+}

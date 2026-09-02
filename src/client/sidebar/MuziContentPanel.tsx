@@ -12,6 +12,8 @@ import {
   IslandState,
   IslandTag,
 } from "../ui/IslandControls.tsx";
+import type { ReadonlyResource } from "../workbench/WorkbenchData.ts";
+import { sidebarItemElementId } from "../workbench/sidebarLayoutBridge.ts";
 import "./MuziPanels.css";
 
 const DOC_LABELS = { mother: "母内容", video: "视频稿", wechat: "公众号", xiaohongshu: "小红书", blog: "博客" } as const;
@@ -23,7 +25,7 @@ function statusCount(project: Awaited<ReturnType<MuziViewFace["listProjects"]>>[
   return { ready, published };
 }
 
-export function MuziContentPanel({ face }: { face: MuziViewFace }) {
+export function MuziContentPanel({ face, resource }: { face: MuziViewFace; resource: ReadonlyResource<Awaited<ReturnType<MuziViewFace["listProjects"]>>> }) {
   const [query, setQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [items, setItems] = useState<Awaited<ReturnType<MuziViewFace["listProjects"]>>["items"]>([]);
@@ -35,11 +37,13 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
   const [selectedId, setSelectedId] = useSelectedContentId();
   const epoch = useLibraryEpoch();
 
-  const load = async (): Promise<void> => {
+  const load = async (force = false): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const result = await face.listProjects(query, includeArchived);
+      const result = query.trim() === "" && !includeArchived
+        ? await resource.load(force)
+        : await face.listProjects(query, includeArchived);
       setItems(result.items);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "内容读取失败");
@@ -49,7 +53,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
   };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void load(); }, 180);
+    const timer = window.setTimeout(() => { void load(epoch > 0); }, 180);
     return () => { window.clearTimeout(timer); };
   }, [query, includeArchived, epoch]);
 
@@ -82,7 +86,7 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
         viewLabel="内容视图选项"
         onQueryChange={setQuery}
         onAdd={() => { setCreateError(null); setCreateDraft({ title: "", primary: "mother" }); }}
-        onRefresh={() => { void load(); }}
+        onRefresh={() => { void load(true); }}
         viewContent={(
           <IslandCheckbox
             className="muziViewToggle"
@@ -100,10 +104,11 @@ export function MuziContentPanel({ face }: { face: MuziViewFace }) {
         {items.map((item) => {
           const counts = statusCount(item);
           const selected = selectedId === item.id;
-          const toggleSelection = (): void => { setSelectedId(selected ? null : item.id); };
+          const toggleSelection = (): void => { setSelectedId(item.id); };
           return (
             <IslandSelectableCard
               key={item.id}
+              id={sidebarItemElementId("content", item.id)}
               className={selected ? "muziListRow muziContentRow selected" : "muziListRow muziContentRow"}
               selected={selected}
               onSelect={toggleSelection}

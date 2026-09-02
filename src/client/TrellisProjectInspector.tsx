@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   TrellisArchivePreview,
@@ -8,17 +7,7 @@ import type {
   TrellisTaskKey,
   TrellisTaskStatus,
 } from "../trellisTypes.ts";
-import {
-  getInspectorWidth,
-  setInspectorWidth,
-  useSidebarChromeWidth,
-} from "./contentSelection.ts";
 import type { TrellisViewFace } from "./face.ts";
-import {
-  clampInspectorPreference,
-  INSPECTOR_MIN,
-  resolveInspectorLayout,
-} from "./inspectorLayout.ts";
 import type { CreatorKey } from "./locales.ts";
 import {
   selectTrellisTask,
@@ -40,16 +29,6 @@ import {
   IslandTag,
 } from "./ui/IslandControls.tsx";
 import "./TrellisProjectInspector.css";
-
-function useViewportWidth(): number {
-  const [width, setWidth] = useState(() => typeof window === "undefined" ? 1440 : window.innerWidth);
-  useEffect(() => {
-    const update = (): void => { setWidth(window.innerWidth); };
-    window.addEventListener("resize", update);
-    return () => { window.removeEventListener("resize", update); };
-  }, []);
-  return width;
-}
 
 function displayDate(value: string | null): string {
   if (value === null) return "—";
@@ -188,13 +167,12 @@ function TaskList({ groupKey, label, tasks, selected, emptyLabel, expanded, onTo
   );
 }
 
-export type TrellisProjectInspectorProps = PropsRuntime<"shell.overlay"> & {
+export interface TrellisProjectInspectorProps {
   face: TrellisViewFace;
   t: (key: CreatorKey) => string;
-  closeDetails: () => void;
-};
+}
 
-export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjectInspectorProps) {
+export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProps) {
   const selection = useTrellisSelection();
   const epoch = useTrellisEpoch();
   const [detail, setDetail] = useState<TrellisProjectDetail | null>(null);
@@ -204,13 +182,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [width, setWidth] = useState(getInspectorWidth);
-  const viewportWidth = useViewportWidth();
-  const sidebarWidth = useSidebarChromeWidth();
-  const layout = resolveInspectorLayout(viewportWidth, sidebarWidth, width);
   const [expandedTaskGroups, setExpandedTaskGroups] = useState<ExpandedTaskGroups>(collapsedTaskGroups);
-  const [dragging, setDragging] = useState(false);
-  const drag = useRef<{ x: number; width: number; latestWidth: number } | null>(null);
 
   const load = useCallback(async () => {
     if (selection.projectId === null) return;
@@ -219,9 +191,8 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
       setDetail(result);
       setError(null);
       const all = [...result.activeTasks, ...result.archivedTasks];
-      const selectedStillExists = selection.taskKey !== null && all.some((task) => task.key === selection.taskKey);
-      if (!selectedStillExists) {
-        selectTrellisTask(result.activeTasks.find((task) => task.status === "in_progress")?.key ?? all[0]?.key ?? null);
+      if (selection.taskKey !== null && !all.some((task) => task.key === selection.taskKey)) {
+        selectTrellisTask(null);
       }
     } catch (cause) {
       setError(String(cause));
@@ -229,44 +200,6 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   }, [face, selection.projectId, selection.taskKey]);
 
   useEffect(() => { void load(); }, [load, epoch]);
-  useEffect(() => {
-    const refresh = (): void => { void load(); };
-    window.addEventListener("focus", refresh);
-    return () => { window.removeEventListener("focus", refresh); };
-  }, [load]);
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (event: PointerEvent): void => {
-      if (drag.current === null) return;
-      const next = Math.min(layout.maxWidth, Math.max(INSPECTOR_MIN, drag.current.width + event.clientX - drag.current.x));
-      drag.current.latestWidth = next;
-      setWidth(next);
-    };
-    const up = (): void => {
-      if (drag.current !== null) setInspectorWidth(drag.current.latestWidth);
-      setDragging(false);
-      drag.current = null;
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up, { once: true });
-    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-  }, [dragging, layout.maxWidth]);
-
-  const resizeWithKeyboard = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (layout.mode !== "split") return;
-    const step = event.shiftKey ? 64 : 16;
-    const next = event.key === "Home" ? INSPECTOR_MIN
-      : event.key === "End" ? layout.maxWidth
-        : event.key === "ArrowLeft" ? layout.width - step
-          : event.key === "ArrowRight" ? layout.width + step
-            : null;
-    if (next === null) return;
-    event.preventDefault();
-    const clamped = Math.min(layout.maxWidth, clampInspectorPreference(next));
-    setWidth(clamped);
-    setInspectorWidth(clamped);
-  };
-
   const active = detail?.activeTasks ?? EMPTY_TASKS;
   const archived = detail?.archivedTasks ?? EMPTY_TASKS;
   const priorities = useMemo(() => {
@@ -340,11 +273,9 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
   };
 
   return (
-    <aside
+    <article
       data-plugin="dsh-muzi-creator"
       data-surface="trellis-inspector"
-      className={`${layout.mode === "full" ? "full" : ""}${dragging ? " dragging" : ""}`}
-      style={{ width: layout.width }}
       aria-label={t("projects.detail")}
     >
       <div className="trellisInspectorTop">
@@ -352,7 +283,6 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
         <div className="trellisTopActions">
           <IslandButton type="text" size="small" aria-label={t("projects.refresh")} onClick={() => { void load(); }}>{t("projects.refresh")}</IslandButton>
           {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton type="text" size="small" aria-label={t("projects.openFolder")} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }}>{t("projects.openFolder")}</IslandButton>}
-          <IslandButton type="text" size="small" aria-label="关闭项目详情" onClick={closeDetails}>关闭</IslandButton>
         </div>
       </div>
 
@@ -361,7 +291,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
       {detail !== null && (
         <div className="trellisInspectorScroll">
           <header className="trellisProjectHero">
-            <div className="trellisHeroHeading"><IslandTag className={`trellisProjectState ${detail.project.status}`} color={detail.project.status === "ready" ? "app-green" : detail.project.status === "degraded" ? "app-yellow" : "app-red"} size="small" variant="soft">{detail.project.status === "ready" ? t("projects.ready") : detail.project.status === "degraded" ? t("projects.degraded") : t("projects.unavailable")}</IslandTag><h1>{detail.project.title}</h1><p>{detail.project.statusMessage}</p></div>
+            <div className="trellisHeroHeading"><IslandTag className={`trellisProjectState ${detail.project.status}`} color={detail.project.status === "ready" ? "app-green" : detail.project.status === "degraded" ? "app-yellow" : "app-red"} size="small" variant="soft">{detail.project.status === "ready" ? t("projects.ready") : detail.project.status === "degraded" ? t("projects.degraded") : t("projects.unavailable")}</IslandTag><h1 id="muzi-workbench-detail-title" tabIndex={-1}>{detail.project.title}</h1><p>{detail.project.statusMessage}</p></div>
             {counts !== null && <div className="trellisDistribution" aria-label="任务状态分布">
               <div><strong>{counts.planning}</strong><span>{t("projects.planning")}</span></div>
               <div><strong>{counts.inProgress}</strong><span>{t("projects.inProgress")}</span></div>
@@ -418,8 +348,7 @@ export function TrellisProjectInspector({ face, t, closeDetails }: TrellisProjec
       )}
 
       {notice !== null && <div className="trellisNotice" role="status"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
-      {layout.mode === "split" && <div className="trellisResize" role="separator" aria-orientation="vertical" aria-label="调整项目详情宽度" aria-valuemin={INSPECTOR_MIN} aria-valuemax={layout.maxWidth} aria-valuenow={layout.width} tabIndex={0} onKeyDown={resizeWithKeyboard} onPointerDown={(event) => { drag.current = { x: event.clientX, width: layout.width, latestWidth: layout.width }; setDragging(true); }} />}
       {archivePreview !== null && <ArchiveDialog preview={archivePreview} busy={archiveBusy} error={archiveError} t={t} onCancel={() => { if (!archiveBusy) setArchivePreview(null); }} onConfirm={() => { void executeArchive(); }} />}
-    </aside>
+    </article>
   );
 }

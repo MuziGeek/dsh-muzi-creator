@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 
-import { selectDailyHotItem } from "../dailyHotSelection.ts";
 import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
 import {
   setSidebarChromeWidth,
-  setSelectedContentId,
   setSidebarTab,
   useSidebarTab,
+  useWorkbenchSlotError,
 } from "../contentSelection.ts";
-import { selectTrellisProject } from "../trellisSelection.ts";
 import { IslandButton, IslandIcon } from "../ui/IslandControls.tsx";
-import { nextSidebarTab, SIDEBAR_TABS } from "../trellisUiModel.ts";
+import { nextSidebarTab } from "../trellisUiModel.ts";
+import type { WorkbenchResources } from "../workbench/WorkbenchData.ts";
+import { bindSidebarLayout } from "../workbench/sidebarLayoutBridge.ts";
+import { deriveSessionActivityBadge, type SessionActivitySnapshot } from "../workbench/sessionActivity.ts";
 import { KnowledgePanel } from "./KnowledgePanel.tsx";
 import { DailyHotPanel } from "./DailyHotPanel.tsx";
 import { MuziContentPanel } from "./MuziContentPanel.tsx";
@@ -35,6 +36,11 @@ export type OilSidebarRootProps =
     muziFace: MuziViewFace;
     trellisFace: TrellisViewFace;
     contentT: (key: CreatorKey) => string;
+    resources: WorkbenchResources;
+    sessionList: {
+      getSnapshot: () => SessionActivitySnapshot;
+      subscribe: (listener: () => void) => () => void;
+    };
   };
 
 export function OilSidebarRoot({
@@ -50,6 +56,8 @@ export function OilSidebarRoot({
   muziFace,
   trellisFace,
   contentT,
+  resources,
+  sessionList,
 }: OilSidebarRootProps) {
   const [settled, setSettled] = useState(collapsed);
   useEffect(() => {
@@ -69,11 +77,16 @@ export function OilSidebarRoot({
   if (!collapsed) everWide.current = true;
 
   const sidebarTab = useSidebarTab();
+  const slotError = useWorkbenchSlotError();
+  const sessionActivity = deriveSessionActivityBadge(useSyncExternalStore(
+    sessionList.subscribe,
+    sessionList.getSnapshot,
+    sessionList.getSnapshot,
+  ));
+
+  useEffect(() => bindSidebarLayout({ collapsed, toggle: toggleSidebar }), [collapsed, toggleSidebar]);
 
   const chooseTab = (tab: typeof sidebarTab): void => {
-    if (tab === "hot" || tab === "knowledge" || tab === "projects") setSelectedContentId(null);
-    if (tab !== "projects") selectTrellisProject(null);
-    if (tab !== "hot") selectDailyHotItem(null);
     setSidebarTab(tab);
   };
 
@@ -207,11 +220,13 @@ export function OilSidebarRoot({
               tabIndex={sidebarTab === "sessions" ? 0 : -1}
               data-sidebar-tab="sessions"
               className={cx("tabButton", sidebarTab === "sessions" && "active")}
+              aria-label={sessionActivity === null ? tabLabels.sessions : `${tabLabels.sessions}，${sessionActivity.label}`}
               onClick={() => { chooseTab("sessions"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "sessions"); }}
             >
               <IslandIcon name="icon-chat" size={18} />
-              {tabLabels.sessions}
+              <span className="tabLabel">{tabLabels.sessions}</span>
+              {sessionActivity !== null && <span className={`sessionActivityBadge ${sessionActivity.kind}`} aria-hidden="true"><i />{sessionActivity.label}</span>}
             </IslandButton>
             <IslandButton
               type={sidebarTab === "hot" ? "primary" : "text"}
@@ -270,6 +285,7 @@ export function OilSidebarRoot({
       )}
 
       <div className="regionArea">
+        {slotError !== null && sidebarTab !== "sessions" && <div className="workbenchSlotError" role="alert">中央工作台未能接管当前区域，已保留官方会话界面。{slotError}</div>}
         <div className={cx("regionPane", !sessionsVisible && "hidden")}>
           {wide && (
             <div className="headerNewSession">
@@ -291,12 +307,12 @@ export function OilSidebarRoot({
         </div>
         {hotMounted && (
           <div className={cx("regionPane", !hotVisible && "hidden")}>
-            <DailyHotPanel face={hotFace} t={contentT} />
+            <DailyHotPanel face={hotFace} t={contentT} resource={resources.hot} />
           </div>
         )}
         {contentMounted && (
           <div className={cx("regionPane", !contentVisible && "hidden")}>
-            <MuziContentPanel face={muziFace} />
+            <MuziContentPanel face={muziFace} resource={resources.content} />
           </div>
         )}
         {knowledgeMounted && (
@@ -312,7 +328,7 @@ export function OilSidebarRoot({
         )}
         {projectsMounted && (
           <div className={cx("regionPane", !projectsVisible && "hidden")}>
-            <TrellisProjectPanel face={trellisFace} t={contentT} />
+            <TrellisProjectPanel face={trellisFace} t={contentT} resource={resources.projects} />
           </div>
         )}
       </div>
