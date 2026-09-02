@@ -4,7 +4,7 @@
 
 Lab 用于本地检查界面组件和响应式布局，不执行发布、同步或归档。先运行 `pnpm build`，再用 `pnpm lab:setup` 创建项目内 `.lab/` fixture，随后运行 `pnpm lab:config` 写入隔离 Web profile。使用 `pnpm lab:start -- --cli <已构建 DSH CLI 路径> --port 51873` 启动 Web；源码版 DSH 应传 `apps/cli/lib/bin.js`，不能直接传 TypeScript 入口。不提供 CLI 时脚本会明确提示，不能把未启动当作通过。
 
-Desktop 2.0.4 使用独立的 `.lab/desktop-home` 与 `.lab/desktop-user-data`：脚本写入并在每次启动前严格核对 `<user-data>/profile-selection/state.json` 的 `{ "version": 1, "active": "web", "lastKnownGood": "web" }`、`desktop-market/state.json` 的显式 `disabled` 状态，以及 `<desktop-home>/settings.yaml` 的 `dsh-desktop.mode: compatibility`。`lab:desktop -- --desktop <路径>` 仅接受版本资源严格匹配 2.0.4 且当前没有同路径进程的已安装 Desktop 普通可执行文件，传入独立 `--user-data-dir`，并将 `DSH_HOME`、`HOME`、`USERPROFILE`、应用数据、遥测、凭据与外部能力隔离；任一版本、运行实例、profile、源码链接、可写路径、选择状态或 `lib/` 构建产物偏离时拒绝启动，不会接管个人 Desktop 或 `~/.dsh`。Desktop 缺失时验收为 `UNVERIFIED`。
+Desktop 2.0.4 使用独立的 `.lab/desktop-home` 与 `.lab/desktop-user-data`：脚本写入并在每次启动前严格核对 `<user-data>/profile-selection/state.json` 的 `{ "version": 2, "active": "web" }`、`desktop-market/state.json` 的显式 `disabled` 状态，以及 `<desktop-home>/settings.yaml` 的 `dsh-desktop.mode: compatibility`。旧版 `version: 1` 状态会被 2.0.4 判为无效并回退到 `desktop` Profile，因此 Lab 会在启动前直接拒绝旧格式。`lab:desktop -- --desktop <路径>` 仅接受版本资源严格匹配 2.0.4 且当前没有同路径进程的已安装 Desktop 普通可执行文件，传入独立 `--user-data-dir`，并将 `DSH_HOME`、`HOME`、`USERPROFILE`、应用数据、遥测、凭据与外部能力隔离；任一版本、运行实例、profile、源码链接、可写路径、选择状态或 `lib/` 构建产物偏离时拒绝启动，不会接管个人 Desktop 或 `~/.dsh`。Desktop 缺失时验收为 `UNVERIFIED`。
 
 源码联调继续使用受控的源码链接 Web profile。为本地成品安装验收做准备时，只能把已有 `.tgz` 放进 `.lab/packages/`，再运行 `pnpm lab:desktop -- --prepare-tgz .lab/packages/<包名>.tgz`；该命令只核对隔离条件和归档位置，不下载、不安装、不启动 Desktop。详见 [DESIGN.md](../DESIGN.md)。
 

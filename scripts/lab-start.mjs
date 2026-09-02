@@ -5,13 +5,13 @@ import { access, lstat, readFile, realpath } from "node:fs/promises";
 import { delimiter, extname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { fileURLToPath } from "node:url";
+import { parse as parseYaml } from "yaml";
 import {
   createLabProfileManifest,
   createLabProfilePatch,
   createLabSafetyConfig,
   createDesktopMarketSelectionState,
   createDesktopProfileSelectionState,
-  DESKTOP_SETTINGS_DOCUMENT,
   LAB_PROFILE_WORKSPACE,
   LAB_WRITABLE_PATH_KEYS,
 } from "./lab-config.mjs";
@@ -144,6 +144,39 @@ async function assertLabBuildArtifacts(paths) {
   }
 }
 
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function desktopSettingMatches(settings, key, expected) {
+  return !Object.hasOwn(settings, key) || settings[key] === expected;
+}
+
+function assertSafeDesktopSettings(document) {
+  let parsed;
+  try {
+    parsed = parseYaml(document);
+  } catch (error) {
+    throw new Error(`Desktop settings.yaml 不可读。${String(error)}`);
+  }
+  const desktop = isRecord(parsed) && isRecord(parsed["dsh-desktop"])
+    ? parsed["dsh-desktop"]
+    : undefined;
+  const notifications = isRecord(parsed) && isRecord(parsed["dsh-desktop-notifications"])
+    ? parsed["dsh-desktop-notifications"]
+    : undefined;
+  if (
+    !desktop
+    || desktop.mode !== "compatibility"
+    || !desktopSettingMatches(desktop, "windowsMaterial", "off")
+    || !desktopSettingMatches(desktop, "openBrowser", false)
+    || !desktopSettingMatches(desktop, "networkExposure", "loopback")
+    || (notifications && notifications.enabled !== false)
+  ) {
+    throw new Error("Desktop settings.yaml 未保持隔离兼容配置；请重新检查 Desktop 设置。");
+  }
+}
+
 export async function assertLabConfiguration(paths) {
   for (const target of [paths.safetyManifest]) {
     await confinedPath(paths.lab, target);
@@ -209,9 +242,7 @@ export async function assertDesktopLabConfiguration(paths) {
     paths.desktopSettings,
     "Desktop settings.yaml 不存在或不是普通文件；请重新运行 pnpm lab:config。",
   );
-  if (await readFile(paths.desktopSettings, "utf8") !== DESKTOP_SETTINGS_DOCUMENT) {
-    throw new Error("Desktop settings.yaml 未严格选择上游兼容模式；请重新运行 pnpm lab:config。");
-  }
+  assertSafeDesktopSettings(await readFile(paths.desktopSettings, "utf8"));
   return safety;
 }
 

@@ -23,9 +23,8 @@ export const LAB_WRITABLE_PATH_KEYS = Object.freeze([
 export const LAB_PROFILE_WORKSPACE = "packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n";
 
 export const DESKTOP_PROFILE_SELECTION_STATE = Object.freeze({
-  version: 1,
+  version: 2,
   active: "web",
-  lastKnownGood: "web",
 });
 
 export const DESKTOP_MARKET_SELECTION_STATE = Object.freeze({

@@ -92,9 +92,8 @@ describe("isolated UI Lab", () => {
     expect(await realpath(paths.pluginLink)).toBe(await realpath(paths.root));
     expect(await realpath(paths.desktopPluginLink)).toBe(await realpath(paths.root));
     expect(JSON.parse(await readFile(paths.desktopProfileSelection, "utf8"))).toEqual({
-      version: 1,
+      version: 2,
       active: "web",
-      lastKnownGood: "web",
     });
     expect(JSON.parse(await readFile(paths.desktopMarketSelection, "utf8"))).toEqual({
       version: 1,
@@ -241,15 +240,56 @@ describe("isolated UI Lab", () => {
   it("fails closed when Desktop no longer selects the Web profile", async () => {
     const { paths } = await writeLabConfig(repositoryRoot);
     await writeFile(paths.desktopProfileSelection, `${JSON.stringify({
-      version: 1,
+      version: 2,
       active: "desktop",
-      lastKnownGood: "desktop",
     })}\n`, "utf8");
 
     await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格选择 web Profile");
   }, 15_000);
 
-  it("fails closed when Desktop enables a Market or leaves compatibility mode", async () => {
+  it("fails closed on the obsolete Desktop 2.0.2 selection-state schema", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    await writeFile(paths.desktopProfileSelection, `${JSON.stringify({
+      version: 1,
+      active: "web",
+      lastKnownGood: "web",
+    })}\n`, "utf8");
+
+    await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格选择 web Profile");
+  }, 15_000);
+
+  it("accepts Desktop 2.0.4 persisted safe settings and rejects unsafe changes", async () => {
+    const { paths } = await writeLabConfig(repositoryRoot);
+    await writeFile(paths.desktopSettings, [
+      "dsh-desktop:",
+      "  mode: compatibility",
+      "  macosMaterial: transparent",
+      "  windowsMaterial: off",
+      "  openBrowser: false",
+      "  networkExposure: loopback",
+      "dsh-desktop-notifications:",
+      "  enabled: false",
+      "ui-onboarding:",
+      "  welcomeNoticeVersion: 2026-08-13.1",
+      "ui-theme:",
+      "  preference: system",
+      "",
+    ].join("\n"), "utf8");
+    await expect(assertDesktopLabConfiguration(paths)).resolves.toBeDefined();
+
+    for (const unsafeSettings of [
+      "dsh-desktop:\n  mode: advanced\n",
+      "dsh-desktop:\n  mode: compatibility\n  windowsMaterial: mica\n",
+      "dsh-desktop:\n  mode: compatibility\n  openBrowser: true\n",
+      "dsh-desktop:\n  mode: compatibility\n  networkExposure: lan\n",
+      "dsh-desktop:\n  mode: compatibility\ndsh-desktop-notifications:\n  enabled: true\n",
+    ]) {
+      await writeFile(paths.desktopSettings, unsafeSettings, "utf8");
+      await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未保持隔离兼容配置");
+    }
+  }, 15_000);
+
+  it("fails closed when Desktop enables a Market", async () => {
     const { paths } = await writeLabConfig(repositoryRoot);
     await writeFile(paths.desktopMarketSelection, `${JSON.stringify({
       version: 1,
@@ -257,10 +297,6 @@ describe("isolated UI Lab", () => {
       legacyDefaulted: false,
     })}\n`, "utf8");
     await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格禁用插件市场");
-
-    await writeLabConfig(repositoryRoot);
-    await writeFile(paths.desktopSettings, "dsh-desktop:\n  mode: advanced\n", "utf8");
-    await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格选择上游兼容模式");
   }, 15_000);
 
   it("prepares a local packed acceptance without installing or starting Desktop", async () => {
