@@ -150,17 +150,8 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .muziKnowledgeRow {
-  min-height: 108px;
   align-items: flex-start;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziListIcon {
-  display: grid;
-  width: 42px;
-  min-width: 42px;
-  height: 48px;
-  place-items: center;
-  color: var(--muzi-island-leaf-dark);
+  padding: 14px 16px;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziListBody {
@@ -225,6 +216,7 @@
 
 [data-plugin="dsh-muzi-creator"] .muziKnowledgeExcerpt {
   display: -webkit-box;
+  min-width: 0;
   overflow: hidden;
   line-height: 1.55;
   overflow-wrap: anywhere;
@@ -394,6 +386,10 @@
   [data-plugin="dsh-muzi-creator"] .muziListRow {
     gap: 9px;
     padding: 10px;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .muziKnowledgeRow {
+    padding: 14px 16px;
   }
 }
 

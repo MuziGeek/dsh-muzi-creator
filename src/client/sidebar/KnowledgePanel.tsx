@@ -9,7 +9,6 @@ import { setSelectedContentId, useLibraryEpoch, useSelectedContentId } from "../
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
 import { sidebarItemElementId } from "../workbench/sidebarLayoutBridge.ts";
 import {
-  IslandIcon,
   IslandSelectableCard,
   IslandSkeleton,
   IslandState,
@@ -41,7 +40,6 @@ function KnowledgeRow({ item, selected }: { item: KnowledgePageSummary; selected
       selected={selected}
       onSelect={openKnowledge}
     >
-      <span className="muziListIcon knowledge" aria-hidden="true"><IslandIcon name="icon-critterpedia" size={20} /></span>
       <span className="muziListBody">
         <span className="muziListHeading">
           <span className="muziListTitle">{item.title}</span>

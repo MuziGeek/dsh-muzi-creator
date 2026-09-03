@@ -4,8 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { setSelectedContentId, setSidebarTab } from "../src/client/contentSelection.ts";
+import { getSelectedContentId, setSelectedContentId, setSidebarTab } from "../src/client/contentSelection.ts";
 import { selectDailyHotItem } from "../src/client/dailyHotSelection.ts";
+import { KnowledgePanel } from "../src/client/sidebar/KnowledgePanel.tsx";
 import { OilSidebarRoot } from "../src/client/sidebar/OilSidebarRoot.tsx";
 import { selectTrellisProject } from "../src/client/trellisSelection.ts";
 import type { SessionActivitySnapshot } from "../src/client/workbench/sessionActivity.ts";
@@ -78,6 +79,7 @@ describe("Muzi Creator sidebar navigation", () => {
       expect(tab.querySelector(".tabIcon")?.getAttribute("aria-hidden")).toBe("true");
       expect(tab.querySelector(".tabLabel")?.textContent).not.toBe("");
     }
+    expect(screen.getByRole("tab", { name: "知识" }).querySelector('[class*="icon-critterpedia"]')).not.toBeNull();
 
     tabs[0]?.focus();
     fireEvent.keyDown(tabs[0]!, { key: "ArrowDown" });
@@ -164,5 +166,61 @@ describe("Muzi Creator sidebar navigation", () => {
     expect(onSearch).toHaveBeenCalledTimes(1);
     expect(onView).toHaveBeenCalledTimes(1);
     expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps knowledge cards text-first while keyboard selection opens the same knowledge detail", async () => {
+    setSidebarTab("knowledge");
+    const topic = {
+      id: "long-topic",
+      locator: "atlas://wiki/topics/long-topic.md",
+      title: "A deliberately long English knowledge title that remains readable alongside 中文主题名称",
+      category: "topics" as const,
+      sha256: "a".repeat(64),
+      updatedAt: "2026-09-03T00:00:00.000Z",
+      excerpt: "A deliberately long English knowledge title that remains readable alongside 中文主题名称\n这是一段用于验证两行摘要截断和卡片文本层级的主题知识摘要。",
+    };
+    const face = {
+      getKnowledgeHome: async () => ({
+        status: {
+          status: "ready" as const,
+          schemaVersion: "1",
+          language: "zh-CN",
+          rawMarkdownCount: 1,
+          rawFileCount: 1,
+          formalPageCount: 1,
+          message: null,
+        },
+        directories: [],
+        topics: [topic],
+      }),
+    };
+    render(
+      <KnowledgePanel
+        face={face as unknown as ComponentProps<typeof KnowledgePanel>["face"]}
+        onAddDirectory={vi.fn()}
+      />,
+    );
+
+    const card = await screen.findByRole("button", { name: /A deliberately long English knowledge title/ });
+    expect(card.querySelector(".muziListIcon")).toBeNull();
+    expect(card.querySelector('[class*="icon-critterpedia"]')).toBeNull();
+    expect(card.querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(card.textContent).toContain(topic.title);
+    expect(card.textContent).toContain("主题知识");
+    expect(card.textContent).toContain("这是一段用于验证两行摘要截断和卡片文本层级的主题知识摘要。");
+    expect(card.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.keyDown(card, { key: "Enter" });
+    await waitFor(() => {
+      expect(card.getAttribute("aria-pressed")).toBe("true");
+      expect(getSelectedContentId()).toBe(`knowledge:${topic.locator}`);
+    });
+
+    setSelectedContentId(null);
+    fireEvent.keyDown(card, { key: " " });
+    await waitFor(() => {
+      expect(card.getAttribute("aria-pressed")).toBe("true");
+      expect(getSelectedContentId()).toBe(`knowledge:${topic.locator}`);
+    });
   });
 });
