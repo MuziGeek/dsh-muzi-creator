@@ -1,23 +1,6 @@
-import type { TrellisArchivePreview, TrellisProjectSummary, TrellisTask, TrellisTaskKey } from "../trellisTypes.ts";
+import type { TrellisArchivePreview, TrellisProjectSummary, TrellisTask } from "../trellisTypes.ts";
 
 export const SIDEBAR_TABS = ["sessions", "hot", "content", "knowledge", "projects"] as const;
-export const TRELLIS_TASK_PREVIEW_LIMIT = 5;
-
-export interface TrellisTaskPreview {
-  visible: TrellisTask[];
-  remaining: number;
-}
-
-export function previewTrellisTasks(tasks: TrellisTask[], expanded: boolean): TrellisTaskPreview {
-  return {
-    visible: expanded ? tasks : tasks.slice(0, TRELLIS_TASK_PREVIEW_LIMIT),
-    remaining: Math.max(0, tasks.length - TRELLIS_TASK_PREVIEW_LIMIT),
-  };
-}
-
-export function taskIsOutsidePreview(tasks: TrellisTask[], selectedKey: TrellisTaskKey | null): boolean {
-  return selectedKey !== null && tasks.findIndex((task) => task.key === selectedKey) >= TRELLIS_TASK_PREVIEW_LIMIT;
-}
 
 export function nextSidebarTab(
   current: (typeof SIDEBAR_TABS)[number],

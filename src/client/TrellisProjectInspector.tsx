@@ -17,8 +17,6 @@ import {
 import {
   archivePreviewCanExecute,
   filterTasksByPriority,
-  previewTrellisTasks,
-  taskIsOutsidePreview,
   taskPhaseSummary,
 } from "./trellisUiModel.ts";
 import {
@@ -46,12 +44,9 @@ const STATUS_LABELS: Record<TrellisTaskStatus, string> = {
 
 const TASK_GROUP_KEYS = ["inProgress", "planning", "completed", "archived"] as const;
 type TaskGroupKey = (typeof TASK_GROUP_KEYS)[number];
-type ExpandedTaskGroups = Record<TaskGroupKey, boolean>;
 const EMPTY_TASKS: TrellisTask[] = [];
-
-function collapsedTaskGroups(): ExpandedTaskGroups {
-  return { inProgress: false, planning: false, completed: false, archived: false };
-}
+const TASK_ROW_HEIGHT = 48;
+const TASK_ROW_STEP = 54;
 
 function taskRefs(task: TrellisTask): string[] {
   return [task.directory, task.id, task.name];
@@ -124,21 +119,49 @@ interface TaskListProps {
   tasks: TrellisTask[];
   selected: TrellisTaskKey | null;
   emptyLabel: string;
-  expanded: boolean;
-  onToggle: (groupKey: TaskGroupKey) => void;
-  t: (key: CreatorKey) => string;
+  scrollResetKey: string;
 }
 
-function TaskList({ groupKey, label, tasks, selected, emptyLabel, expanded, onToggle, t }: TaskListProps) {
-  const preview = previewTrellisTasks(tasks, expanded);
+function TaskList({ groupKey, label, tasks, selected, emptyLabel, scrollResetKey }: TaskListProps) {
   const rowsId = `trellis-task-rows-${groupKey}`;
+  const headingId = `trellis-task-group-${groupKey}`;
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const previousScrollResetKey = useRef(scrollResetKey);
+  const isOverflowing = tasks.length > 5;
+
+  useEffect(() => {
+    const rows = rowsRef.current;
+    if (rows !== null) rows.scrollTop = 0;
+  }, [scrollResetKey]);
+
+  useEffect(() => {
+    if (previousScrollResetKey.current !== scrollResetKey) {
+      previousScrollResetKey.current = scrollResetKey;
+      return;
+    }
+    const rows = rowsRef.current;
+    const selectedIndex = tasks.findIndex((task) => task.key === selected);
+    if (rows === null || selectedIndex < 0) return;
+    const taskTop = selectedIndex * TASK_ROW_STEP;
+    const taskBottom = taskTop + TASK_ROW_HEIGHT;
+    if (taskTop < rows.scrollTop) rows.scrollTop = taskTop;
+    if (taskBottom > rows.scrollTop + rows.clientHeight) rows.scrollTop = taskBottom - rows.clientHeight;
+  }, [scrollResetKey, selected, tasks]);
+
   return (
     <section className="trellisTaskGroup">
-      <header><h3>{label}</h3><span>{tasks.length}</span></header>
-      {tasks.length === 0
-        ? <p className="trellisGroupEmpty">{emptyLabel}</p>
-        : <>
-          <div id={rowsId} className="trellisTaskRows">{preview.visible.map((task) => (
+      <header><h3 id={headingId}>{label}</h3><span>{tasks.length}</span></header>
+      <div
+        ref={rowsRef}
+        id={rowsId}
+        className="trellisTaskRows"
+        role="region"
+        aria-labelledby={headingId}
+        tabIndex={isOverflowing ? 0 : undefined}
+      >
+        {tasks.length === 0
+          ? <p className="trellisGroupEmpty">{emptyLabel}</p>
+          : tasks.map((task) => (
             <IslandButton
               key={task.key}
               type="text"
@@ -151,18 +174,8 @@ function TaskList({ groupKey, label, tasks, selected, emptyLabel, expanded, onTo
               <span className="trellisTaskRowBody"><strong>{task.title}</strong><small>{task.priority ?? "未设优先级"} · {task.assignee ?? "未分配"}</small></span>
               {task.archived && <IslandTag className={task.verifiedCompletion ? "trellisEvidence good" : "trellisEvidence weak"} color={task.verifiedCompletion ? "app-green" : "app-yellow"} size="small" variant="soft">{task.verifiedCompletion ? "已验证" : "证据不足"}</IslandTag>}
             </IslandButton>
-          ))}</div>
-          {preview.remaining > 0 && <IslandButton
-            type="text"
-            size="small"
-            className="trellisTaskDisclosure"
-            aria-expanded={expanded}
-            aria-controls={rowsId}
-            onClick={() => { onToggle(groupKey); }}
-          >
-            {expanded ? t("projects.showLess") : `${t("projects.showMore")} ${String(preview.remaining)} ${t("projects.taskUnit")}`}
-          </IslandButton>}
-        </>}
+          ))}
+      </div>
     </section>
   );
 }
@@ -182,7 +195,6 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [expandedTaskGroups, setExpandedTaskGroups] = useState<ExpandedTaskGroups>(collapsedTaskGroups);
 
   const load = useCallback(async () => {
     if (selection.projectId === null) return;
@@ -215,24 +227,9 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
     completed: filterTasksByPriority(active.filter((task) => task.status === "completed" || task.status === "unknown"), priority),
     archived: filterTasksByPriority(archived, priority),
   }), [active, archived, priority]);
-  const taskGroupsRef = useRef(taskGroups);
-  taskGroupsRef.current = taskGroups;
   useEffect(() => {
-    setExpandedTaskGroups(collapsedTaskGroups());
     if (priority !== "all" && !priorities.includes(priority)) setPriority("all");
   }, [selection.projectId, priority, priorities]);
-  useEffect(() => {
-    if (selection.taskKey === null) return;
-    for (const groupKey of TASK_GROUP_KEYS) {
-      if (taskIsOutsidePreview(taskGroupsRef.current[groupKey], selection.taskKey)) {
-        setExpandedTaskGroups((current) => current[groupKey] ? current : { ...current, [groupKey]: true });
-        return;
-      }
-    }
-  }, [selection.projectId, selection.taskKey]);
-  const toggleTaskGroup = (groupKey: TaskGroupKey): void => {
-    setExpandedTaskGroups((current) => ({ ...current, [groupKey]: !current[groupKey] }));
-  };
   const selectedTask = [...active, ...archived].find((task) => task.key === selection.taskKey) ?? null;
   const parent = selectedTask?.parent === null || selectedTask === null ? null : [...active, ...archived].find((task) => sameRef(task, selectedTask.parent ?? "")) ?? null;
   const children = selectedTask === null ? [] : [...active, ...archived].filter((task) => selectedTask.children.some((child) => sameRef(task, child)));
@@ -317,10 +314,10 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
           </div>
 
           <div className="trellisTaskBoard">
-            <TaskList groupKey="inProgress" label={t("projects.inProgress")} tasks={taskGroups.inProgress} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.inProgress} onToggle={toggleTaskGroup} t={t} />
-            <TaskList groupKey="planning" label={t("projects.planning")} tasks={taskGroups.planning} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.planning} onToggle={toggleTaskGroup} t={t} />
-            <TaskList groupKey="completed" label={t("projects.completed")} tasks={taskGroups.completed} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.completed} onToggle={toggleTaskGroup} t={t} />
-            <TaskList groupKey="archived" label={t("projects.archived")} tasks={taskGroups.archived} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} expanded={expandedTaskGroups.archived} onToggle={toggleTaskGroup} t={t} />
+            <TaskList groupKey="inProgress" label={t("projects.inProgress")} tasks={taskGroups.inProgress} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} scrollResetKey={`${selection.projectId ?? ""}:${priority}`} />
+            <TaskList groupKey="planning" label={t("projects.planning")} tasks={taskGroups.planning} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} scrollResetKey={`${selection.projectId ?? ""}:${priority}`} />
+            <TaskList groupKey="completed" label={t("projects.completed")} tasks={taskGroups.completed} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} scrollResetKey={`${selection.projectId ?? ""}:${priority}`} />
+            <TaskList groupKey="archived" label={t("projects.archived")} tasks={taskGroups.archived} selected={selection.taskKey} emptyLabel={t("projects.noTasks")} scrollResetKey={`${selection.projectId ?? ""}:${priority}`} />
           </div>
 
           {selectedTask !== null && <section className="trellisTaskDetail">

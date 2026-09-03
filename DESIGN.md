@@ -39,6 +39,8 @@ Tabs remain one line, scroll horizontally, and use the library keyboard behavior
 
 Knowledge list cards are text-first: their 14 px by 16 px inset and natural content height leave the full width for a left-aligned title, topic tag and two-line summary. Individual cards contain no decorative icon or reserved icon slot; the top-level Knowledge navigation retains its Critterpedia icon.
 
+Trellis project details keep the four task groups at an equal height. Each group places every filtered task in a 264 px internal scroll region that shows exactly five 48 px rows separated by four 6 px gaps; shorter groups retain the same space and center their empty state. Overflow remains inside the group, selected tasks can be brought into view, and changing the project or priority returns the task regions to their starting position. The task list has no preview disclosure, floating layer, native select or persisted scroll position.
+
 ## Theme and portal boundary
 
 The client installs one `ThemeRuntime.overrideTokens()` layer and marks `body` with `data-muzi-host-skin="animal-island"`. The layer maps the DSH application, panel, message, input, menu, Markdown, scrollbar and status tokens to an explicit light and dark Animal Island palette without changing the user's light, dark or system preference. Unloading the plugin removes the token layer and restores the exact body attribute value that existed before installation.

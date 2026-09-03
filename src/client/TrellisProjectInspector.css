@@ -67,18 +67,16 @@
 [data-plugin="dsh-muzi-creator"] .trellisPriorityField [role="combobox"] { min-height: 40px; border-radius: var(--muzi-radius-sm); font-family: var(--muzi-island-font); }
 [data-plugin="dsh-muzi-creator"] .trellisProjectToolbar > span { color: var(--muzi-island-text-faint); font-size: var(--trellis-font-caption); line-height: var(--trellis-line-caption); }
 
-[data-plugin="dsh-muzi-creator"] .trellisTaskBoard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskGroup { min-width: 0; padding: 12px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-md); background: var(--muzi-surface-soft); }
+[data-plugin="dsh-muzi-creator"] .trellisTaskBoard { display: grid; grid-auto-rows: 1fr; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 12px; }
+[data-plugin="dsh-muzi-creator"] .trellisTaskGroup { display: grid; min-width: 0; grid-template-rows: auto 264px; padding: 12px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-md); background: var(--muzi-surface-soft); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskGroup > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskGroup h3 { margin: 0; color: var(--muzi-island-text-soft); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); font-weight: 650; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskGroup > header span { display: grid; min-width: 21px; height: 21px; place-items: center; border-radius: 999px; background: var(--muzi-surface-muted); color: var(--muzi-island-text-faint); font-size: var(--trellis-font-caption); line-height: var(--trellis-line-caption); font-variant-numeric: tabular-nums; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskRows { display: grid; gap: 6px; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskRows button { display: flex; width: 100%; min-width: 0; min-height: 48px; text-align: left; }
+[data-plugin="dsh-muzi-creator"] .trellisTaskRows { display: flex; min-height: 0; flex-direction: column; align-items: stretch; gap: 6px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+[data-plugin="dsh-muzi-creator"] .trellisTaskRows:focus-visible { outline: 3px solid var(--muzi-island-focus); outline-offset: 2px; }
+[data-plugin="dsh-muzi-creator"] .trellisTaskRows button { display: flex; width: 100%; min-width: 0; height: 48px; min-height: 48px; flex: 0 0 48px; box-sizing: border-box; text-align: left; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskRows button > span:last-child { display: flex; width: 100%; min-width: 0; align-items: center; gap: 9px; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskRows button.selected { outline: 2px solid var(--animal-focus-yellow); outline-offset: 2px; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 8px 3px 3px; border: 0; border-top: 1px solid var(--muzi-border); background: transparent; color: var(--muzi-island-leaf); cursor: pointer; font-family: var(--muzi-island-font); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); text-align: left; }
-[data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure:hover { color: var(--muzi-island-text); }
-[data-plugin="dsh-muzi-creator"] .trellisTaskDisclosure:focus-visible { outline: 3px solid var(--muzi-island-focus); outline-offset: 2px; }
 [data-plugin="dsh-muzi-creator"] .trellisTaskStatus { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--muzi-island-text-faint); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskStatus.in_progress { background: var(--muzi-island-leaf); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskStatus.planning { background: var(--muzi-island-warning, #a56b00); }
@@ -91,7 +89,7 @@
 [data-plugin="dsh-muzi-creator"] .trellisTaskRows span[class*="animal-text"],
 [data-plugin="dsh-muzi-creator"] .trellisTaskDetail span[class*="animal-text"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-plugin="dsh-muzi-creator"] .trellisEvidence { flex: none; max-width: 100%; }
-[data-plugin="dsh-muzi-creator"] .trellisGroupEmpty { margin: 0; padding: 8px 4px; color: var(--muzi-island-text-faint); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); text-align: center; }
+[data-plugin="dsh-muzi-creator"] .trellisGroupEmpty { display: grid; width: 100%; height: 100%; place-items: center; margin: 0; padding: 8px 4px; color: var(--muzi-island-text-faint); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); text-align: center; }
 
 [data-plugin="dsh-muzi-creator"] .trellisTaskDetail { display: grid; gap: 18px; margin-top: 20px; padding: 20px 0 8px; border-top: 1px solid var(--muzi-border); background: var(--muzi-surface); }
 [data-plugin="dsh-muzi-creator"] .trellisTaskDetail > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }

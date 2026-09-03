@@ -6,10 +6,8 @@ import {
   archivePreviewCanExecute,
   filterTasksByPriority,
   nextSidebarTab,
-  previewTrellisTasks,
   projectMatchesQuery,
   SIDEBAR_TABS,
-  taskIsOutsidePreview,
   taskPhaseSummary,
 } from "../src/client/trellisUiModel.ts";
 import type {
@@ -98,23 +96,14 @@ describe("Trellis project UI behavior", () => {
     expect(filterTasksByPriority([task("P0"), task("P2")], "all")).toHaveLength(2);
   });
 
-  it("previews each task group without changing the filtered order", () => {
+  it("keeps the filtered task order for the fixed-height task windows", () => {
     const tasks: TrellisTask[] = Array.from({ length: 8 }, (_, index) => ({
       ...task(index % 2 === 0 ? "P1" : "P2"),
       key: `task-${String(index)}` as TrellisTask["key"],
       title: `Task ${String(index)}`,
     }));
-    expect(previewTrellisTasks([], false)).toEqual({ visible: [], remaining: 0 });
-    expect(previewTrellisTasks(tasks.slice(0, 5), false)).toEqual({ visible: tasks.slice(0, 5), remaining: 0 });
-    expect(previewTrellisTasks(tasks.slice(0, 6), false)).toEqual({ visible: tasks.slice(0, 5), remaining: 1 });
-    expect(previewTrellisTasks(tasks, false)).toEqual({ visible: tasks.slice(0, 5), remaining: 3 });
-    expect(previewTrellisTasks(tasks, true)).toEqual({ visible: tasks, remaining: 3 });
-    expect(taskIsOutsidePreview(tasks.slice(0, 5), tasks[4]?.key ?? null)).toBe(false);
-    expect(taskIsOutsidePreview(tasks, tasks[5]?.key ?? null)).toBe(true);
-    expect(taskIsOutsidePreview(tasks, null)).toBe(false);
-
     const filtered = filterTasksByPriority(tasks, "P2");
-    expect(previewTrellisTasks(filtered, false).visible.map((item) => item.title)).toEqual(["Task 1", "Task 3", "Task 5", "Task 7"]);
+    expect(filtered.map((item) => item.title)).toEqual(["Task 1", "Task 3", "Task 5", "Task 7"]);
   });
 
   it("summarizes current and next Trellis phases without inventing completion", () => {
@@ -155,9 +144,13 @@ describe("Trellis project UI behavior", () => {
     expect(inspector).toContain("maskClosable={!busy}");
     expect(inspector).toContain("typewriter={false}");
     expect(inspector).toContain("if (!busy) onCancel()");
-    expect(inspector).toContain("aria-expanded={expanded}");
-    expect(inspector).toContain("aria-controls={rowsId}");
-    expect(inspector).toContain("taskIsOutsidePreview");
+    expect(inspector).toContain("aria-labelledby={headingId}");
+    expect(inspector).toContain("tabIndex={isOverflowing ? 0 : undefined}");
+    expect(inspector).toContain("const isOverflowing = tasks.length > 5");
+    expect(inspector).toContain("[scrollResetKey, selected, tasks]");
+    expect(inspector).not.toContain("expandedTaskGroups");
+    expect(inspector).not.toContain("previewTrellisTasks");
+    expect(inspector).not.toContain("taskIsOutsidePreview");
     expect(inspector).toContain("IslandSelect");
     expect(inspector).toContain("value={priority}");
     expect(inspector).toContain("options={priorityItems}");
@@ -166,6 +159,13 @@ describe("Trellis project UI behavior", () => {
     expect(inspector).not.toContain("<dialog");
     expect(inspector).not.toContain("<select");
     expect(css).toContain('.trellisPriorityField [role="combobox"]');
+    expect(css).toContain("grid-template-rows: auto 264px");
+    expect(css).toContain("flex: 0 0 48px");
+    expect(css).toContain("gap: 6px");
+    expect(css).toContain("overflow-y: auto");
+    expect(css).toContain("scrollbar-gutter: stable");
+    expect(css).toContain("overscroll-behavior: contain");
+    expect(css).toContain("box-sizing: border-box");
     expect(css).toContain(".trellisArchiveModal");
     const fontSizes = [...css.matchAll(/font-size:\s*(\d+)px/g)].map((match) => Number.parseInt(match[1] ?? "0", 10));
     expect(fontSizes.length).toBeGreaterThan(0);
