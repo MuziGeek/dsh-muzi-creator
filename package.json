@@ -1,6 +1,6 @@
 {
   "name": "dsh-muzi-creator",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Knowledge-driven local creator workbench for DeepSeek Harness, based on Oil Creator",
   "license": "MIT",
   "repository": {
