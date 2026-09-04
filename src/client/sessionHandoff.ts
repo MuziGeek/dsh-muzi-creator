@@ -5,6 +5,7 @@ interface HandoffInput {
     span: { start: number; end: number; draftRev: number },
   ) => boolean;
   notify: (level: "info" | "error", text: string) => void;
+  submit?: (mode?: "queue" | "steer") => void;
   state: { getSnapshot: () => { draft: string; draftRev: number } };
 }
 
@@ -13,6 +14,7 @@ export interface SessionHandoffOptions {
   label: string;
   ref: string;
   requireLlmWiki?: boolean;
+  autoSubmit?: boolean;
 }
 
 export interface SessionHandoffDependencies<TId extends string> {
@@ -56,5 +58,9 @@ export async function stageSessionHandoff<TId extends string>(
     clipboardText: token,
   }, { start, end: start + token.length, draftRev: state.draftRev });
   if (!inserted) throw new Error("引用预填失败，请刷新后重试");
+  if (options.autoSubmit === true) {
+    if (input.submit === undefined) throw new Error("当前会话不支持自动提交，请打开会话后手动发送");
+    input.submit("queue");
+  }
   dependencies.reveal(sessionId);
 }

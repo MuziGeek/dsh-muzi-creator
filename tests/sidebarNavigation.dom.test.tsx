@@ -26,6 +26,7 @@ function sidebarProps(sessionSnapshot: SessionActivitySnapshot = EMPTY_SESSIONS)
     tabLabels: {
       sessions: "会话",
       hot: "热点",
+      inspiration: "灵感",
       content: "内容",
       knowledge: "知识",
       projects: "项目",
@@ -40,6 +41,7 @@ function sidebarProps(sessionSnapshot: SessionActivitySnapshot = EMPTY_SESSIONS)
     contentT: (key: string) => key,
     resources: {
       hot: unavailable(),
+      inspiration: unavailable(),
       content: unavailable(),
       knowledge: unavailable(),
       projects: unavailable(),
@@ -68,13 +70,13 @@ describe("Muzi Creator sidebar navigation", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps all five entries in product order with roving keyboard focus", async () => {
+  it("keeps all six entries in product order with roving keyboard focus", async () => {
     render(<OilSidebarRoot {...sidebarProps()} />);
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(["会话", "热点", "内容", "知识", "项目"]);
-    expect(tabs.map((tab) => tab.getAttribute("tabindex"))).toEqual(["0", "-1", "-1", "-1", "-1"]);
-    expect(tabs.map((tab) => tab.getAttribute("data-sidebar-tab"))).toEqual(["sessions", "hot", "content", "knowledge", "projects"]);
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(["会话", "热点", "灵感", "内容", "知识", "项目"]);
+    expect(tabs.map((tab) => tab.getAttribute("tabindex"))).toEqual(["0", "-1", "-1", "-1", "-1", "-1"]);
+    expect(tabs.map((tab) => tab.getAttribute("data-sidebar-tab"))).toEqual(["sessions", "hot", "inspiration", "content", "knowledge", "projects"]);
     for (const tab of tabs) {
       expect(tab.querySelector(".tabIcon")?.getAttribute("aria-hidden")).toBe("true");
       expect(tab.querySelector(".tabLabel")?.textContent).not.toBe("");

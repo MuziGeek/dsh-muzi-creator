@@ -1,0 +1,38 @@
+[data-plugin="dsh-muzi-creator"] .inspirationSidebar, [data-plugin="dsh-muzi-creator"] .inspirationSidebarBody, [data-plugin="dsh-muzi-creator"] .inspirationWorkbench { min-width: 0; }
+[data-plugin="dsh-muzi-creator"] .inspirationSidebarBody { display: grid; gap: 12px; min-height: 0; padding: 4px 10px 22px 4px; overflow: auto; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerGroups, [data-plugin="dsh-muzi-creator"] .inspirationLedgerGroup, [data-plugin="dsh-muzi-creator"] .inspirationLedgerGroup > div { display: grid; gap: 8px; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerGroup { margin-top: 8px; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerGroup > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerGroup h3 { margin: 0; color: var(--muzi-island-text-muted); font-size: 12px; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerCard { display: grid; width: 100%; gap: 6px; padding: 11px; text-align: left; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerTitle { min-width: 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 650; line-height: 1.45; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerTopic, [data-plugin="dsh-muzi-creator"] .inspirationLedgerTime { min-width: 0; overflow-wrap: anywhere; color: var(--muzi-island-text-muted); font-size: 10px; line-height: 1.45; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerMeta { display: flex; min-width: 0; justify-content: space-between; gap: 6px; color: var(--muzi-island-text-muted); font-size: 10px; line-height: 1.45; }
+[data-plugin="dsh-muzi-creator"] .inspirationLedgerMeta > * { min-width: 0; overflow-wrap: anywhere; }
+[data-plugin="dsh-muzi-creator"] .inspirationWorkbench { width: min(100%, 1120px); margin: 0 auto; padding: clamp(14px, 3vw, 30px); color: var(--muzi-island-text); }
+[data-plugin="dsh-muzi-creator"] .inspirationCapture, [data-plugin="dsh-muzi-creator"] .inspirationDetail { display: grid; gap: 14px; padding: clamp(16px, 3vw, 26px); border: 1px solid var(--muzi-island-line); border-radius: var(--muzi-island-radius-lg); background: var(--muzi-island-paper); }
+[data-plugin="dsh-muzi-creator"] .inspirationCapture > header, [data-plugin="dsh-muzi-creator"] .inspirationDetail > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+[data-plugin="dsh-muzi-creator"] .inspirationCapture h2, [data-plugin="dsh-muzi-creator"] .inspirationDetail h2 { margin: 0; font-size: clamp(19px, 3vw, 26px); line-height: 1.25; overflow-wrap: anywhere; }
+[data-plugin="dsh-muzi-creator"] .inspirationCapture p { max-width: 72ch; margin: 6px 0 0; color: var(--muzi-island-text-muted); line-height: 1.6; }
+[data-plugin="dsh-muzi-creator"] .inspirationCaptureGrid, [data-plugin="dsh-muzi-creator"] .inspirationAdvanced { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+[data-plugin="dsh-muzi-creator"] .inspirationCapture label, [data-plugin="dsh-muzi-creator"] .inspirationTaskDrawer label { display: grid; gap: 6px; color: var(--muzi-island-text-muted); font-size: 12px; font-weight: 650; }
+[data-plugin="dsh-muzi-creator"] .inspirationQuestions { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--muzi-island-line); border-radius: var(--muzi-island-radius-md); }
+[data-plugin="dsh-muzi-creator"] .inspirationQuestions legend { padding: 0 4px; color: var(--muzi-island-text-muted); font-size: 12px; font-weight: 650; }
+[data-plugin="dsh-muzi-creator"] .inspirationCaptureActions, [data-plugin="dsh-muzi-creator"] .inspirationDetailActions, [data-plugin="dsh-muzi-creator"] .inspirationTaskActions { display: flex; flex-wrap: wrap; gap: 9px; }
+[data-plugin="dsh-muzi-creator"] .inspirationLive { color: var(--muzi-island-leaf-dark); font-size: 12px; }
+[data-plugin="dsh-muzi-creator"] .inspirationBoard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+[data-plugin="dsh-muzi-creator"] .inspirationBoard > section { display: grid; gap: 9px; min-width: 0; }
+[data-plugin="dsh-muzi-creator"] .inspirationBoard h2, [data-plugin="dsh-muzi-creator"] .inspirationReport h3 { margin: 0; font-size: 14px; }
+[data-plugin="dsh-muzi-creator"] .inspirationRunList { display: grid; gap: 8px; }
+[data-plugin="dsh-muzi-creator"] .inspirationRunCard { display: flex; min-width: 0; justify-content: space-between; gap: 8px; padding: 12px; cursor: pointer; }
+[data-plugin="dsh-muzi-creator"] .inspirationRunCard strong, [data-plugin="dsh-muzi-creator"] .inspirationRunCard span { overflow-wrap: anywhere; }
+[data-plugin="dsh-muzi-creator"] .inspirationRunCard span { flex: none; color: var(--muzi-island-text-muted); font-size: 12px; }
+[data-plugin="dsh-muzi-creator"] .inspirationTaskCard > button { display: grid; flex: 1; min-width: 0; gap: 4px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+[data-plugin="dsh-muzi-creator"] .inspirationReport { display: grid; gap: 14px; max-width: 72ch; line-height: 1.65; }
+[data-plugin="dsh-muzi-creator"] .inspirationReport p, [data-plugin="dsh-muzi-creator"] .inspirationReport ul { margin: 0; }
+[data-plugin="dsh-muzi-creator"] .inspirationReport section { display: grid; gap: 5px; }
+[data-plugin="dsh-muzi-creator"] .inspirationTaskDrawer { display: grid; gap: 16px; }
+[data-plugin="dsh-muzi-creator"] .inspirationAuthorization { margin: 0; padding: 12px; border-radius: var(--muzi-island-radius-md); background: var(--animal-warning-color-bg); color: var(--animal-warning-color-active); line-height: 1.55; }
+@media (max-width: 879px) { [data-plugin="dsh-muzi-creator"] .inspirationWorkbench { padding: 14px; } [data-plugin="dsh-muzi-creator"] .inspirationBoard { grid-template-columns: 1fr; } }
+@media (max-width: 390px) { [data-plugin="dsh-muzi-creator"] .inspirationCaptureGrid, [data-plugin="dsh-muzi-creator"] .inspirationAdvanced, [data-plugin="dsh-muzi-creator"] .inspirationBoard { grid-template-columns: 1fr; } [data-plugin="dsh-muzi-creator"] .inspirationWorkbench { padding: 10px; } [data-plugin="dsh-muzi-creator"] .inspirationCapture, [data-plugin="dsh-muzi-creator"] .inspirationDetail { padding: 14px; } }
+@media (prefers-reduced-motion: reduce) { [data-plugin="dsh-muzi-creator"] .inspirationWorkbench *, [data-plugin="dsh-muzi-creator"] .inspirationSidebar * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }

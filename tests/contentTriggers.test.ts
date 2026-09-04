@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { chipLabel, registerContentTriggers, registerMuziTriggers } from "../src/client/contentTriggers.ts";
 import type { KnowledgePageSummary } from "../src/muziTypes.ts";
@@ -150,5 +150,23 @@ describe("registerMuziTriggers", () => {
       new AbortController().signal,
     )).toBe("pending source");
     expect(calls).toEqual([{ id: `pk_${"1".repeat(24)}`, expectedSha256: "a".repeat(64) }]);
+  });
+
+  it("serializes a structured inspiration reference through the Host", async () => {
+    const sources: Array<{ codec?: { serialize: (ref: string, signal: AbortSignal) => Promise<string> } }> = [];
+    const serializeInspiration = vi.fn(async () => "# 灵感研究报告\n\n受限引用内容");
+    registerMuziTriggers(
+      { registerSource(source) { sources.push(source); return () => undefined; } },
+      async () => { throw new Error("unused"); },
+      async () => [],
+      async () => { throw new Error("unused"); },
+      async () => [],
+      async () => ({ text: "unused" }),
+      serializeInspiration,
+    );
+    const ref = "inspiration:ii_demo:ir_demo";
+    expect(await sources[0]?.codec?.serialize(ref, new AbortController().signal)).toBe("# 灵感研究报告\n\n受限引用内容");
+    expect(serializeInspiration).toHaveBeenCalledOnce();
+    expect(serializeInspiration).toHaveBeenCalledWith(ref);
   });
 });

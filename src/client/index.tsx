@@ -11,6 +11,22 @@ import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
 import { TYPERT_REMOTE } from "../remote.ts";
 import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
 import type { DailyHotResult } from "../dailyHotTypes.ts";
+import type {
+  GetInspirationRequest,
+  InspirationDetail,
+  InspirationItem,
+  InspirationOverview,
+  InspirationReference,
+  InspirationRun,
+  InspirationTask,
+  ListInspirationsRequest,
+  SaveInspirationDraftRequest,
+  SaveInspirationTaskRequest,
+  SerializeInspirationReferenceRequest,
+  SetInspirationTaskStateRequest,
+  StartInspirationResearchRequest,
+  StartInspirationResearchResult,
+} from "../inspirationTypes.ts";
 import { startLibraryLiveSync } from "./catalogSync.ts";
 import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 import { releaseShellChrome } from "./contentSelection.ts";
@@ -19,7 +35,7 @@ import { installMuziHostSkin } from "./host-skin/index.ts";
 import { stageSessionHandoff } from "./sessionHandoff.ts";
 import {
   pickSettingsDirectory,
-  type UiWorkspaceDirectoryPicker,
+  type WorkspaceDirectoryPicker,
 } from "./directoryPicker.ts";
 import type {
   ContentDetail,
@@ -92,8 +108,9 @@ import {
 } from "./contentSelection.ts";
 import type { CredentialsClient } from "./credentialsApi.ts";
 import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
-import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
+import type { CreatorViewFace, DailyHotViewFace, InspirationViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
 import { en, NS, type CreatorKey, zh } from "./locales.ts";
+import { inspirationEn, inspirationZh, type InspirationCopyKey } from "./inspiration/index.ts";
 import { OilSidebarRoot } from "./sidebar/OilSidebarRoot.tsx";
 import type { OilSidebarInjected, OilSidebarSlotProps } from "./sidebar/slots.ts";
 import {
@@ -107,7 +124,7 @@ import { ConversationWorkbenchController } from "./workbench/conversationSlot.ts
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
-    "dsh.oil.creator": CreatorKey;
+    "dsh.oil.creator": CreatorKey | InspirationCopyKey;
   }
 }
 
@@ -174,6 +191,19 @@ interface OilCreatorRemote {
   getPendingKnowledgeFile: (request: { id: string }) => Promise<RemoteAnswer<PendingKnowledgeFile>>;
   serializePendingKnowledgeReference: (request: { id: string; expectedSha256?: string }) => Promise<RemoteAnswer<PendingKnowledgeReference>>;
   getDailyHot: (request: { refresh?: boolean }) => Promise<RemoteAnswer<DailyHotResult>>;
+  listInspirations: (request: ListInspirationsRequest) => Promise<RemoteAnswer<InspirationOverview>>;
+  getInspirationRevision: (request: Record<string, never>) => Promise<RemoteAnswer<{ revision: number }>>;
+  getInspiration: (request: GetInspirationRequest) => Promise<RemoteAnswer<InspirationDetail>>;
+  saveInspirationDraft: (request: SaveInspirationDraftRequest) => Promise<RemoteAnswer<InspirationItem>>;
+  startInspirationResearch: (request: StartInspirationResearchRequest) => Promise<RemoteAnswer<StartInspirationResearchResult>>;
+  stopInspirationRun: (request: { runId: InspirationRun["id"]; expectedRevision: number }) => Promise<RemoteAnswer<InspirationRun>>;
+  saveInspirationTask: (request: SaveInspirationTaskRequest) => Promise<RemoteAnswer<InspirationTask>>;
+  setInspirationTaskState: (request: SetInspirationTaskStateRequest) => Promise<RemoteAnswer<InspirationTask>>;
+  runInspirationTaskNow: (request: { taskId: InspirationTask["id"]; expectedRevision: number }) => Promise<RemoteAnswer<InspirationRun>>;
+  markInspirationRead: (request: { runId: InspirationRun["id"]; expectedRevision: number }) => Promise<RemoteAnswer<InspirationRun>>;
+  archiveInspiration: (request: { id: InspirationItem["id"]; expectedRevision: number }) => Promise<RemoteAnswer<InspirationItem>>;
+  openInspirationReportInObsidian: (request: { runId: InspirationRun["id"] }) => Promise<RemoteAnswer<{ opened: true }>>;
+  serializeInspirationReference: (request: SerializeInspirationReferenceRequest) => Promise<RemoteAnswer<InspirationReference>>;
   getMuziWorkspaceRevision: (request: Record<string, never>) => Promise<RemoteAnswer<MuziWorkspaceRevision>>;
   openMuziDocumentInObsidian: (request: { id: string; document: MuziDocumentSaveRequest["document"] }) => Promise<RemoteAnswer<{ opened: true }>>;
   listTrellisProjects: (request: Record<string, never>) => Promise<RemoteAnswer<TrellisProjectListResult>>;
@@ -220,11 +250,14 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
   return answer.value;
 }
 
-export const inject = ["slots", "locale", "remote", "workspaces", "uiWorkspace", "layout", "connection", "conversation", "theme"];
+export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection", "conversation", "theme"];
 
 export function apply(ctx: ClientContext): void {
   installMuziHostSkin(ctx);
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-oil-creator: dictionaries");
+  ctx.effect(() => ctx.locale.register(NS, {
+    zh: { ...zh, ...inspirationZh },
+    en: { ...en, ...inspirationEn },
+  }), "dsh-oil-creator: dictionaries");
   ctx.effect(() => {
     remountPluginCss();
     return () => {
@@ -247,6 +280,15 @@ export function apply(ctx: ClientContext): void {
   const dailyHotRemoteOf = (): OilCreatorRemote | undefined => {
     const remote = remoteOf();
     return remote !== undefined && typeof remote.getDailyHot === "function" ? remote : undefined;
+  };
+  const inspirationRemoteOf = (): OilCreatorRemote | undefined => {
+    const remote = remoteOf();
+    return remote !== undefined
+      && typeof remote.listInspirations === "function"
+      && typeof remote.getInspiration === "function"
+      && typeof remote.startInspirationResearch === "function"
+      ? remote
+      : undefined;
   };
 
   const face = (): CreatorViewFace => ({
@@ -292,7 +334,7 @@ export function apply(ctx: ClientContext): void {
       return answer.ok && answer.value !== undefined ? answer.value : { text: "", cues: [] };
     },
     pickDirectory: () => pickSettingsDirectory(
-      ctx.get("uiWorkspace") as UiWorkspaceDirectoryPicker,
+      ctx.workspaces as WorkspaceDirectoryPicker,
     ),
     openPath: (path) => ctx.workspaces.openPath(path),
     getSettings: async () => {
@@ -628,7 +670,75 @@ export function apply(ctx: ClientContext): void {
       );
     },
   };
-  const workbenchResources = createWorkbenchResources(dailyHotFace, muziFace, trellisFace);
+  const inspirationFace: InspirationViewFace = {
+    ready: () => inspirationRemoteOf() !== undefined,
+    list: async (request = {}) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.listInspirations(request), "inspiration list failed");
+    },
+    getRevision: async () => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.getInspirationRevision({}), "inspiration revision failed").revision;
+    },
+    get: async (request) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.getInspiration(request), "inspiration detail failed");
+    },
+    saveDraft: async (request) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.saveInspirationDraft(request), "inspiration draft failed");
+    },
+    startResearch: async (request) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.startInspirationResearch(request), "inspiration research failed");
+    },
+    stopRun: async (runId, expectedRevision) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.stopInspirationRun({ runId, expectedRevision }), "stop research failed");
+    },
+    saveTask: async (request) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.saveInspirationTask(request), "save inspiration task failed");
+    },
+    setTaskState: async (request) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.setInspirationTaskState(request), "update inspiration task failed");
+    },
+    runTaskNow: async (taskId, expectedRevision) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.runInspirationTaskNow({ taskId, expectedRevision }), "run inspiration task failed");
+    },
+    markRead: async (runId, expectedRevision) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.markInspirationRead({ runId, expectedRevision }), "mark inspiration read failed");
+    },
+    archive: async (id, expectedRevision) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.archiveInspiration({ id, expectedRevision }), "archive inspiration failed");
+    },
+    openReportInObsidian: async (runId) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      unwrap(await remote.openInspirationReportInObsidian({ runId }), "open inspiration report failed");
+    },
+    serializeReference: async (request) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
+      return unwrap(await remote.serializeInspirationReference(request), "inspiration reference failed");
+    },
+  };
+  const workbenchResources = createWorkbenchResources(dailyHotFace, inspirationFace, muziFace, trellisFace);
 
   const handoffWorkspace = (): WorkspaceId => {
     const workspaces = ctx.workspaces.list.getSnapshot();
@@ -652,6 +762,7 @@ export function apply(ctx: ClientContext): void {
     label: string;
     ref: string;
     requireLlmWiki?: boolean;
+    autoSubmit?: boolean;
   }): Promise<void> => {
     const sessions = ctx.get("sessions") as unknown as FreshSessionsClient;
     await stageSessionHandoff({
@@ -694,6 +805,13 @@ export function apply(ctx: ClientContext): void {
           ...(expectedSha256 === undefined ? {} : { expectedSha256 }),
         }), "pending knowledge reference failed");
       },
+      async (ref) => {
+        const [kind, ownerId, runId] = ref.split(":");
+        if (kind !== "inspiration" || ownerId === undefined || ownerId === "" || runId === undefined || runId === "") {
+          throw new Error("无效的灵感研究引用");
+        }
+        return (await inspirationFace.serializeReference({ runId: runId as InspirationRun["id"] })).text;
+      },
     );
   }, "dsh-oil-creator: content triggers");
 
@@ -714,6 +832,7 @@ export function apply(ctx: ClientContext): void {
         tabLabels={{
           sessions: contentT("tab.sessions"),
           hot: contentT("tab.hot"),
+          inspiration: contentT("tab.inspiration"),
           content: contentT("tab"),
           knowledge: contentT("tab.knowledge"),
           projects: contentT("tab.projects"),
@@ -766,10 +885,20 @@ export function apply(ctx: ClientContext): void {
           locale: NS,
           inject: () => ({
             resources: workbenchResources,
+            inspirationFace,
             muziFace,
             oilFace: contentFace,
             trellisFace,
             t: ctx.locale.bind(NS),
+            openInspirationSession: (sessionId: string) => {
+              revealHandoff(sessionId as SessionId);
+            },
+            promoteInspiration: async (reference: InspirationReference) => createHandoff({
+              prompt: "请基于所引用的灵感研究报告提出 3 个清晰且彼此不同的内容方向，分别说明目标读者、核心观点和适合的内容形态。本次只生成提案，不创建内容、不写入 Atlas，也不发布。",
+              label: reference.label,
+              ref: reference.ref,
+              autoSubmit: true,
+            }),
             startPendingProcessing: (file: PendingKnowledgeFile) => createHandoff({
               prompt: "/llm-wiki 请消化所引用的待处理文件。先执行隐私自查与缓存检查；确认可处理后，按 llm-wiki 标准写入正式知识并更新索引。完成后报告新增或更新的正式知识定位符。",
               label: "待消化文件",
@@ -817,11 +946,17 @@ export function apply(ctx: ClientContext): void {
       const revision = await muziFace.getWorkspaceRevision();
       return revision.trellis;
     }, undefined, bumpTrellis);
+    const stopInspirationLive = startLibraryLiveSync(
+      () => inspirationFace.getRevision(),
+      undefined,
+      () => { void workbenchResources.inspiration.load(true).catch(() => undefined); },
+    );
 
     return async () => {
       stopLive();
       stopMuziLive();
       stopTrellisLive();
+      stopInspirationLive();
       stopWorkbench();
       stopSettings();
       await disposeRemote();

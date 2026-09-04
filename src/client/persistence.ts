@@ -1,23 +1,30 @@
 import type { ContentFilter } from "../types.ts";
 
-export const CREATOR_STORAGE_KEY = "dsh-muzi-creator/ui/v2";
+export const CREATOR_STORAGE_KEY = "dsh-muzi-creator/ui/v3";
+export const LEGACY_CREATOR_STORAGE_KEY = "dsh-muzi-creator/ui/v2";
 
-export type SidebarTab = "sessions" | "hot" | "content" | "knowledge" | "projects";
+export type SidebarTab = "sessions" | "hot" | "inspiration" | "content" | "knowledge" | "projects";
 
 export type KnowledgeSelection =
   | { kind: "page"; locator: string }
   | { kind: "pending"; id: string }
   | null;
 
+export type InspirationSelection =
+  | { kind: "item"; id: string; runId?: string }
+  | { kind: "task"; id: string; runId?: string }
+  | null;
+
 export interface FeatureSelections {
   hotId: string | null;
+  inspiration: InspirationSelection;
   contentId: string | null;
   knowledge: KnowledgeSelection;
   project: { projectId: string; taskKey?: string } | null;
 }
 
 export interface CreatorUiState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   selections: FeatureSelections;
   filter: ContentFilter;
   query: string;
@@ -26,13 +33,14 @@ export interface CreatorUiState {
 
 export const DEFAULT_SELECTIONS: FeatureSelections = {
   hotId: null,
+  inspiration: null,
   contentId: null,
   knowledge: null,
   project: null,
 };
 
 export const DEFAULT_UI_STATE: CreatorUiState = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   selections: { ...DEFAULT_SELECTIONS },
   filter: "all",
   query: "",
@@ -57,9 +65,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseSidebarTab(value: unknown): SidebarTab {
-  return value === "hot" || value === "content" || value === "knowledge" || value === "projects"
+  return value === "hot" || value === "inspiration" || value === "content" || value === "knowledge" || value === "projects"
     ? value
     : "sessions";
+}
+
+function parseInspirationSelection(value: unknown): InspirationSelection {
+  if (!isRecord(value) || (value.kind !== "item" && value.kind !== "task")) return null;
+  if (typeof value.id !== "string" || value.id === "") return null;
+  return {
+    kind: value.kind,
+    id: value.id,
+    ...(typeof value.runId === "string" && value.runId !== "" ? { runId: value.runId } : {}),
+  };
 }
 
 function parseFilter(value: unknown): ContentFilter {
@@ -89,6 +107,7 @@ function parseSelections(value: unknown): FeatureSelections {
     : null;
   return {
     hotId: typeof value.hotId === "string" && value.hotId !== "" ? value.hotId : null,
+    inspiration: parseInspirationSelection(value.inspiration),
     contentId: typeof value.contentId === "string" && value.contentId !== "" ? value.contentId : null,
     knowledge: parseKnowledgeSelection(value.knowledge),
     project,
@@ -110,22 +129,23 @@ function migrateLegacySelection(value: unknown): Pick<FeatureSelections, "conten
   return { contentId: value, knowledge: null };
 }
 
-/** Load schema 2 or migrate the former single-selection schema without retaining inspector geometry. */
+/** Load schema 3 or migrate prior selection schemas without retaining inspector geometry. */
 export function loadCreatorUiState(storage: CreatorStorage | undefined): CreatorUiState {
   if (storage === undefined) return { ...DEFAULT_UI_STATE, selections: { ...DEFAULT_SELECTIONS } };
   try {
-    const raw = storage.getItem(CREATOR_STORAGE_KEY);
+    const currentRaw = storage.getItem(CREATOR_STORAGE_KEY);
+    const raw = currentRaw ?? storage.getItem(LEGACY_CREATOR_STORAGE_KEY);
     if (raw === null) return { ...DEFAULT_UI_STATE, selections: { ...DEFAULT_SELECTIONS } };
     const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed)) return { ...DEFAULT_UI_STATE, selections: { ...DEFAULT_SELECTIONS } };
     const sidebarTab = parseSidebarTab(parsed.sidebarTab);
     const common = {
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       filter: parseFilter(parsed.filter),
       query: typeof parsed.query === "string" ? parsed.query : "",
       sidebarTab,
     };
-    if (parsed.schemaVersion === 2) {
+    if (parsed.schemaVersion === 3 || parsed.schemaVersion === 2) {
       return { ...common, selections: parseSelections(parsed.selections) };
     }
     const legacy = migrateLegacySelection(parsed.selectedId);

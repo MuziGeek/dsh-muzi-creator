@@ -2,6 +2,23 @@ import type {
   DailyHotResult,
 } from "../dailyHotTypes.ts";
 import type {
+  ArchiveInspirationResult,
+  GetInspirationRequest,
+  InspirationDetail,
+  InspirationItem,
+  InspirationOverview,
+  InspirationReference,
+  InspirationRun,
+  InspirationTask,
+  ListInspirationsRequest,
+  SaveInspirationDraftRequest,
+  SaveInspirationTaskRequest,
+  SerializeInspirationReferenceRequest,
+  SetInspirationTaskStateRequest,
+  StartInspirationResearchRequest,
+  StartInspirationResearchResult,
+} from "../inspirationTypes.ts";
+import type {
   ContentDetail,
   ContentFilter,
   CoverThumbResult,
@@ -149,4 +166,22 @@ export interface TrellisViewFace {
 export interface DailyHotViewFace {
   ready: () => boolean;
   getDailyHot: (refresh?: boolean) => Promise<DailyHotResult>;
+}
+
+/** Client adapter for the persistent inspiration ledger. */
+export interface InspirationViewFace {
+  ready: () => boolean;
+  list: (request?: ListInspirationsRequest) => Promise<InspirationOverview>;
+  getRevision: () => Promise<number>;
+  get: (request: GetInspirationRequest) => Promise<InspirationDetail>;
+  saveDraft: (request: SaveInspirationDraftRequest) => Promise<InspirationItem>;
+  startResearch: (request: StartInspirationResearchRequest) => Promise<StartInspirationResearchResult>;
+  stopRun: (runId: InspirationRun["id"], expectedRevision: number) => Promise<InspirationRun>;
+  saveTask: (request: SaveInspirationTaskRequest) => Promise<InspirationTask>;
+  setTaskState: (request: SetInspirationTaskStateRequest) => Promise<InspirationTask>;
+  runTaskNow: (taskId: InspirationTask["id"], expectedRevision: number) => Promise<InspirationRun>;
+  markRead: (runId: InspirationRun["id"], expectedRevision: number) => Promise<InspirationRun>;
+  archive: (id: InspirationItem["id"], expectedRevision: number) => Promise<ArchiveInspirationResult>;
+  openReportInObsidian: (runId: InspirationRun["id"]) => Promise<void>;
+  serializeReference: (request: SerializeInspirationReferenceRequest) => Promise<InspirationReference>;
 }

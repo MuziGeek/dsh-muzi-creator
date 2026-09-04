@@ -1,6 +1,6 @@
 import type { TrellisArchivePreview, TrellisProjectSummary, TrellisTask } from "../trellisTypes.ts";
 
-export const SIDEBAR_TABS = ["sessions", "hot", "content", "knowledge", "projects"] as const;
+export const SIDEBAR_TABS = ["sessions", "hot", "inspiration", "content", "knowledge", "projects"] as const;
 
 export function nextSidebarTab(
   current: (typeof SIDEBAR_TABS)[number],

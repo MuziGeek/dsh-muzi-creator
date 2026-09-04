@@ -8,6 +8,8 @@ import {
 
 import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
+import { InspirationSidebarPanel, type InspirationCopyKey } from "../inspiration/index.ts";
+import { setInspirationSelection } from "../inspirationSelection.ts";
 import {
   setSidebarChromeWidth,
   setSidebarTab,
@@ -17,6 +19,7 @@ import {
 import { IslandButton, IslandIcon } from "../ui/IslandControls.tsx";
 import { nextSidebarTab } from "../trellisUiModel.ts";
 import type { WorkbenchResources } from "../workbench/WorkbenchData.ts";
+import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
 import { bindSidebarLayout } from "../workbench/sidebarLayoutBridge.ts";
 import { deriveSessionActivityBadge, type SessionActivitySnapshot } from "../workbench/sessionActivity.ts";
 import { KnowledgePanel } from "./KnowledgePanel.tsx";
@@ -36,12 +39,12 @@ function cx(...parts: Array<string | false | undefined>): string {
 export type OilSidebarRootProps =
   & OilSidebarSlotProps
   & {
-    tabLabels: { sessions: string; hot: string; content: string; knowledge: string; projects: string };
+    tabLabels: { sessions: string; hot: string; inspiration: string; content: string; knowledge: string; projects: string };
     contentFace: CreatorViewFace;
     hotFace: DailyHotViewFace;
     muziFace: MuziViewFace;
     trellisFace: TrellisViewFace;
-    contentT: (key: CreatorKey) => string;
+    contentT: (key: CreatorKey | InspirationCopyKey) => string;
     resources: WorkbenchResources;
     sessionList: {
       getSnapshot: () => SessionActivitySnapshot;
@@ -89,6 +92,16 @@ export function OilSidebarRoot({
     sessionList.getSnapshot,
     sessionList.getSnapshot,
   ));
+  const inspirationSnapshot = useResourceSnapshot(resources.inspiration);
+  useEffect(() => { void resources.inspiration.load(false).catch(() => undefined); }, [resources.inspiration]);
+  const inspirationActivity = inspirationSnapshot.data === null ? null
+    : inspirationSnapshot.data.counts.needsAttention > 0
+      ? { kind: "pending", label: `${contentT("inspiration.badgeAttention")} ${String(inspirationSnapshot.data.counts.needsAttention)}` }
+      : inspirationSnapshot.data.counts.running > 0 || inspirationSnapshot.data.counts.queued > 0
+        ? { kind: "running", label: `${contentT("inspiration.badgeRunning")} ${String(inspirationSnapshot.data.counts.running + inspirationSnapshot.data.counts.queued)}` }
+        : inspirationSnapshot.data.counts.unread > 0
+          ? { kind: "unread", label: `${contentT("inspiration.badgeUnread")} ${String(inspirationSnapshot.data.counts.unread)}` }
+          : null;
 
   useEffect(() => bindSidebarLayout({ collapsed, toggle: toggleSidebar }), [collapsed, toggleSidebar]);
 
@@ -145,11 +158,13 @@ export function OilSidebarRoot({
 
   const [contentMounted, setContentMounted] = useState(sidebarTab === "content");
   const [hotMounted, setHotMounted] = useState(sidebarTab === "hot");
+  const [inspirationMounted, setInspirationMounted] = useState(sidebarTab === "inspiration");
   const [knowledgeMounted, setKnowledgeMounted] = useState(sidebarTab === "knowledge");
   const [projectsMounted, setProjectsMounted] = useState(sidebarTab === "projects");
   useEffect(() => {
     if (sidebarTab === "content") setContentMounted(true);
     if (sidebarTab === "hot") setHotMounted(true);
+    if (sidebarTab === "inspiration") setInspirationMounted(true);
     if (sidebarTab === "knowledge") setKnowledgeMounted(true);
     if (sidebarTab === "projects") setProjectsMounted(true);
   }, [sidebarTab]);
@@ -157,6 +172,7 @@ export function OilSidebarRoot({
   const sessionsVisible = !wide || sidebarTab === "sessions";
   const contentVisible = wide && sidebarTab === "content";
   const hotVisible = wide && sidebarTab === "hot";
+  const inspirationVisible = wide && sidebarTab === "inspiration";
   const knowledgeVisible = wide && sidebarTab === "knowledge";
   const projectsVisible = wide && sidebarTab === "projects";
 
@@ -264,6 +280,26 @@ export function OilSidebarRoot({
               <span className="tabLabel">{tabLabels.hot}</span>
             </IslandButton>
             <IslandButton
+              type={sidebarTab === "inspiration" ? "primary" : "text"}
+              role="tab"
+              aria-selected={sidebarTab === "inspiration"}
+              tabIndex={sidebarTab === "inspiration" ? 0 : -1}
+              data-sidebar-tab="inspiration"
+              className={cx("tabButton", sidebarTab === "inspiration" && "active")}
+              aria-label={inspirationActivity === null ? tabLabels.inspiration : `${tabLabels.inspiration}，${inspirationActivity.label}`}
+              onClick={() => { chooseTab("inspiration"); }}
+              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "inspiration"); }}
+            >
+              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-design" size={18} /></span>
+              <span className="tabLabel">{tabLabels.inspiration}</span>
+              {inspirationActivity !== null && (
+                <span className={`sessionActivityBadge ${inspirationActivity.kind}`} aria-hidden="true">
+                  <i />
+                  <span className="sessionActivityText">{inspirationActivity.label}</span>
+                </span>
+              )}
+            </IslandButton>
+            <IslandButton
               type={sidebarTab === "content" ? "primary" : "text"}
               role="tab"
               aria-selected={sidebarTab === "content"}
@@ -319,6 +355,15 @@ export function OilSidebarRoot({
         {hotMounted && (
           <div className={cx("regionPane", !hotVisible && "hidden")}>
             <DailyHotPanel face={hotFace} t={contentT} resource={resources.hot} />
+          </div>
+        )}
+        {inspirationMounted && (
+          <div className={cx("regionPane", !inspirationVisible && "hidden")}>
+            <InspirationSidebarPanel
+              resource={resources.inspiration}
+              t={(key) => contentT(key as CreatorKey | InspirationCopyKey)}
+              onNew={() => { setInspirationSelection(null); }}
+            />
           </div>
         )}
         {contentMounted && (

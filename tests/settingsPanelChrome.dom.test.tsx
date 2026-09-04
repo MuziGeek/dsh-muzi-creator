@@ -206,33 +206,19 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(pickButtons[1]!.hasAttribute("disabled")).toBe(false);
   });
 
-  it("uses the Desktop native bridge and keeps uiWorkspace as the browser fallback", async () => {
-    const uiWorkspace = { pickDirectory: vi.fn(async () => "D:\\Browser") };
-    const desktopPicker = vi.fn(async () => "D:\\Desktop");
+  it("uses the composed DSH workspace picker in Web Lab and Desktop", async () => {
+    const workspaces = { pickDirectory: vi.fn(async () => "D:\\Creator") };
 
-    await expect(pickSettingsDirectory(uiWorkspace, {
-      location: { search: "?dsh-desktop-platform=win32" },
-      __DSH_DESKTOP_PICK_DIRECTORY__: desktopPicker,
-    })).resolves.toBe("D:\\Desktop");
-    expect(desktopPicker).toHaveBeenCalledTimes(1);
-    expect(uiWorkspace.pickDirectory).not.toHaveBeenCalled();
-
-    await expect(pickSettingsDirectory(uiWorkspace, {
-      location: { search: "" },
-    })).resolves.toBe("D:\\Browser");
-    expect(uiWorkspace.pickDirectory).toHaveBeenCalledTimes(1);
-
-    await expect(pickSettingsDirectory(uiWorkspace, {
-      location: { search: "?dsh-desktop-platform=win32" },
-    })).rejects.toThrow("DSH Desktop native directory picker is unavailable");
+    await expect(pickSettingsDirectory(workspaces)).resolves.toBe("D:\\Creator");
+    expect(workspaces.pickDirectory).toHaveBeenCalledTimes(1);
   });
 
   it("routes the settings face through the host-aware directory picker", async () => {
     const client = await readFile(resolve(process.cwd(), "src/client/index.tsx"), "utf8");
 
-    expect(client).toMatch(/export const inject = \[[^\]]*"uiWorkspace"/s);
+    expect(client).toMatch(/export const inject = \[[^\]]*"workspaces"/s);
     expect(client).toContain("pickSettingsDirectory(");
-    expect(client).toContain('ctx.get("uiWorkspace") as UiWorkspaceDirectoryPicker');
-    expect(client).not.toContain("ctx.workspaces.pickDirectory()");
+    expect(client).toContain("ctx.workspaces as WorkspaceDirectoryPicker");
+    expect(client).not.toContain('"uiWorkspace"');
   });
 });

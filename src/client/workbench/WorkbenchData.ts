@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from "react";
 
 import type { DailyHotResult } from "../../dailyHotTypes.ts";
+import type { InspirationOverview } from "../../inspirationTypes.ts";
 import type { KnowledgePreviewResult, MuziProjectListResult } from "../../muziTypes.ts";
 import type { TrellisProjectListResult } from "../../trellisTypes.ts";
-import type { DailyHotViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
+import type { DailyHotViewFace, InspirationViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
 
 export interface ResourceSnapshot<T> {
   data: T | null;
@@ -65,14 +66,16 @@ export class ReadonlyResource<T> {
 
 export interface WorkbenchResources {
   hot: ReadonlyResource<DailyHotResult>;
+  inspiration: ReadonlyResource<InspirationOverview>;
   content: ReadonlyResource<MuziProjectListResult>;
   knowledge: ReadonlyResource<KnowledgePreviewResult>;
   projects: ReadonlyResource<TrellisProjectListResult>;
 }
 
-/** Build the four independent read controllers without changing any Host or Remote API. */
+/** Build the independent read controllers shared by sidebar and central surfaces. */
 export function createWorkbenchResources(
   hotFace: DailyHotViewFace,
+  inspirationFace: InspirationViewFace,
   muziFace: MuziViewFace,
   trellisFace: TrellisViewFace,
 ): WorkbenchResources {
@@ -80,6 +83,10 @@ export function createWorkbenchResources(
     hot: new ReadonlyResource(async (force) => {
       if (!hotFace.ready()) throw new Error("热点数据正在连接");
       return hotFace.getDailyHot(force);
+    }),
+    inspiration: new ReadonlyResource(async () => {
+      if (!inspirationFace.ready()) throw new Error("灵感服务正在连接");
+      return inspirationFace.list();
     }),
     content: new ReadonlyResource(async () => {
       if (!muziFace.ready()) throw new Error("内容数据正在连接");

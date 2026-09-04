@@ -263,6 +263,7 @@
 }
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge.pending { color: var(--muzi-island-warning); }
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge.running { color: var(--muzi-island-leaf); }
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge.unread { color: var(--animal-info-color-active); }
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .workbenchSlotError {
   margin: 0 12px 10px 0;
   padding: 10px 12px;

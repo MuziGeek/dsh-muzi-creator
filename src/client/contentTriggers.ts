@@ -194,6 +194,7 @@ export function registerMuziTriggers(
   loadKnowledge: (locator: string) => Promise<{ title: string; locator: string; sha256: string; markdown: string }>,
   searchKnowledge: (query: string) => Promise<ReadonlyArray<KnowledgePageSummary>>,
   loadPending: (id: string, expectedSha256?: string) => Promise<PendingKnowledgeReference>,
+  loadInspiration?: (ref: string) => Promise<string>,
 ): () => void {
   if (inputTriggers === undefined) return () => undefined;
   const source: TriggerSource = {
@@ -241,6 +242,9 @@ export function registerMuziTriggers(
           const [, id, expectedSha256] = ref.split(":");
           if (id === undefined) return "无效的待消化文件引用。";
           return (await loadPending(id, expectedSha256)).text;
+        }
+        if (ref.startsWith("inspiration:") && loadInspiration !== undefined) {
+          return loadInspiration(ref);
         }
         return "无效的 Muzi 引用。";
       },

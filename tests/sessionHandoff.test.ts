@@ -7,12 +7,14 @@ function fixture(hasLlmWiki = true) {
   let draftRev = 0;
   const insertReference = vi.fn(() => true);
   const notify = vi.fn();
+  const submit = vi.fn();
   const create = vi.fn(async () => "fresh-session");
   const reveal = vi.fn();
   return {
     draft: () => draft,
     insertReference,
     notify,
+    submit,
     create,
     reveal,
     dependencies: {
@@ -21,6 +23,7 @@ function fixture(hasLlmWiki = true) {
         setDraft(text: string) { draft = text; draftRev += 1; },
         insertReference,
         notify,
+        submit,
         state: { getSnapshot: () => ({ draft, draftRev }) },
       }),
       reveal,
@@ -48,6 +51,20 @@ describe("session handoff", () => {
         draftRev: 1,
       },
     );
+    expect(item.reveal).toHaveBeenCalledWith("fresh-session");
+    expect(item.submit).not.toHaveBeenCalled();
+  });
+
+  it("submits exactly once when a content proposal explicitly requests auto-submit", async () => {
+    const item = fixture();
+    await stageSessionHandoff(item.dependencies, {
+      prompt: "基于灵感报告提出 3 个内容方向",
+      label: "AI 创作趋势",
+      ref: "inspiration:ii_demo:ir_demo",
+      autoSubmit: true,
+    });
+    expect(item.submit).toHaveBeenCalledOnce();
+    expect(item.submit).toHaveBeenCalledWith("queue");
     expect(item.reveal).toHaveBeenCalledWith("fresh-session");
   });
 

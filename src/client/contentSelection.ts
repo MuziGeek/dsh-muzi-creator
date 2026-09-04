@@ -38,7 +38,7 @@ function persist(patch: Partial<ReturnType<typeof loadCreatorUiState>> = {}): vo
   saveCreatorUiState(browserCreatorStorage(), {
     ...current,
     ...patch,
-    schemaVersion: 2,
+    schemaVersion: 3,
     selections: mergedSelections,
     sidebarTab,
   });

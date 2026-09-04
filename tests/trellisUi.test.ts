@@ -77,12 +77,13 @@ function preview(token: string | null, blockers: string[] = []): TrellisArchiveP
 }
 
 describe("Trellis project UI behavior", () => {
-  it("places Hot second and Projects fifth with roving keyboard navigation", () => {
-    expect(SIDEBAR_TABS).toEqual(["sessions", "hot", "content", "knowledge", "projects"]);
+  it("places Inspiration between Hot and Content with roving keyboard navigation", () => {
+    expect(SIDEBAR_TABS).toEqual(["sessions", "hot", "inspiration", "content", "knowledge", "projects"]);
     expect(nextSidebarTab("knowledge", "ArrowDown")).toBe("projects");
     expect(nextSidebarTab("projects", "ArrowDown")).toBe("sessions");
     expect(nextSidebarTab("sessions", "ArrowDown")).toBe("hot");
-    expect(nextSidebarTab("hot", "ArrowDown")).toBe("content");
+    expect(nextSidebarTab("hot", "ArrowDown")).toBe("inspiration");
+    expect(nextSidebarTab("inspiration", "ArrowDown")).toBe("content");
     expect(nextSidebarTab("sessions", "End")).toBe("projects");
     expect(nextSidebarTab("projects", "Home")).toBe("sessions");
     expect(nextSidebarTab("projects", "Enter")).toBeNull();

@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef } from "react";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
 import type { KnowledgePage, PendingKnowledgeFile } from "../../muziTypes.ts";
-import type { CreatorViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
+import type { InspirationReference } from "../../inspirationTypes.ts";
+import type { CreatorViewFace, InspirationViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
 import { DailyHotInspector } from "../DailyHotInspector.tsx";
 import { MuziInspector } from "../MuziInspector.tsx";
 import { TrellisProjectInspector } from "../TrellisProjectInspector.tsx";
 import { KnowledgePreview } from "../KnowledgePreview.tsx";
+import { InspirationWorkbench, type InspirationCopyKey } from "../inspiration/index.ts";
+import { setInspirationSelection, useInspirationSelection } from "../inspirationSelection.ts";
 import {
   bumpLibrary,
   setContentSelection,
@@ -42,6 +45,7 @@ import "./MuziWorkbench.css";
 
 const TAB_TITLES = {
   hot: "热点工作台",
+  inspiration: "灵感研究台账",
   content: "内容工作台",
   knowledge: "知识工作台",
   projects: "项目工作台",
@@ -51,10 +55,13 @@ type WorkbenchFeature = keyof typeof TAB_TITLES;
 
 export type MuziWorkbenchRootProps = PropsRuntime<"conversation"> & {
   resources: WorkbenchResources;
+  inspirationFace: InspirationViewFace;
   muziFace: MuziViewFace;
   oilFace: CreatorViewFace;
   trellisFace: TrellisViewFace;
-  t: (key: CreatorKey) => string;
+  t: (key: CreatorKey | InspirationCopyKey) => string;
+  openInspirationSession: (sessionId: string) => void;
+  promoteInspiration: (reference: InspirationReference) => Promise<void>;
   startPendingProcessing: (file: PendingKnowledgeFile) => Promise<void>;
   startKnowledgeDiscussion: (page: KnowledgePage) => Promise<void>;
 };
@@ -62,10 +69,13 @@ export type MuziWorkbenchRootProps = PropsRuntime<"conversation"> & {
 /** Stable central root; feature switches update content without re-registering the conversation slot. */
 export function MuziWorkbenchRoot({
   resources,
+  inspirationFace,
   muziFace,
   oilFace,
   trellisFace,
   t,
+  openInspirationSession,
+  promoteInspiration,
   startPendingProcessing,
   startKnowledgeDiscussion,
 }: MuziWorkbenchRootProps) {
@@ -74,8 +84,10 @@ export function MuziWorkbenchRoot({
   const selections = useFeatureSelections();
   const hotId = useDailyHotSelectionId();
   const hotItem = useDailyHotSelection();
+  const [inspirationSelection] = useInspirationSelection();
   const trellisSelection = useTrellisSelection();
   const hot = useResourceSnapshot(resources.hot);
+  const inspiration = useResourceSnapshot(resources.inspiration);
   const content = useResourceSnapshot(resources.content);
   const knowledge = useResourceSnapshot(resources.knowledge);
   const projects = useResourceSnapshot(resources.projects);
@@ -83,9 +95,10 @@ export function MuziWorkbenchRoot({
 
   useEffect(() => {
     const resource = feature === "hot" ? resources.hot
-      : feature === "content" ? resources.content
-        : feature === "knowledge" ? resources.knowledge
-          : resources.projects;
+      : feature === "inspiration" ? resources.inspiration
+        : feature === "content" ? resources.content
+          : feature === "knowledge" ? resources.knowledge
+            : resources.projects;
     void resource.load(false).catch(() => undefined);
   }, [feature, resources]);
 
@@ -100,11 +113,19 @@ export function MuziWorkbenchRoot({
     }
   }, [projects.data, trellisSelection.projectId]);
 
+  useEffect(() => {
+    if (inspiration.data === null || inspirationSelection === null) return;
+    const owners = inspirationSelection.kind === "item" ? inspiration.data.items : inspiration.data.tasks;
+    if (!owners.some((owner) => owner.id === inspirationSelection.id)) setInspirationSelection(null);
+  }, [inspiration.data, inspirationSelection]);
+
   const detailKey = feature === "hot" ? hotId
-    : feature === "content" ? selections.contentId
-      : feature === "knowledge"
-        ? selections.knowledge === null ? null : `${selections.knowledge.kind}:${selections.knowledge.kind === "page" ? selections.knowledge.locator : selections.knowledge.id}`
-        : trellisSelection.projectId;
+    : feature === "inspiration"
+      ? inspirationSelection === null ? null : `${inspirationSelection.kind}:${inspirationSelection.id}:${inspirationSelection.runId ?? "latest"}`
+      : feature === "content" ? selections.contentId
+        : feature === "knowledge"
+          ? selections.knowledge === null ? null : `${selections.knowledge.kind}:${selections.knowledge.kind === "page" ? selections.knowledge.locator : selections.knowledge.id}`
+          : trellisSelection.projectId;
   const previousDetail = useRef({ feature, key: detailKey });
   useEffect(() => {
     if (detailKey !== null) rememberSidebarItemFocus(feature, detailKey);
@@ -116,16 +137,19 @@ export function MuziWorkbenchRoot({
     )) {
       compactSidebarForDetail();
       window.requestAnimationFrame(() => {
-        (document.getElementById("muzi-workbench-detail-title") ?? headingRef.current)?.focus();
+        (document.getElementById("muzi-workbench-detail-title")
+          ?? document.getElementById("inspiration-detail-title")
+          ?? headingRef.current)?.focus();
       });
     }
     previousDetail.current = { feature, key: detailKey };
   }, [detailKey, feature]);
 
   const snapshot = feature === "hot" ? hot
-    : feature === "content" ? content
-      : feature === "knowledge" ? knowledge
-        : projects;
+    : feature === "inspiration" ? inspiration
+      : feature === "content" ? content
+        : feature === "knowledge" ? knowledge
+          : projects;
   const statusLabel = snapshot.refreshing ? "刷新中"
     : snapshot.error !== null ? "部分不可用"
       : snapshot.data === null ? "读取中"
@@ -133,9 +157,10 @@ export function MuziWorkbenchRoot({
 
   const refresh = async (): Promise<void> => {
     const resource = feature === "hot" ? resources.hot
-      : feature === "content" ? resources.content
-        : feature === "knowledge" ? resources.knowledge
-          : resources.projects;
+      : feature === "inspiration" ? resources.inspiration
+        : feature === "content" ? resources.content
+          : feature === "knowledge" ? resources.knowledge
+            : resources.projects;
     const request = resource.load(true);
     if (feature === "content" || feature === "knowledge") bumpLibrary();
     if (feature === "projects") bumpTrellis();
@@ -145,6 +170,7 @@ export function MuziWorkbenchRoot({
   const returnToOverview = (): void => {
     if (detailKey !== null) restoreSidebarItemFocus(feature, detailKey);
     if (feature === "hot") selectDailyHotItem(null);
+    if (feature === "inspiration") setInspirationSelection(null);
     if (feature === "content") setContentSelection(null);
     if (feature === "knowledge") setKnowledgeSelection(null);
     if (feature === "projects") selectTrellisProject(null);
@@ -153,6 +179,17 @@ export function MuziWorkbenchRoot({
   const overview = useMemo(() => {
     if (feature === "hot" && hot.data !== null) {
       return <HotOverview result={hot.data} onSelect={selectDailyHotItem} />;
+    }
+    if (feature === "inspiration") {
+      return (
+        <InspirationWorkbench
+          face={inspirationFace}
+          resource={resources.inspiration}
+          openSession={openInspirationSession}
+          promote={(reference) => promoteInspiration(reference)}
+          t={(key) => t(key as CreatorKey | InspirationCopyKey)}
+        />
+      );
     }
     if (feature === "content" && content.data !== null) {
       return <ContentOverview result={content.data} onSelect={setContentSelection} />;
@@ -164,10 +201,11 @@ export function MuziWorkbenchRoot({
       return <ProjectsOverview result={projects.data} onSelect={selectTrellisProject} />;
     }
     return null;
-  }, [content.data, feature, hot.data, knowledge.data, projects.data, resources.knowledge]);
+  }, [content.data, feature, hot.data, inspirationFace, knowledge.data, openInspirationSession, projects.data, promoteInspiration, resources.inspiration, resources.knowledge, t]);
 
   const detail = feature === "hot"
     ? hotItem === null ? null : <DailyHotInspector t={t} />
+    : feature === "inspiration" ? null
     : feature === "content" || feature === "knowledge"
       ? detailKey === null ? null : <MuziInspector muziFace={muziFace} oilFace={oilFace} startPendingProcessing={startPendingProcessing} startKnowledgeDiscussion={startKnowledgeDiscussion} />
       : trellisSelection.projectId === null ? null : <TrellisProjectInspector face={trellisFace} t={t} />;
