@@ -91,6 +91,29 @@ import { playbackOf, startVideoServer } from "./videoServe.ts";
 import { AtlasReadService } from "./atlasService.ts";
 import { createDailyHotLoader, type DailyHotLoader } from "./dailyHotService.ts";
 import type { DailyHotResult, GetDailyHotRequest } from "./dailyHotTypes.ts";
+import { InspirationService } from "./inspirationService.ts";
+import type {
+  ArchiveInspirationRequest,
+  ArchiveInspirationResult,
+  GetInspirationRequest,
+  InspirationDetail,
+  InspirationItem,
+  InspirationOverview,
+  InspirationReference,
+  InspirationRun,
+  InspirationTask,
+  ListInspirationsRequest,
+  MarkInspirationReadRequest,
+  OpenInspirationReportRequest,
+  RunInspirationTaskNowRequest,
+  SaveInspirationDraftRequest,
+  SaveInspirationTaskRequest,
+  SerializeInspirationReferenceRequest,
+  SetInspirationTaskStateRequest,
+  StartInspirationResearchRequest,
+  StartInspirationResearchResult,
+  StopInspirationRunRequest,
+} from "./inspirationTypes.ts";
 import { MuziCreatorService } from "./muziService.ts";
 import { VideoPublisherService } from "./videoPublisher.ts";
 import { TrellisProjectService } from "./trellisService.ts";
@@ -208,6 +231,7 @@ export class OilCreatorService extends TypertRemoteService {
   readonly atlas: AtlasReadService;
   readonly trellis: TrellisProjectService;
   readonly dailyHot: DailyHotLoader;
+  readonly inspiration: InspirationService;
   readonly externalActionsEnabled: boolean;
   readonly obsidianExecutableConfig: string | undefined;
   obsidianExecutable: string | undefined;
@@ -226,6 +250,11 @@ export class OilCreatorService extends TypertRemoteService {
     this.atlas = new AtlasReadService(config);
     this.trellis = new TrellisProjectService(ctx, config);
     this.dailyHot = createDailyHotLoader();
+    this.inspiration = new InspirationService({
+      dataDir: this.dataDir,
+      creatorRoot: this.muzi.creatorRoot,
+      obsidianExecutable: () => this.obsidianExecutable,
+    });
     this.externalActionsEnabled = config.externalActionsEnabled;
     this.obsidianExecutableConfig = config.obsidianExecutable;
     this.obsidianExecutable = config.obsidianExecutable;
@@ -233,6 +262,7 @@ export class OilCreatorService extends TypertRemoteService {
     ctx.effect(() => async () => {
       this.stopWatch();
       this.stopExportWaiters();
+      this.inspiration.dispose();
       await this.stopServers();
     }, "oil-creator: library watch");
   }
@@ -381,6 +411,70 @@ export class OilCreatorService extends TypertRemoteService {
 
   async getDailyHot(request: GetDailyHotRequest, signal: AbortSignal): Promise<DailyHotResult> {
     return this.dailyHot(request, signal);
+  }
+
+  async listInspirations(request: ListInspirationsRequest, signal: AbortSignal): Promise<InspirationOverview> {
+    signal.throwIfAborted();
+    return this.inspiration.listInspirations(request);
+  }
+
+  async getInspirationRevision(_request: Record<string, never>, signal: AbortSignal): Promise<{ revision: number }> {
+    signal.throwIfAborted();
+    return { revision: await this.inspiration.getRevision() };
+  }
+
+  async getInspiration(request: GetInspirationRequest, signal: AbortSignal): Promise<InspirationDetail> {
+    signal.throwIfAborted();
+    return this.inspiration.getInspiration(request);
+  }
+
+  async saveInspirationDraft(request: SaveInspirationDraftRequest, signal: AbortSignal): Promise<InspirationItem> {
+    signal.throwIfAborted();
+    return this.inspiration.saveInspirationDraft(request);
+  }
+
+  async startInspirationResearch(request: StartInspirationResearchRequest, signal: AbortSignal): Promise<StartInspirationResearchResult> {
+    signal.throwIfAborted();
+    return this.inspiration.startInspirationResearch(request);
+  }
+
+  async stopInspirationRun(request: StopInspirationRunRequest, signal: AbortSignal): Promise<InspirationRun> {
+    signal.throwIfAborted();
+    return this.inspiration.stopInspirationRun(request);
+  }
+
+  async saveInspirationTask(request: SaveInspirationTaskRequest, signal: AbortSignal): Promise<InspirationTask> {
+    signal.throwIfAborted();
+    return this.inspiration.saveInspirationTask(request);
+  }
+
+  async setInspirationTaskState(request: SetInspirationTaskStateRequest, signal: AbortSignal): Promise<InspirationTask> {
+    signal.throwIfAborted();
+    return this.inspiration.setInspirationTaskState(request);
+  }
+
+  async runInspirationTaskNow(request: RunInspirationTaskNowRequest, signal: AbortSignal): Promise<InspirationRun> {
+    signal.throwIfAborted();
+    return this.inspiration.runInspirationTaskNow(request);
+  }
+
+  async markInspirationRead(request: MarkInspirationReadRequest, signal: AbortSignal): Promise<InspirationRun> {
+    signal.throwIfAborted();
+    return this.inspiration.markInspirationRead(request);
+  }
+
+  async archiveInspiration(request: ArchiveInspirationRequest, signal: AbortSignal): Promise<ArchiveInspirationResult> {
+    signal.throwIfAborted();
+    return this.inspiration.archiveInspiration(request);
+  }
+
+  async openInspirationReportInObsidian(request: OpenInspirationReportRequest, signal: AbortSignal): Promise<{ opened: true }> {
+    return this.inspiration.openInspirationReport(request, signal);
+  }
+
+  async serializeInspirationReference(request: SerializeInspirationReferenceRequest, signal: AbortSignal): Promise<InspirationReference> {
+    signal.throwIfAborted();
+    return this.inspiration.serializeInspirationReference(request);
   }
 
   async getTrellisProject(request: GetTrellisProjectRequest, signal: AbortSignal): Promise<TrellisProjectDetail> {
