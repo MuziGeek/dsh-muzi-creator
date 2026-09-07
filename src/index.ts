@@ -11,7 +11,6 @@ import { OilCreatorService } from "./service.ts";
 import { registerCreatorSettingsNamespace } from "./settingsHost.ts";
 import { registerCreatorTools } from "./tools.ts";
 import { registerMuziTools } from "./muziTools.ts";
-import { InspirationScheduler } from "./inspirationScheduler.ts";
 import { registerInspirationTools } from "./inspirationTools.ts";
 import { externalActionApprovalReason, externalActionKind } from "./externalActions.ts";
 
@@ -135,12 +134,9 @@ export function apply(ctx: Context, config: Config): void {
   ctx.inject(["sessionController", "tools"], (runtimeCtx) => {
     runtimeCtx.effect(async () => {
       await service.inspiration.attachRuntime(managedRuntime(runtimeCtx));
-      const scheduler = new InspirationScheduler(service.inspiration);
-      await scheduler.start();
       return () => {
-        scheduler.stop();
         service.inspiration.dispose();
       };
-    }, "muzi-inspiration: runtime and scheduler");
+    }, "muzi-inspiration: runtime");
   });
 }

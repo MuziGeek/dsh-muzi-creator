@@ -45,7 +45,7 @@ import "./MuziWorkbench.css";
 
 const TAB_TITLES = {
   hot: "热点工作台",
-  inspiration: "灵感研究台账",
+  inspiration: "灵感",
   content: "内容工作台",
   knowledge: "知识工作台",
   projects: "项目工作台",

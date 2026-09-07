@@ -79,15 +79,7 @@ export class InspirationStore {
     return withInspirationLock(this.dataDir, async () => {
       if (this.loaded === undefined) {
         this.loaded = await this.readDisk();
-        let repaired = false;
-        for (const run of Object.values(this.loaded.runs)) {
-          if (run.status !== "running") continue;
-          run.status = "interrupted";
-          run.finishedAt = new Date().toISOString();
-          run.error = { code: "HOST_RESTART", message: "Host restarted while this research run was active." };
-          run.revision += 1;
-          repaired = true;
-        }
+        const repaired = this.repairForRestart(this.loaded);
         if (repaired) {
           this.loaded.revision += 1;
           await this.persist(this.loaded);
@@ -102,15 +94,7 @@ export class InspirationStore {
     return withInspirationLock(this.dataDir, async () => {
       if (this.loaded === undefined) {
         this.loaded = await this.readDisk();
-        let repaired = false;
-        for (const run of Object.values(this.loaded.runs)) {
-          if (run.status !== "running") continue;
-          run.status = "interrupted";
-          run.finishedAt = new Date().toISOString();
-          run.error = { code: "HOST_RESTART", message: "Host restarted while this research run was active." };
-          run.revision += 1;
-          repaired = true;
-        }
+        const repaired = this.repairForRestart(this.loaded);
         if (repaired) {
           this.loaded.revision += 1;
           await this.persist(this.loaded);
@@ -131,6 +115,38 @@ export class InspirationStore {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return emptyInspirationIndex();
       throw new Error(`无法读取灵感研究台账：${String(error)}`, { cause: error });
     }
+  }
+
+  /** Stop retired recurring work while keeping its task and immutable report history readable. */
+  private repairForRestart(index: InspirationIndex): boolean {
+    let repaired = false;
+    const now = new Date().toISOString();
+    for (const task of Object.values(index.tasks)) {
+      if (task.state !== "enabled" && task.authorizedAt === null && task.nextRunAt === null) continue;
+      if (task.state === "enabled") task.state = "paused";
+      task.authorizedAt = null;
+      task.nextRunAt = null;
+      task.revision += 1;
+      task.updatedAt = now;
+      repaired = true;
+    }
+    for (const run of Object.values(index.runs)) {
+      if (run.status === "running") {
+        run.status = "interrupted";
+        run.finishedAt = now;
+        run.error = { code: "HOST_RESTART", message: "Host restarted while this research run was active." };
+        run.revision += 1;
+        repaired = true;
+        continue;
+      }
+      if (run.ownerKind !== "task" || run.status !== "queued") continue;
+      run.status = "cancelled";
+      run.finishedAt = now;
+      run.error = { code: "RECURRENCE_DISABLED", message: "Recurring inspiration research has been retired." };
+      run.revision += 1;
+      repaired = true;
+    }
+    return repaired;
   }
 
   private async persist(index: InspirationIndex): Promise<void> {

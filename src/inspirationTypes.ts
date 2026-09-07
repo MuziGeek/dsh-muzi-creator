@@ -24,6 +24,17 @@ export type InspirationRunStatus =
   | "cancelled"
   | "interrupted";
 
+/** A user-selected period for research that needs a bounded public-web result set. */
+export type InspirationTimeRange =
+  | { kind: "24h" | "7d" | "30d" }
+  | { kind: "custom"; startDate: string; endDate: string };
+
+/** A concrete, server-resolved research interval with an exclusive end instant. */
+export interface InspirationTimeWindow {
+  startAt: string;
+  endAt: string;
+}
+
 /** Validated inputs copied into every run so later task edits cannot rewrite history. */
 export interface InspirationResearchSpec {
   mode: InspirationResearchMode;
@@ -34,6 +45,7 @@ export interface InspirationResearchSpec {
   preferredDomains: string[];
   excludedDomains: string[];
   depth: InspirationDepth;
+  timeRange?: InspirationTimeRange | undefined;
 }
 
 /** A manually captured idea and its dedicated visible Agent Session. */
@@ -79,6 +91,8 @@ export interface InspirationRun {
   trigger: InspirationRunTrigger;
   status: InspirationRunStatus;
   spec: InspirationResearchSpec;
+  /** Omitted by legacy records created before bounded trend research. */
+  timeWindow?: InspirationTimeWindow | undefined;
   scheduledFor: string | null;
   queuedAt: string;
   startedAt: string | null;

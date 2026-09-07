@@ -4,17 +4,28 @@ const idSchema = z.string().min(8).max(128).regex(/^[A-Za-z0-9_-]+$/);
 const revisionSchema = z.number().int().nonnegative();
 const timestampSchema = z.string().min(1).max(64);
 const domainSchema = z.string().min(1).max(253).regex(/^[a-z0-9.-]+$/);
+const calendarDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+const inspirationTimeRangeSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.enum(["24h", "7d", "30d"]) }).strict(),
+  z.object({ kind: z.literal("custom"), startDate: calendarDateSchema, endDate: calendarDateSchema }).strict(),
+]);
 
 export const inspirationResearchSpecSchema = z.object({
   mode: z.enum(["topic", "trend"]),
-  topic: z.string().trim().min(1).max(200),
+  topic: z.string().trim().max(200),
   objective: z.string().trim().max(1000),
   questions: z.array(z.string().trim().min(1).max(300)).max(8),
-  sourceLanguage: z.enum(["zh-en", "zh", "en"]),
+  sourceLanguage: z.enum(["zh-en", "zh", "en"]).default("zh-en"),
   preferredDomains: z.array(domainSchema).max(20),
   excludedDomains: z.array(domainSchema).max(20),
-  depth: z.enum(["quick", "standard", "deep"]),
-}).strict();
+  depth: z.enum(["quick", "standard", "deep"]).default("standard"),
+  timeRange: inspirationTimeRangeSchema.optional(),
+}).strict().superRefine((value, context) => {
+  if (value.mode === "topic" && value.topic === "") {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["topic"], message: "主题研究需要非空主题" });
+  }
+});
 
 export const inspirationItemSchema = z.object({
   id: idSchema,
@@ -62,6 +73,7 @@ export const inspirationRunSchema = z.object({
   trigger: z.enum(["manual", "rerun", "scheduled", "catch-up", "run-now"]),
   status: inspirationRunStatusSchema,
   spec: inspirationResearchSpecSchema,
+  timeWindow: z.object({ startAt: timestampSchema, endAt: timestampSchema }).strict().optional(),
   scheduledFor: timestampSchema.nullable(),
   queuedAt: timestampSchema,
   startedAt: timestampSchema.nullable(),
@@ -97,7 +109,7 @@ export const inspirationReportSchema = z.object({
   summary: z.string().trim().min(1).max(12000),
   findings: z.array(inspirationEvidenceNoteSchema).max(12),
   disagreements: z.array(inspirationEvidenceNoteSchema).max(12),
-  angles: z.array(z.string().trim().min(1).max(1000)).min(3).max(5),
+  angles: z.array(z.string().trim().min(1).max(1000)).max(5),
   nextSteps: z.array(z.string().trim().min(1).max(1000)).max(12),
   sources: z.array(inspirationSourceSchema).max(30),
 }).strict();

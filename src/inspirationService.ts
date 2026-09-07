@@ -5,24 +5,25 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import { openConfiguredObsidian } from "./obsidian.ts";
 import { inspirationReportSchema, inspirationReportSubmissionSchema } from "./inspirationSchemas.ts";
-import { INSPIRATION_TIME_ZONE, latestDailyOccurrence, nextDailyOccurrence, type InspirationScheduleTarget } from "./inspirationScheduler.ts";
 import { InspirationStore } from "./inspirationStore.ts";
 import type {
   ArchiveInspirationRequest,
   ArchiveInspirationResult,
   GetInspirationRequest,
   InspirationDetail,
+  InspirationEvidenceNote,
   InspirationId,
   InspirationItem,
   InspirationOverview,
   InspirationReference,
+  InspirationResearchSpec,
   InspirationReport,
   InspirationReportSubmission,
   InspirationRun,
   InspirationRunId,
   InspirationRunStatus,
+  InspirationTimeWindow,
   InspirationTask,
-  InspirationTaskId,
   ListInspirationsRequest,
   MarkInspirationReadRequest,
   OpenInspirationReportRequest,
@@ -101,28 +102,97 @@ function finalStatus(status: InspirationRunStatus): boolean {
   return ["ready", "partial", "failed", "needs_attention", "cancelled", "interrupted"].includes(status);
 }
 
-function promptFor(run: InspirationRun, trendBaseline: string | null): string {
+const DEFAULT_TREND_TOPIC = "全网综合热点";
+const SHANGHAI_TIME_ZONE = "Asia/Shanghai";
+
+function formatWindow(window: InspirationTimeWindow | undefined): string {
+  return window === undefined ? "不限定时间范围" : `${window.startAt} 至 ${window.endAt}（结束时间不包含在内）`;
+}
+
+function promptFor(run: InspirationRun): string {
   const sourceTarget = run.spec.depth === "quick" ? "4–6" : run.spec.depth === "standard" ? "8–12" : "12–20";
   return [
-    "You are a bounded Muzi Creator inspiration researcher.",
-    `Research mode: ${run.spec.mode === "trend" ? "trend monitoring" : "topic research"}`,
-    `Research topic: ${run.spec.topic}`,
-    `Objective: ${run.spec.objective}`,
-    `Questions: ${run.spec.questions.join(" | ")}`,
-    `Source languages: ${run.spec.sourceLanguage}`,
-    `Research depth: ${run.spec.depth}; target ${sourceTarget} independent public sources.`,
-    `Preferred domains: ${run.spec.preferredDomains.join(", ") || "none"}`,
-    `Excluded domains: ${run.spec.excludedDomains.join(", ") || "none"}`,
-    "Use only public HTTP(S) pages. Do not sign in, access private accounts, or bypass paid content.",
+    "你是受限的 Muzi Creator 灵感研究员。请用中文提交结构化报告。",
+    `研究类型：${run.spec.mode === "trend" ? "全网综合趋势研究" : "主题研究"}`,
+    `研究主题：${run.spec.topic}`,
+    `实际时间窗：${formatWindow(run.timeWindow)}`,
+    `研究目标：${run.spec.objective}`,
+    `待回答问题：${run.spec.questions.join(" | ") || "无"}`,
+    `来源语言：${run.spec.sourceLanguage}`,
+    `研究深度：${run.spec.depth}；目标 ${sourceTarget} 个相互独立的公开来源。`,
+    `优先域名：${run.spec.preferredDomains.join(", ") || "无"}`,
+    `排除域名：${run.spec.excludedDomains.join(", ") || "无"}`,
+    "只能访问公开 HTTP(S) 页面。不得登录、访问私有账号或绕过付费内容。",
     run.spec.mode === "trend"
-      ? trendBaseline === null
-        ? "This is the first trend run. Prioritize the last 24 hours, and preserve unknown publication dates as unknown."
-        : `This is a follow-up trend run. Compare new information since the previous successful report completed at ${trendBaseline}. Preserve unknown publication dates as unknown.`
-      : "Prefer primary and authoritative sources; preserve unknown publication dates as unknown.",
-    "Use only the allowed research and knowledge tools. Do not put the report in chat text.",
-    "If the source target cannot be met, submit a partial report and explain why in partialReason. Never invent sources or dates.",
-    `When done, call muzi_inspiration_submit_report with runId ${run.id}`,
+      ? "趋势报告的每个来源必须声明发布时间，且声明日期位于实际时间窗内；未知或窗外日期不能作为窗口热点依据。合并同一事件，逐项说明事件和有来源支持的关注原因，不得编造全网排名、榜单位置或热度数字。"
+      : "优先使用一手和权威来源；未知发布时间须明确保留为未知。",
+    "报告只包含摘要、可核查事实、案例、创作角度、下一步和来源，不要撰写完整文章。",
+    "发现和分歧必须通过 sourceIds 关联对应来源；创作角度应基于这些发现，涉及具体事实时标注对应来源 id。",
+    "只能使用允许的研究和知识工具；不要把报告正文写入聊天消息。",
+    "如果来源或信息不足，提交部分报告并在 partialReason 说明；空结果可以保留，不得编造来源、日期或结论。",
+    `完成后调用 muzi_inspiration_submit_report，并传入 runId ${run.id}`,
   ].join("\n");
+}
+
+function normalizeSpec(spec: InspirationResearchSpec): InspirationResearchSpec {
+  const topic = spec.topic.trim();
+  if (spec.mode === "topic" && topic === "") throw new Error("主题研究需要非空主题");
+  return {
+    ...copy(spec),
+    topic: spec.mode === "trend" && topic === "" ? DEFAULT_TREND_TOPIC : topic,
+  };
+}
+
+function calendarDate(value: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (match === null) throw new Error("自定义时间范围必须使用 YYYY-MM-DD 日期");
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) {
+    throw new Error("自定义时间范围包含无效日期");
+  }
+  return new Date(Date.UTC(year, month - 1, day, -8));
+}
+
+function resolveTimeWindow(spec: InspirationResearchSpec, now: Date): InspirationTimeWindow | undefined {
+  const selected = spec.timeRange ?? (spec.mode === "trend" ? { kind: "24h" as const } : undefined);
+  if (selected === undefined) return undefined;
+  if (selected.kind !== "custom") {
+    const hours = selected.kind === "24h" ? 24 : selected.kind === "7d" ? 7 * 24 : 30 * 24;
+    return { startAt: new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString(), endAt: now.toISOString() };
+  }
+  const start = calendarDate(selected.startDate);
+  const end = calendarDate(selected.endDate);
+  const shanghaiToday = shanghaiDate(now);
+  if (selected.endDate > shanghaiToday) throw new Error("自定义时间范围不能包含未来日期");
+  if (start.getTime() > end.getTime()) throw new Error("自定义时间范围的开始日期不能晚于结束日期");
+  return { startAt: start.toISOString(), endAt: new Date(end.getTime() + 24 * 60 * 60 * 1000).toISOString() };
+}
+
+function declaredPublishedAt(value: string | null): Date | null {
+  if (value === null) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    try { return calendarDate(value); } catch { return null; }
+  }
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (match === null) return null;
+  try { calendarDate(match[1]!); } catch { return null; }
+  const hour = Number(match[2]);
+  const minute = Number(match[3]);
+  const second = match[4] === undefined ? 0 : Number(match[4]);
+  const zone = match[5]!;
+  if (hour > 23 || minute > 59 || second > 59 || (zone !== "Z" && (Number(zone.slice(1, 3)) > 23 || Number(zone.slice(4, 6)) > 59))) return null;
+  const published = new Date(value);
+  return Number.isNaN(published.getTime()) ? null : published;
+}
+
+function publishedWithin(source: { publishedAt: string | null }, window: InspirationTimeWindow, receivedAt: Date): boolean {
+  const published = declaredPublishedAt(source.publishedAt);
+  return published !== null && published.getTime() <= receivedAt.getTime()
+    && published.getTime() >= new Date(window.startAt).getTime()
+    && published.getTime() < new Date(window.endAt).getTime();
 }
 
 function isInside(root: string, target: string): boolean {
@@ -149,7 +219,7 @@ async function safeDirectory(path: string): Promise<string> {
 
 function shanghaiDate(value: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: INSPIRATION_TIME_ZONE,
+    timeZone: SHANGHAI_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -262,22 +332,28 @@ function parseReportDocument(text: string): InspirationReport | null {
 }
 
 function referenceText(report: InspirationReport, run: InspirationRun): string {
+  const evidenceLabels = { supported: "有来源支持", contested: "存在分歧", uncertain: "尚待核实" } as const;
+  const evidenceLines = (notes: InspirationEvidenceNote[]): string[] => notes.map((note) => {
+    const citations = note.sourceIds.map((sourceId) => `[${sourceId}]`).join(" ");
+    return `- ${markdownText(note.text)}${citations === "" ? "" : ` ${citations}`}（${evidenceLabels[note.evidence]}）`;
+  });
+  const sourceLines = report.sources.map((source) => `- [${source.id}] ${source.title} — <${source.url}> — 发布：${source.publishedAt ?? "未知"}`);
   return [
     `# 灵感研究报告：${run.spec.topic}`,
-    `运行：${run.id}`,
-    `SHA-256：${run.reportSha256 ?? "unavailable"}`,
+    ...(run.timeWindow === undefined ? [] : [`时间窗：${run.timeWindow.startAt} 至 ${run.timeWindow.endAt}（结束时间不包含在内）`]),
     "",
-    "## 摘要",
+    "## 总结",
     report.summary,
+    ...(report.partialReason === null ? [] : ["", "### 局限说明", report.partialReason]),
     "",
-    "## 关键发现",
-    ...report.findings.map((finding) => `- ${finding.text} [${finding.sourceIds.join(", ")}]`),
-    "",
-    "## 创作角度",
-    ...report.angles.map((angle) => `- ${angle}`),
+    "## 参考素材",
+    ...(report.findings.length === 0 ? ["- 暂无可确认发现。"] : evidenceLines(report.findings)),
+    ...(report.disagreements.length === 0 ? [] : ["", "### 分歧与未知", ...evidenceLines(report.disagreements)]),
+    ...(report.angles.length === 0 ? [] : ["", "### 创作角度", ...report.angles.map((angle) => `- ${markdownText(angle)}`)]),
+    ...(report.nextSteps.length === 0 ? [] : ["", "### 建议的下一步", ...report.nextSteps.map((step) => `- ${markdownText(step)}`)]),
     "",
     "## 来源",
-    ...report.sources.map((source) => `- [${source.id}] ${source.title}: ${source.url}`),
+    ...(sourceLines.length === 0 ? ["暂无可靠来源。"] : sourceLines),
   ].join("\n").slice(0, MAX_REPORT_BYTES);
 }
 
@@ -287,11 +363,10 @@ function domainAllowed(domain: string, excluded: readonly string[]): boolean {
 }
 
 /** Host-owned inspiration workflow, persistence, queueing, visible sessions, and report integrity. */
-export class InspirationService implements InspirationScheduleTarget {
+export class InspirationService {
   readonly store: InspirationStore;
   private readonly now: () => Date;
   private readonly queue: InspirationRunId[] = [];
-  private readonly priorityRunIds = new Set<InspirationRunId>();
   private draining = false;
   private runtime: InspirationRuntime | undefined;
   private readonly managedSessions = new Map<string, ManagedSession>();
@@ -323,11 +398,7 @@ export class InspirationService implements InspirationScheduleTarget {
     const queued = Object.values(index.runs)
       .filter((run) => run.status === "queued")
       .sort((left, right) => left.queuedAt.localeCompare(right.queuedAt));
-    for (const run of queued.filter((candidate) => candidate.trigger === "manual" || candidate.trigger === "rerun" || candidate.trigger === "run-now")) {
-      if (!this.queue.includes(run.id)) this.queue.push(run.id);
-      this.priorityRunIds.add(run.id);
-    }
-    for (const run of queued.filter((candidate) => candidate.trigger === "scheduled" || candidate.trigger === "catch-up")) {
+    for (const run of queued.filter((candidate) => candidate.ownerKind === "item")) {
       if (!this.queue.includes(run.id)) this.queue.push(run.id);
     }
     void this.drain();
@@ -341,7 +412,6 @@ export class InspirationService implements InspirationScheduleTarget {
     this.restrictions.clear();
     this.managedSessions.clear();
     this.managedAgentIds.clear();
-    this.priorityRunIds.clear();
     this.runtime = undefined;
   }
 
@@ -411,7 +481,7 @@ export class InspirationService implements InspirationScheduleTarget {
     return this.store.mutate((index) => {
       const now = this.now().toISOString();
       if (request.id === undefined) {
-        const item: InspirationItem = { id: id<InspirationId>(), revision: 0, spec: copy(request.spec), archived: false, sessionId: null, latestRunId: null, createdAt: now, updatedAt: now };
+        const item: InspirationItem = { id: id<InspirationId>(), revision: 0, spec: normalizeSpec(request.spec), archived: false, sessionId: null, latestRunId: null, createdAt: now, updatedAt: now };
         index.items[item.id] = item;
         return copy(item);
       }
@@ -419,14 +489,17 @@ export class InspirationService implements InspirationScheduleTarget {
       if (item === undefined) throw new Error("找不到灵感草稿");
       if (request.expectedRevision === undefined) throw new Error("更新草稿需要 expectedRevision");
       assertRevision(item.revision, request.expectedRevision, "灵感草稿");
-      item.spec = copy(request.spec); item.revision += 1; item.updatedAt = now;
+      item.spec = normalizeSpec(request.spec); item.revision += 1; item.updatedAt = now;
       return copy(item);
     });
   }
 
   async startInspirationResearch(request: StartInspirationResearchRequest): Promise<StartInspirationResearchResult> {
-    const item = await this.saveInspirationDraft(request);
-    const run = await this.enqueue(item.id, "item", request.id === undefined ? "manual" : "rerun", null);
+    const receivedAt = this.now();
+    const spec = normalizeSpec(request.spec);
+    const timeWindow = resolveTimeWindow(spec, receivedAt);
+    const item = await this.saveInspirationDraft({ ...request, spec });
+    const run = await this.enqueue(item.id, "item", request.id === undefined ? "manual" : "rerun", timeWindow);
     if (run === null) throw new Error("已归档的灵感不能再次调研");
     return { item: await this.item(item.id), run };
   }
@@ -445,58 +518,18 @@ export class InspirationService implements InspirationScheduleTarget {
   }
 
   async saveInspirationTask(request: SaveInspirationTaskRequest): Promise<InspirationTask> {
-    if (request.timeZone !== INSPIRATION_TIME_ZONE) throw new Error("每日灵感研究仅支持 Asia/Shanghai");
-    return this.store.mutate((index) => {
-      const now = this.now().toISOString();
-      if (request.id === undefined) {
-        const task: InspirationTask = { id: id<InspirationTaskId>(), revision: 0, name: request.name.trim(), spec: copy(request.spec), state: "paused", dailyTime: request.dailyTime, timeZone: request.timeZone, authorizedAt: null, nextRunAt: null, sessionId: null, latestRunId: null, createdAt: now, updatedAt: now };
-        index.tasks[task.id] = task;
-        return copy(task);
-      }
-      const task = index.tasks[request.id];
-      if (task === undefined) throw new Error("找不到灵感定时任务");
-      if (task.state === "archived") throw new Error("已归档的每日任务不能编辑");
-      if (request.expectedRevision === undefined) throw new Error("更新定时任务需要 expectedRevision");
-      assertRevision(task.revision, request.expectedRevision, "灵感定时任务");
-      const authorizationChanged = task.dailyTime !== request.dailyTime
-        || task.timeZone !== request.timeZone
-        || JSON.stringify(task.spec) !== JSON.stringify(request.spec);
-      task.name = request.name.trim(); task.spec = copy(request.spec); task.dailyTime = request.dailyTime; task.timeZone = request.timeZone;
-      if (authorizationChanged && task.state === "enabled") {
-        task.state = "paused";
-        task.authorizedAt = null;
-      }
-      task.nextRunAt = task.state === "enabled" ? nextDailyOccurrence(task, this.now()).toISOString() : null;
-      task.revision += 1; task.updatedAt = now;
-      return copy(task);
-    });
+    void request;
+    throw new Error("每日灵感任务已停用；请新建一次性研究");
   }
 
   async setInspirationTaskState(request: SetInspirationTaskStateRequest): Promise<InspirationTask> {
-    return this.store.mutate((index) => {
-      const task = index.tasks[request.taskId];
-      if (task === undefined) throw new Error("找不到灵感定时任务");
-      assertRevision(task.revision, request.expectedRevision, "灵感定时任务");
-      if (request.state === "enabled" && request.confirmed !== true) throw new Error("启用每日研究需要明确确认");
-      if (task.state === "archived" && request.state !== "archived") throw new Error("已归档的每日任务不能重新启用");
-      const now = this.now();
-      task.state = request.state;
-      task.authorizedAt = request.state === "enabled" ? now.toISOString() : null;
-      task.nextRunAt = request.state === "enabled" ? nextDailyOccurrence(task, now).toISOString() : null;
-      task.revision += 1; task.updatedAt = now.toISOString();
-      return copy(task);
-    });
+    void request;
+    throw new Error("每日灵感任务已停用；请新建一次性研究");
   }
 
   async runInspirationTaskNow(request: RunInspirationTaskNowRequest): Promise<InspirationRun> {
-    const index = await this.store.read();
-    const task = index.tasks[request.taskId];
-    if (task === undefined) throw new Error("找不到灵感定时任务");
-    assertRevision(task.revision, request.expectedRevision, "灵感定时任务");
-    if (task.state !== "enabled") throw new Error("暂停或归档的任务不能立即运行");
-    const run = await this.enqueue(task.id, "task", "run-now", null, request.expectedRevision);
-    if (run === null) throw new Error("暂停或归档的任务不能立即运行");
-    return run;
+    void request;
+    throw new Error("每日灵感任务已停用；请新建一次性研究");
   }
 
   async markInspirationRead(request: MarkInspirationReadRequest): Promise<InspirationRun> {
@@ -593,61 +626,28 @@ export class InspirationService implements InspirationScheduleTarget {
     });
   }
 
-  async listEnabledTasks(): Promise<InspirationTask[]> {
-    const index = await this.store.read();
-    return Object.values(index.tasks).filter((task) => task.state === "enabled").map(copy);
-  }
-
-  async enqueueScheduled(task: InspirationTask, scheduledFor: Date, trigger: "scheduled" | "catch-up"): Promise<void> {
-    await this.enqueue(task.id, "task", trigger, scheduledFor);
-  }
-
   private async enqueue(
-    ownerId: string,
-    ownerKind: "item" | "task",
-    trigger: InspirationRun["trigger"],
-    scheduledFor: Date | null,
-    expectedOwnerRevision?: number,
+    ownerId: InspirationId,
+    ownerKind: "item",
+    trigger: "manual" | "rerun",
+    timeWindow: InspirationTimeWindow | undefined,
   ): Promise<InspirationRun | null> {
     const run = await this.store.mutate((index) => {
-      const owner = ownerKind === "item" ? index.items[ownerId] : index.tasks[ownerId];
+      const owner = index.items[ownerId];
       if (owner === undefined) throw new Error("找不到灵感研究所有者");
-      if (expectedOwnerRevision !== undefined) assertRevision(owner.revision, expectedOwnerRevision, "灵感研究所有者");
-      if (ownerKind === "task" && (owner as InspirationTask).state !== "enabled") return null;
-      if (ownerKind === "item" && (owner as InspirationItem).archived) return null;
+      if (owner.archived) return null;
       const duplicate = Object.values(index.runs).find((candidate) => candidate.ownerId === ownerId && (candidate.status === "queued" || candidate.status === "running"));
       if (duplicate !== undefined) {
-        if (ownerKind === "task" && scheduledFor !== null) {
-          const task = owner as InspirationTask;
-          task.nextRunAt = nextDailyOccurrence(task, this.now()).toISOString();
-          task.revision += 1;
-          task.updatedAt = this.now().toISOString();
-        }
         return copy(duplicate);
       }
-      if (scheduledFor !== null) {
-        const existing = Object.values(index.runs).find((candidate) => candidate.ownerId === ownerId && candidate.scheduledFor === scheduledFor.toISOString());
-        if (existing !== undefined) return copy(existing);
-      }
       const now = this.now().toISOString();
-      const created: InspirationRun = { id: id<InspirationRunId>(), revision: 0, ownerKind, ownerId: ownerId as InspirationId | InspirationTaskId, trigger, status: "queued", spec: copy(owner.spec), scheduledFor: scheduledFor?.toISOString() ?? null, queuedAt: now, startedAt: null, finishedAt: null, sessionId: null, reportPath: null, reportSha256: null, unread: false, error: null };
+      const created: InspirationRun = { id: id<InspirationRunId>(), revision: 0, ownerKind, ownerId, trigger, status: "queued", spec: copy(owner.spec), ...(timeWindow === undefined ? {} : { timeWindow }), scheduledFor: null, queuedAt: now, startedAt: null, finishedAt: null, sessionId: null, reportPath: null, reportSha256: null, unread: false, error: null };
       index.runs[created.id] = created;
       owner.latestRunId = created.id; owner.revision += 1; owner.updatedAt = now;
-      if (ownerKind === "task") {
-        const task = owner as InspirationTask;
-        task.nextRunAt = nextDailyOccurrence(task, this.now()).toISOString();
-      }
       return copy(created);
     });
     if (run !== null && !this.queue.includes(run.id)) {
-      if (trigger === "manual" || trigger === "run-now" || trigger === "rerun") {
-        const firstScheduled = this.queue.findIndex((queuedId) => !this.priorityRunIds.has(queuedId));
-        if (firstScheduled === -1) this.queue.push(run.id);
-        else this.queue.splice(firstScheduled, 0, run.id);
-        this.priorityRunIds.add(run.id);
-      } else {
-        this.queue.push(run.id);
-      }
+      this.queue.push(run.id);
       void this.drain();
     }
     return run;
@@ -660,7 +660,6 @@ export class InspirationService implements InspirationScheduleTarget {
       while (this.queue.length > 0) {
         const runId = this.queue.shift();
         if (runId !== undefined) {
-          this.priorityRunIds.delete(runId);
           await this.execute(runId);
         }
       }
@@ -677,7 +676,6 @@ export class InspirationService implements InspirationScheduleTarget {
       return copy(current);
     });
     if (run === null) return;
-    const activeRun = run;
     try {
       const session = await this.ensureSession(run);
       run = await this.store.mutate((index) => {
@@ -688,19 +686,11 @@ export class InspirationService implements InspirationScheduleTarget {
         if (owner !== undefined && owner.sessionId !== session.sessionId) { owner.sessionId = session.sessionId; owner.revision += 1; owner.updatedAt = this.now().toISOString(); }
         return copy(current);
       });
+      if (run.status !== "running") return;
       if (this.runtime === undefined) throw new Error("灵感研究运行时尚未连接");
-      const ledger = activeRun.spec.mode === "trend" ? await this.store.read() : null;
-      const trendBaseline = ledger === null
-        ? null
-        : Object.values(ledger.runs)
-          .filter((candidate) => candidate.ownerId === activeRun.ownerId
-            && candidate.id !== activeRun.id
-            && candidate.spec.mode === "trend"
-            && (candidate.status === "ready" || candidate.status === "partial")
-            && candidate.finishedAt !== null)
-          .sort((left, right) => (right.finishedAt ?? "").localeCompare(left.finishedAt ?? ""))[0]?.finishedAt ?? null;
-      await this.runtime.sessionController.rename?.(session.sessionId, `灵感 · ${activeRun.spec.topic}`);
-      await this.runtime.sessionController.prompt?.(session.sessionId, promptFor(activeRun, trendBaseline));
+      await this.runtime.sessionController.rename?.(session.sessionId, `灵感 · ${run.spec.topic}`);
+      if (!await this.running(runId)) return;
+      await this.runtime.sessionController.prompt?.(session.sessionId, promptFor(run));
       await this.runtime.sessionController.waitForIdle?.(session.sessionId);
       await this.store.mutate((index) => {
         const current = index.runs[runId]!;
@@ -755,6 +745,9 @@ export class InspirationService implements InspirationScheduleTarget {
     if (report.status === "partial" && (report.partialReason === undefined || report.partialReason.trim() === "")) {
       throw new Error("部分报告必须说明来源或信息不足的原因");
     }
+    if (report.status === "partial" && report.sources.length === 0 && (report.findings.length !== 0 || report.disagreements.length !== 0 || report.angles.length !== 0)) {
+      throw new Error("无来源的部分报告不能包含发现、分歧或创作角度");
+    }
     const sourceIds = new Set<string>();
     for (const source of report.sources) {
       if (sourceIds.has(source.id)) throw new Error("报告来源 id 不能重复");
@@ -763,8 +756,12 @@ export class InspirationService implements InspirationScheduleTarget {
       try { domain = new URL(source.url).hostname.toLowerCase(); } catch { throw new Error("报告来源 URL 无效"); }
       if (domain !== source.domain.toLowerCase()) throw new Error("报告来源 domain 必须与 URL 主机名一致");
       if (!domainAllowed(domain, run.spec.excludedDomains)) throw new Error(`报告包含排除域名：${domain}`);
+      if (run.spec.mode === "trend" && (run.timeWindow === undefined || !publishedWithin(source, run.timeWindow, this.now()))) {
+        throw new Error("趋势报告来源必须声明位于实际时间窗内的 ISO 发布时间");
+      }
     }
     for (const note of [...report.findings, ...report.disagreements]) {
+      if (note.sourceIds.length === 0) throw new Error("报告观点必须关联对应来源");
       for (const sourceId of note.sourceIds) if (!sourceIds.has(sourceId)) throw new Error(`报告引用了不存在的来源：${sourceId}`);
     }
   }
@@ -803,6 +800,10 @@ export class InspirationService implements InspirationScheduleTarget {
     const run = (await this.store.read()).runs[runId];
     if (run === undefined) throw new Error("找不到研究运行");
     return copy(run);
+  }
+
+  private async running(runId: InspirationRunId): Promise<boolean> {
+    return (await this.store.read()).runs[runId]?.status === "running";
   }
 
   private async loadReport(run: InspirationRun): Promise<{ report: InspirationReport | null; integrity: InspirationDetail["reportIntegrity"] }> {

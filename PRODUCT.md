@@ -26,9 +26,9 @@ The plugin runs inside the DSH web client. It reads Creator Studio data, Muzi At
 
 - External hotspots are read-only inputs grouped for attention and review.
 - A hotspot never creates content, tasks, Agent prompts, or publication actions automatically.
-- Inspiration accepts a user-supplied research specification for one-off or daily runs, limits its dedicated Agent to public web and read-only knowledge tools, and requires a validated structured report before storing evidence.
+- Inspiration offers manual topic search and optional-topic trend search with a selected date range; its dedicated Agent uses public web and read-only knowledge tools and submits a validated structured report.
 - Inspiration reports are immutable, source-linked Markdown records; converting one to content creates only a normal Agent proposal and never bypasses the existing content confirmation flow.
-- Daily inspiration tasks require explicit authorization, pause when their specification changes, run at most one Agent at a time, and do not retry failed or interrupted runs automatically.
+- Inspiration runs one Agent at a time, pauses legacy daily tasks before execution, cancels queued automatic work, and retains historical reports. Failed or interrupted searches require a manual retry.
 - Source links and evidence remain visible so important figures, policies, and quotations can be checked against original material.
 - The Agent can continue running while another feature is open; the Sessions entry reports pending or running counts and restores the official Agent surface without creating, sending, stopping or switching a session.
 - Feature navigation never uses an overlay Inspector or the official details column. Missing restored objects return to their feature overview.
