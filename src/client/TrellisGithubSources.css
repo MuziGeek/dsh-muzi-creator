@@ -1,0 +1,59 @@
+[data-plugin="dsh-muzi-creator"] .trellisGithubSources {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 0 20px;
+  color: var(--muzi-island-text);
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisGithubSources p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisGithubSources form,
+[data-plugin="dsh-muzi-creator"] .trellisGithubAuth,
+[data-plugin="dsh-muzi-creator"] .trellisGithubDevice {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisGithubAuth {
+  padding-top: 12px;
+  border-top: 1px solid var(--muzi-island-border);
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisGithubDevice code {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisGithubSnapshot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 12px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* In-flow options remain visible inside the scrolling settings panel. */
+[data-plugin="dsh-muzi-creator"] .trellisGithubSources [role="listbox"] {
+  position: static !important;
+  inset: auto !important;
+  margin: 6px 0 0 !important;
+  transform: none !important;
+  min-width: 0;
+  width: 100%;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+[data-plugin="dsh-muzi-creator"] .trellisGithubSources [role="option"] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

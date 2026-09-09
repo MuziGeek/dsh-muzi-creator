@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { registerMuziTools } from "../src/muziTools.ts";
-import type { OilCreatorService } from "../src/service.ts";
+import type { MzCreatorService } from "../src/service.ts";
 
 interface CapturedTool {
   name: string;
@@ -14,7 +14,7 @@ function saveTool(content: string) {
   const service = {
     getMuziProject: vi.fn(async () => ({ content: { mother: content } })),
     saveMuziDocument,
-  } as unknown as OilCreatorService;
+  } as unknown as MzCreatorService;
   registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
   return { tool: tools.find((tool) => tool.name === "muzi_creator_save")!, saveMuziDocument };
 }
@@ -47,14 +47,14 @@ describe("Muzi Creator video acceptance tools", () => {
   it("reads capabilities without requiring an external-action tool flow", async () => {
     const tools: CapturedTool[] = [];
     const getMuziVideoPublishCapabilities = vi.fn(async () => ({ schema: "muzi.video-publisher.capabilities/1", accounts: [] }));
-    const service = { getMuziVideoPublishCapabilities } as unknown as OilCreatorService;
+    const service = { getMuziVideoPublishCapabilities } as unknown as MzCreatorService;
     registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
     const tool = tools.find((item) => item.name === "muzi_creator_video_publish_capabilities")!;
     await expect(tool.execute({}, { signal: new AbortController().signal })).resolves.toMatchObject({ accounts: [] });
     expect(getMuziVideoPublishCapabilities).toHaveBeenCalledOnce();
   });
 
-  it("forwards a bound prepare-only acceptance request without treating it as publication authority", async () => {
+  it("forwards a bound metrics acceptance request without treating it as publication authority", async () => {
     const tools: CapturedTool[] = [];
     const beginMuziVideoAcceptance = vi.fn(async () => ({
       ok: true,
@@ -62,7 +62,7 @@ describe("Muzi Creator video acceptance tools", () => {
       durableAcceptanceWritten: false,
       ordinaryAuthorizationIssued: false,
     }));
-    const service = { beginMuziVideoAcceptance } as unknown as OilCreatorService;
+    const service = { beginMuziVideoAcceptance } as unknown as MzCreatorService;
     registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
     const tool = tools.find((item) => item.name === "muzi_creator_begin_video_acceptance")!;
     await expect(tool.execute({
@@ -70,14 +70,14 @@ describe("Muzi Creator video acceptance tools", () => {
       expectedRevision: 1,
       platform: "xiaohongshu",
       accountProfile: "xiaohongshu-main",
-      capability: "prepare_only",
+      capability: "metrics",
       expectedAccountLabel: "验收账号",
       confirmed: true,
     }, { signal: new AbortController().signal })).resolves.toMatchObject({ durableAcceptanceWritten: false, ordinaryAuthorizationIssued: false });
     expect(beginMuziVideoAcceptance).toHaveBeenCalledWith(expect.objectContaining({
       platform: "xiaohongshu",
       accountProfile: "xiaohongshu-main",
-      capability: "prepare_only",
+      capability: "metrics",
       confirmed: true,
     }), expect.any(AbortSignal));
   });
@@ -85,7 +85,7 @@ describe("Muzi Creator video acceptance tools", () => {
   it("forwards a single non-prepare acceptance finalization to the service", async () => {
     const tools: CapturedTool[] = [];
     const finalizeMuziVideoAcceptance = vi.fn(async () => ({ capability: "metrics" }));
-    const service = { finalizeMuziVideoAcceptance } as unknown as OilCreatorService;
+    const service = { finalizeMuziVideoAcceptance } as unknown as MzCreatorService;
     registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
     const tool = tools.find((item) => item.name === "muzi_creator_finalize_video_acceptance")!;
     await expect(tool.execute({
@@ -99,29 +99,16 @@ describe("Muzi Creator video acceptance tools", () => {
     expect(finalizeMuziVideoAcceptance).toHaveBeenCalledWith(expect.objectContaining({ capability: "metrics" }), expect.any(AbortSignal));
   });
 
-  it("forwards a single non-prepare acceptance session before opening an external page", async () => {
+  it("does not expose legacy preparation or final submission tools", () => {
     const tools: CapturedTool[] = [];
-    const beginMuziVideoAcceptance = vi.fn(async () => ({ sessionId: "vas-0123456789abcdef01234567" }));
-    const service = { beginMuziVideoAcceptance } as unknown as OilCreatorService;
-    registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
-    const tool = tools.find((item) => item.name === "muzi_creator_begin_video_acceptance")!;
-    await expect(tool.execute({
-      id: `mc_${"1".repeat(24)}`,
-      expectedRevision: 1,
-      platform: "xiaohongshu",
-      accountProfile: "xiaohongshu-main",
-      capability: "schedule",
-      scheduledAt: "2026-09-01T20:00:00+08:00",
-      expectedAccountLabel: "验收账号",
-      confirmed: true,
-    }, { signal: new AbortController().signal })).resolves.toMatchObject({ sessionId: "vas-0123456789abcdef01234567" });
-    expect(beginMuziVideoAcceptance).toHaveBeenCalledWith(expect.objectContaining({ capability: "schedule", scheduledAt: "2026-09-01T20:00:00+08:00" }), expect.any(AbortSignal));
+    registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, {} as MzCreatorService);
+    expect(tools.some(tool => ["muzi_creator_prepare_video_publish", "muzi_creator_commit_video_publish"].includes(tool.name))).toBe(false);
   });
 
   it("keeps metrics acceptance bound to one registered account", async () => {
     const tools: CapturedTool[] = [];
     const syncMuziVideoMetrics = vi.fn(async () => ({ acceptanceSessionStatus: "METRICS_COLLECTED", platforms: [] }));
-    const service = { syncMuziVideoMetrics } as unknown as OilCreatorService;
+    const service = { syncMuziVideoMetrics } as unknown as MzCreatorService;
     registerMuziTools({ tools: { register(tool) { tools.push(tool as unknown as CapturedTool); } } }, service);
     const tool = tools.find((item) => item.name === "muzi_creator_sync_video_metrics")!;
     await expect(tool.execute({

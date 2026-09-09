@@ -318,15 +318,22 @@ async function readTask(
   const safeDirectory = await containedDirectory(root.tasksPath, directory, `任务 ${taskRelativePath}`);
   const taskJson = await containedFile(root.tasksPath, join(safeDirectory, TASK_JSON), config.trellisMaxTaskBytes, `${taskRelativePath}/${TASK_JSON}`);
   const parsed: unknown = JSON.parse(await readFile(taskJson, "utf8"));
+  const evidence = await inspectEvidence(root.rootPath, safeDirectory, config.trellisMaxTaskBytes);
+  return parseTrellisTask(parsed, project.id, taskRelativePath, basename(safeDirectory), archived, archiveMonth, evidence);
+}
+
+/** Parse task JSON from a local file or a commit-pinned GitHub blob using the same status rules. */
+export function parseTrellisTask(
+  parsed: unknown, projectId: TrellisProjectId, taskRelativePath: string, directoryName: string,
+  archived: boolean, archiveMonth: string | null, evidence: TrellisEvidenceSummary,
+): TrellisTask {
   if (!isRecord(parsed)) throw new Error(`${taskRelativePath}/${TASK_JSON} 必须是 JSON 对象`);
 
-  const directoryName = basename(safeDirectory);
   const id = stringValue(parsed.id) ?? stringValue(parsed.name) ?? directoryName;
   const name = stringValue(parsed.name) ?? id;
   const rawStatus = stringValue(parsed.status);
   const status = taskStatus(rawStatus);
   const phases = phaseMetadata(parsed);
-  const evidence = await inspectEvidence(root.rootPath, safeDirectory, config.trellisMaxTaskBytes);
   const issues: string[] = [...phases.issues];
   if (rawStatus === null) issues.push("任务未声明状态");
   else if (status === "unknown") issues.push(`未知任务状态：${rawStatus}`);
@@ -334,7 +341,7 @@ async function readTask(
 
   const completedAt = stringValue(parsed.completedAt);
   return {
-    key: taskKey(project.id, taskRelativePath),
+    key: taskKey(projectId, taskRelativePath),
     directory: directoryName,
     id,
     name,
@@ -371,7 +378,7 @@ function refName(value: string): string {
   return normalized.slice(normalized.lastIndexOf("/") + 1);
 }
 
-function markRelationCycles(tasks: TrellisTask[]): void {
+export function markRelationCycles(tasks: TrellisTask[]): void {
   const byRef = new Map<string, TrellisTask>();
   for (const task of tasks) {
     for (const ref of [task.directory, task.id, task.name]) byRef.set(refName(ref), task);
@@ -487,7 +494,7 @@ function emptyCounts(): TrellisProjectCounts {
   return { planning: 0, inProgress: 0, completed: 0, unknown: 0, archived: 0, verifiedArchived: 0, invalid: 0 };
 }
 
-function countsOf(active: TrellisTask[], archived: TrellisTask[], invalid: number): TrellisProjectCounts {
+export function countsOf(active: TrellisTask[], archived: TrellisTask[], invalid: number): TrellisProjectCounts {
   const counts = emptyCounts();
   counts.invalid = invalid;
   counts.archived = archived.length;

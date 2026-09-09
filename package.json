@@ -1,7 +1,7 @@
 {
   "name": "dsh-muzi-creator",
-  "version": "0.1.14",
-  "description": "Knowledge-driven local creator workbench for DeepSeek Harness, based on Oil Creator",
+  "version": "0.2.0",
+  "description": "Knowledge-driven local creator workbench for DeepSeek Harness",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -76,7 +76,8 @@
     "lab:personal:config": "node scripts/lab-personal-config.mjs",
     "lab:personal:desktop": "node scripts/lab-personal-desktop.mjs",
     "release:check": "node scripts/check-release.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm check:names && pnpm typecheck && pnpm test && pnpm build",
+    "check:names": "node scripts/check-mz-names.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1",

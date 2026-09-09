@@ -8,7 +8,7 @@ Desktop 2.0.4 的私有 `<user-data>/profile-selection/state.json` 固定为 `{ 
 
 Animal Island UI 的入口只允许客户端 entry 的一次 `animal-island-ui/style` 导入和 `IslandControls` 适配层中的包根组件导入。库组件使用 `--animal-*` token，自定义布局使用插件根下的 `--muzi-island-*` token。宿主 DSH 会话状态、设置、审批、详情和 shell layout 仍由官方组件所有；插件通过 `@deepseek-ai/dsh-client-ui-theme` 的 `ThemeRuntime.overrideTokens()` 覆盖 `--dsw-*` 表现令牌，并用 `body[data-muzi-host-skin="animal-island"]` 下的固定 2.0.4 兼容样式补齐圆角、焦点、长文本、Portal 和响应式规则。外观规则排除插件自己的 Animal Island 根；唯一例外是 640 px 以下的布局规则，它让展开的 360 px 侧栏覆盖中央区域。兼容样式不使用生成哈希类、不隐藏功能元素，也不注册宿主事件。
 
-`ConversationWorkbenchController` 只在热点、内容、知识和项目入口注册一个优先级 `-10` 的根 `conversation` 组件；功能间切换保留这个根，切回会话则立即释放。Slot 注册失败时官方会话继续显示。业务详情已移除 `shell.overlay`、宽度持久化、拖拽条、固定定位和遮罩，只保留原有查询、发布准备、Atlas 只读与归档确认逻辑。组件映射、主题令牌、固定版本选择器、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
+`ConversationWorkbenchController` 只在热点、灵感、内容、知识和项目入口注册一个优先级 `-10` 的根 `conversation` 组件；功能间切换保留这个根，切回会话则立即释放。Slot 注册失败时官方会话继续显示。业务详情已移除 `shell.overlay`、宽度持久化、拖拽条、固定定位和遮罩，只保留原有查询、发布准备、Atlas 只读与归档确认逻辑。组件映射、主题令牌、固定版本选择器、原生控件例外与响应式验收点集中记录在 [DESIGN.md](../DESIGN.md)。
 
 `dsh-muzi-creator` 是挂在 DeepSeek Harness web 配置上的单个运行插件。它把选题、创作、知识、热点、项目进度和受控发布入口放进同一界面；Agent 可在后台继续运行，用户通过“会话”入口恢复完整官方界面。
 
@@ -33,8 +33,8 @@ DeepSeek Harness 负责 Agent、会话、工具、一次性审批和 Workspace�
 目标是一条能走完的创作流水线，人在关键处动手，机器包办重复劳动。日常路径是：
 
 1. **选题**：在对话里讨论这一期讲什么，插件建一个当天的内容文件夹，笔记写进 `topic.md`。
-2. **录制**：用 Screen Studio 录。插件可以绑定 `.screenstudio` 工程。
-3. **剪辑**：对话里走 `screen-studio-editor` 清理停顿和误讲。人打开工程预览，确认后再亲手导出 MP4。插件不代替导出。
+2. **录制**：使用自己的录制工具。插件可引用本地制作工程文件或目录。
+3. **剪辑**：在自己的剪辑器中预览并导出 MP4/MOV。macOS 的 Screen Studio 和 `screen-studio-editor` 是可选适配，不阻断通用流程。
 4. **等导出**：导出开始后，插件盯着影片目录，成片稳定落盘再往下走。这段时间可以并行做字幕和封面。
 5. **字幕**：用百炼 Key 转录；`oil-subtitle` 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；人在 skill 自带的预览编辑器里改稿，确认后再烧进视频。
 6. **封面**：有 ZenMux Key 就出 3:4 / 4:3 / 16:9。封面主标题和错别字由对话里的 Agent 核对，不交给脚本自行发挥。
@@ -42,20 +42,20 @@ DeepSeek Harness 负责 Agent、会话、工具、一次性审批和 Workspace�
 8. **发布**：`muzi.creator/2` 项目通过 DSH 调用 `video-publisher` 的 Windows Patchright 控制面；每个平台独立选择仅准备、立即发布或原生定时发布。默认仅准备，最终动作逐平台确认。
 9. **回收**：手动触发 Patchright 打开独立账号目录中的创作者后台，按远端 ID、规范化 URL、唯一精确标题依次匹配，追加播放 / 赞 / 评论快照。不是公开站爬虫；歧义或分页不完整时不写新事实。
 
-一条片子对应影片目录里的一个子文件夹。工程在 Screen Studio 工程目录里，用绑定连起来。
+一条片子对应影片目录里的一个子文件夹。工程可以位于任意已有本地目录，通过可选引用关联到内容，不移动或修改工程文件。
 
 ## 现阶段已经能做什么
 
 | 环节 | 现状 |
 | --- | --- |
 | 列表与内容详情 | 自定义侧栏「内容」页；详情在中央工作台显示；概览用状态标签标明阶段，只展开当前步骤的操作 |
-| 建内容、选题笔记 | 面板新建；`oil_create_content` 建文件夹；选题写 `topic.md` |
-| 绑定 / 打开工程 | 面板换绑、打开；`oil_open_studio` |
-| 等导出 | `oil_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
+| 建内容、选题笔记 | 面板新建；`mz_create_content` 建文件夹；选题写 `topic.md` |
+| 绑定 / 打开工程 | 面板换绑、打开；`mz_open_studio` |
+| 等导出 | `mz_wait_export` 立刻返回并开始盯目录；成片稳定后清掉 waiting 标记 |
 | 字幕预览、烧录、生成 | 按钮和同名工具会拉起 `oil-subtitle` 脚本 |
 | 生成封面 | 按钮和工具拉起 `oil-cover` 脚本；标题先用文件夹名 |
 | 发布状态 | 读 `{标题}.auto-publish.json`；点状态胶囊从菜单里选未发布 / 草稿 / 已发布，手写优先 |
-| 已发布数据 | 内容详情的「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`oil_sync_publish` 不传 id 才同步整库 |
+| 已发布数据 | 内容详情的「同步已发布」只对当前这一期：找到标题就停翻页，overlay 也只写这一条。`mz_sync_publish` 不传 id 才同步整库 |
 | API Key | 设置 → 插件 → 内容工作台；和视觉识别共用官方凭据 |
 | 公众号 | 只显示目录里有没有 `公众号文章/`，不生成 |
 | 剪辑、多平台上传 | 剪辑仍从对话调用 Skill；`muzi.creator/2` 项目已接入 Windows 四平台准备、逐平台提交和状态查询 |
@@ -69,7 +69,7 @@ DeepSeek Harness 负责 Agent、会话、工具、一次性审批和 Workspace�
 3. **字幕校对**：生成完不会自动改专有名词；预览还要人自己看。
 4. **封面主标题和错别字**：按钮不会先让 Agent 提炼标题，也不会验字。
 5. **发布包**：能展示已有 `publish-package.json` 里的标签，不会在插件里写平台长文案。
-6. **旧片库四平台上传**：`oil_*` 片库仍只记状态；`muzi.creator/2` 项目由新的 `muzi_creator_*` 工具调度 `video-publisher`。
+6. **旧片库四平台上传**：`mz_*` 片库仍只记状态；`muzi.creator/2` 项目由新的 `muzi_creator_*` 工具调度 `video-publisher`。
 7. **公众号成稿**：不会跑 `oil-video-article`。
 8. **没有本地文件夹的旧作**：同步会翻完创作者后台的已发布列表，但对不上本地片子的不会自动建文件夹。
 
@@ -96,22 +96,22 @@ Windows 的 `prepare_only`、`publish_now`、`schedule`、`metrics` 按账号分
 保持 **一个** Harness 插件。官方要求：只有能力需要独立替换时才拆包，不要预防性拆分。见 DeepSeek Harness `docs/user/develop/practice/index.zh.md`。
 
 设置位 `settings.plugin.item` 的含义是「一个插件一张卡」，不是一个功能一张卡。
-Desktop 2.0.4 内置 Harness `0.1.2-alpha.1` 从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留列表槽位使用的 `id` 兼容坐标。当前设置值仍统一由插件 Remote 和 `~/.dsh-oil-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源。因为该 alpha 版本尚未发布到 npm，自动测试使用 `0.1.1-rc.2` 类型基线，真实客户端行为另由 Desktop 2.0.4 内置运行时验收。
+Desktop 2.0.4 内置 Harness `0.1.2-alpha.1` 从 Host 的 `settings.describe` 取得插件命名空间，再按同名 `key` 派发设置卡；插件同时保留列表槽位使用的 `id` 兼容坐标。当前设置值仍统一由插件 Remote 和 `~/.dsh-mz-creator/overlay.json` 管理，Host 命名空间只负责让设置卡被发现，避免双数据源。因为该 alpha 版本尚未发布到 npm，自动测试使用 `0.1.1-rc.2` 类型基线，真实客户端行为另由 Desktop 2.0.4 内置运行时验收。
 
 执行分工：
 
 - **磁盘文件**：片子的正文。约定见 [files.md](files.md)。模型用系统自带的列文件 / 读文件 / 写文件。
-- **插件**：侧栏、中央工作台与详情、阶段推导、官方凭据、给模型的文件约定（`systemPrompt` 段落 `oil:library`）。核心界面和 `oil_*` 工具不依赖专用 Agent Preset。
+- **插件**：侧栏、中央工作台与详情、阶段推导、官方凭据、给模型的文件约定（`systemPrompt` 段落 `mz:library`）。核心界面和 `mz_*` 工具不依赖专用 Agent Preset。
 - **内置 Skill**：`creator-workbench` 负责首次体检、配置预览、目录整理和发布安全流程。普通带 Skill 与文件工具的 Agent 就能使用，推荐 `standard` 或 `code`；`minimal` 不适合这条引导。专用 Creator Preset 以后只作为可选入口。
-- **Harness 工具**：用官方 `defineTool` 注册。只做文件做不到的事，或启动一项已经约定好的脚本。长任务立刻返回，完成与否看文件夹里有没有产物。`oil_wait_export` 也是启动监视，不把 `execute` 阻塞到导出结束。
+- **Harness 工具**：用官方 `defineTool` 注册。只做文件做不到的事，或启动一项已经约定好的脚本。长任务立刻返回，完成与否看文件夹里有没有产物。`mz_wait_export` 也是启动监视，不把 `execute` 阻塞到导出结束。
 - **Skill 脚本**：ASR、FFmpeg 烧录、选帧生图。不要把 Python 和 SOP 整份搬进 `execute()`。
 - **对话里的 Agent**：校对字幕、提炼封面主标题、看封面错别字、审查剪辑报告。这些判断留在对话里。
 
 对话里的插件工具：
 
-`oil_creator_guide`、`oil_script_rules`、`oil_creator_setup`、`oil_create_content`、`oil_update_content`、`oil_creator_profile`、`oil_organize_library`、`oil_sync_publish`、`oil_open_studio`、`oil_wait_export`、`oil_open_subtitle_preview`、`oil_burn_subtitles`、`oil_generate_subtitles`、`oil_generate_cover`，以及只读的 `muzi_creator_video_publish_capabilities`、`muzi_creator_prepare_video_publish`、`muzi_creator_begin_video_acceptance`、`muzi_creator_finalize_video_acceptance`、`muzi_creator_commit_video_publish`、`muzi_creator_video_publish_status`、`muzi_creator_sync_video_metrics`。
+`mz_creator_guide`、`mz_script_rules`、`mz_creator_setup`、`mz_create_content`、`mz_update_content`、`mz_creator_profile`、`mz_organize_library`、`mz_sync_publish`、`mz_open_studio`、`mz_wait_export`、`mz_open_subtitle_preview`、`mz_burn_subtitles`、`mz_generate_subtitles`、`mz_generate_cover`。账号连接与内容发布工具由 `publishFlowTools.ts` 注册并调用和 RPC 相同的服务；只读能力及任务查询、独立的数据读取验收和同步工具由 `muziTools.ts` 注册。
 
-`oil_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Chrome 缺失时页面准备和数据回收不可用。`oil_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`oil_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Chrome。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
+`mz_creator_guide` 是自举入口：用户不知道插件能做什么、或模型不确定下一步时调用，返回带当前能力状态的完整指引，包括 Chrome 缺失时页面准备和数据回收不可用。`mz_script_rules` 读写脚本规则（人设），存在 overlay 里；写或改 `script.md` 前模型先读它。`mz_creator_setup` 无参数时只读检查目录、操作系统、Screen Studio、字幕、封面、凭据和 Chrome。带配置字段但 `apply=false` 时只返回提案；只有用户确认后才用 `apply=true` 写入。可选依赖缺失只降级对应能力，不影响片库核心。
 
 热点、内容、知识和项目共用中央工作台，官方右侧「详情」栏保持不变。工作台顶部提供数据状态、刷新和返回概览，内容区在概览与详情间切换。UI schema 2 在 `dsh-muzi-creator/ui/v2` 下分别保存四类选择；旧单一 `selectedId` 迁移到内容或知识，旧 Inspector 宽度仅被丢弃。首次打开按功能加载一次，只读请求会合并，手动刷新时保留最后有效数据，不新增后台轮询。发布区仍拆成同步、视频平台、公众号、标签几张卡。概览封面并排 3:4 和 4:3。视频页播放 `_subtitled` 成片，没有则播原片。脚本写在内容文件夹的 `script.md`，已经转好的 Markdown 在 `公众号文章/`。列表按文件夹名里的日期倒序，同一天按文件夹创建时间倒序；重导出或重新生成产物不会改变顺序。对话里 `@` 可以点一条片子或「当前详情」，`/current content` 引用当前打开的那条；发给模型的只有文件夹路径，正文和封面用系统列文件 / 读文件。
 
@@ -121,7 +121,7 @@ Desktop 2.0.4 内置 Harness `0.1.2-alpha.1` 从 Host 的 `settings.describe` �
 
 | 数据 | 位置 |
 | --- | --- |
-| 影片目录、项目目录（`trellisProjectsRoot`）、Obsidian 定位路径（`obsidianExecutable`）、`enabledPlatforms`、脚本规则（人设）、工程绑定、待录制、等导出、手写发布状态、同步到的播放/赞/评、烧录/生成任务 | `~/.dsh-oil-creator/overlay.json` |
+| 影片目录、项目目录（`trellisProjectsRoot`）、Obsidian 定位路径（`obsidianExecutable`）、`enabledPlatforms`、脚本规则（人设）、工程绑定、待录制、等导出、手写发布状态、同步到的播放/赞/评、烧录/生成任务 | `~/.dsh-mz-creator/overlay.json` |
 | 成片、字幕、封面、发布包、公众号文章 | `~/Movies/视频项目/<日期_标题>/` |
 | 字幕和封面 Key | Harness 官方凭据（字幕用 `DASHSCOPE_API_KEY`、封面用 `ZENMUX_API_KEY`），与 `dsh-vision` 共用 |
 | 列表选中项、侧栏宽度 | 浏览器本地 UI 状态 |
@@ -139,7 +139,7 @@ node scripts/collect-publish.mjs
 
 采集脚本使用固定版本 Patchright 连接本机 Chrome；每个平台和账号使用独立持久化目录，且与发布共用账号级互斥锁。`pnpm build` 用原地覆写把 `scripts/collect-publish.mjs` 写进 `lib/`，避免 `cp` 断开 profile 里 `file:` 依赖的硬链接。翻页范围：小红书 `note/user/posted`（列表滚到底）、抖音 `work_list`（`max_cursor`）、B 站 `/x/web/archives`（`pn`）、视频号 `post/post_list`（`currentPage`）。达到页数/滚动上限却没有完整结果时返回 `PAGINATION_INCOMPLETE`，不覆盖已有指标。
 
-90 秒内再点同步会使用 `~/.dsh-oil-creator/collect-cache.json`，但缓存必须同时匹配平台、账号、远端身份/URL 和精确标题；不同项目或账号不会复用。超过这个时间再跑 Patchright；显式 `force` 跳过缓存。可用 `OIL_COLLECT_PLATFORMS=wechat,douyin` 只跑其中几个，`OIL_COLLECT_ACCOUNTS` 指定平台账号。工作台按钮和同步工具走同一条脚本。
+90 秒内再点同步会使用 `~/.dsh-mz-creator/collect-cache.json`，但缓存必须同时匹配平台、账号、远端身份/URL 和精确标题；不同项目或账号不会复用。超过这个时间再跑 Patchright；显式 `force` 跳过缓存。可用 `MZ_COLLECT_PLATFORMS=wechat,douyin` 只跑其中几个，`MZ_COLLECT_ACCOUNTS` 指定平台账号。工作台按钮和同步工具走同一条脚本。
 
 文件夹约定：`YYYY-MM-DD_可读标题`。发布包规范名是 `publish-package.json`。带字幕的成片文件名含 `_subtitled`。
 
@@ -160,13 +160,13 @@ node scripts/collect-publish.mjs
 
 官方 Bash 那种三包拆分，只适用于「同一能力会换执行环境」。内容工作台不是这种能力。
 
-### oil 自己的 skill（执行器和产品规则）
+### 外部 Skill（执行器和产品规则）
 
 标准安装位置是 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 三选一，插件自动发现；下表统一写 `~/.agents/skills`。
 
 | 环节 | Skill | 路径 | 插件可以包什么 | 仍留给 Agent / 人 |
 | --- | --- | --- | --- | --- |
-| 剪辑工程 | `screen-studio-editor` | `~/.agents/skills/screen-studio-editor` | 以后可加「按绑定工程开剪辑」；现在只绑定和打开 | 审查删除、Screen Studio 里预览、手动导出 |
+| Screen Studio 可选适配（macOS） | `screen-studio-editor` | `~/.agents/skills/screen-studio-editor` | 以后可加「按绑定工程开剪辑」；现在只绑定和打开 | 审查删除、Screen Studio 里预览、手动导出 |
 | 字幕 | `oil-subtitle` | `~/.agents/skills/oil-subtitle` | clone 后必须运行 `setup.sh`；已包预览编辑器、转录、按稿烧录 | 校对不确定词、确认预览后再烧 |
 | 封面 | `oil-cover` | `~/.agents/skills/oil-cover` | 已包脚本模式三画幅生成 | 提炼主标题、看错别字、决定是否重跑某一画幅 |
 | 发布文案语气 | `oil-tone` | `~/.agents/skills/oil-tone` | 不执行；写标题简介时读档案 | 成稿必须过 `tone_lint.py` 再通读 |
@@ -184,3 +184,23 @@ node scripts/collect-publish.mjs
 - 重媒体继续调用已有脚本，参数与对应 SKILL.md 保持一致。
 - 人导出、人点平台发布、Agent 做校对和标题，这三件事不要改成全自动。
 - Host remote 或工具改完后要重新 `pnpm build` 并重启 `dsh web`。
+
+数据目录以有效 `dataDir` 为准；旧目录保留，新安装默认使用 MZ 目录。详见[升级与命名说明](mz-naming.md)。
+
+## 账号连接与发布协调
+
+`videoAccountSchemas.ts` 为连接会话、账号身份和 RPC 响应提供校验。账号 RPC 包括读取、开始连接、检查连接、取消、重开、重新连接、打开后台和启停；同一操作由 Agent 工具与界面调用。会话使用独立 `vac-` 标识，正式账号保留原 `accountProfile`。发布器配置 schema 4 保存稳定平台 ID、连接时间和待连接会话；旧格式首次写入时备份，旧账号身份保持未验证。
+
+`videoConnectionTimeoutMs` 默认 600000，允许 60000–1800000；`videoConnectionPollIntervalMs` 默认 2000，允许 1000–30000。账号响应中的发布能力查询使用 `videoAccountCapabilitiesTimeoutMs`，默认 5000，允许 1000–90000；失败返回不可用能力，保留已读取的账号状态。开始连接需要明确授权；检查只作用于已打开的连接会话。登录属于独立的 `connection` 操作类别，上传、发布和指标读取仍受原外部操作权限限制。账号和发布 CLI 在 Electron 下使用子进程专属的 `ELECTRON_RUN_AS_NODE=1`。
+
+账号桥接将解析后的配置绝对路径显式传给子进程。配置目录中的 `account-diagnostics.jsonl` 关联插件请求、程序接收、浏览器打开、身份检查、保存及响应，达到 1 MiB 时保留一个轮转文件。记录仅包含阶段、关联标识、路径、数量及状态，不包含平台身份、请求正文、页面内容或登录凭证。诊断写入失败不改变账号操作结果。
+
+账号管理和发布选择共用身份有效性判断：有平台身份、连接时间、最近一次 `verified` 检查及检查时间，且没有待清理标记。管理页保留验证有效的停用账号，发布选择另行要求启用。账号问题使用页面内折叠栏，按平台和账号资料标识关联重新连接会话；折叠不卸载检查逻辑。已有问题账号的进度及错误保留在对应行内，新账号仍使用连接弹窗，两种展示共用检查、取消及回传隔离逻辑。
+
+`removeVideoAccount` RPC 与 `VideoAccountFace.remove` 接受 `{ platform, accountProfile, confirmed: true }`，调用 `remove-account`。运行程序在账号锁内先持久化 `removalPending: true`、停用账号及取消关联连接，再核实浏览器进程的可执行文件和专用目录参数，清理无链接的资料目录。失败保持停用并允许重试，成功删除注册和登录状态；内容、发布历史和其他配置保持不变。配置允许已初始化的空账号列表。
+
+账号身份只从平台的当前账号组件读取。小红书使用创作者首页个人资料区，上传页复核可临时打开独立首页标签，完成后关闭；连接轮询只读取已有平台标签，多个不同账号身份会拒绝登记。可见登录表单和安全验证组件分别表示等待登录与需要人工处理，普通帮助文字不参与判定。
+
+`PublishFlowService` 在 `<dataDir>/publish-flows/` 保存每条内容的目标配置、版本、任务引用、准备摘要及独立进度。RPC 为 `getPublishFlow`、`preparePublishFlow`、`resumePublishFlow`、`invalidatePublishFlow` 和 `commitPublishFlow`；继续、撤销和提交均绑定 `flowId`、`expectedVersion` 和目标平台列表。编辑目标配置时先撤销旧准备；内容版本变化时读取接口也会保存撤销状态。项目级锁阻止其他宿主同时处理相同内容。工作台关闭时取消控制器并等待进度落盘；重启读取底层可靠结果补齐本地事实，不自动重发最终操作。
+
+首次能力验证复用发布器受控会话与证据，只准备成功不会接受立即或定时发布能力。最终提交前在账号锁内再次核验稳定身份，并保留原素材指纹、内容版本、页面证据和一次性摘要校验。多平台提交期间延后内容发布事实写入，收集可靠结果后统一更新项目版本。结果不明保留 `unknown`，拒绝自动重试或覆盖该流程。仅准备不写入平台草稿或已发布事实。

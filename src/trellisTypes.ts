@@ -40,6 +40,7 @@ export interface TrellisProjectSummary {
   projectId: TrellisProjectId;
   title: string;
   rootPath: string | null;
+  github?: { url: string; branch: string; sha: string | null; syncedAt: string | null; stale: boolean };
   status: TrellisProjectConnectionStatus;
   statusMessage: string;
   counts: TrellisProjectCounts | null;

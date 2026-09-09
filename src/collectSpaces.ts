@@ -2,6 +2,8 @@ import { closeSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, w
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
+import { resolveDataDir } from "./config.ts";
+
 export const LEGACY_COLLECT_SPACE = "oil-collect-publish";
 
 export interface CollectSpaceRecord {
@@ -11,11 +13,11 @@ export interface CollectSpaceRecord {
 }
 
 export function defaultCollectSpaceName(): string {
-  return `oil-collect-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return `mz-collect-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function collectRegistryPath(root = homedir()): string {
-  return join(root, ".dsh-oil-creator", "collect-spaces.json");
+  return collectRegistryPathForDataDir(resolveDataDir({ dataDir: "" }, root));
 }
 
 export function collectRegistryPathForDataDir(dataDir: string): string {

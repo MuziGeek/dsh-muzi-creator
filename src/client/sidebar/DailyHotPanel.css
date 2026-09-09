@@ -8,11 +8,6 @@
   flex: 1;
 }
 
-[data-plugin="dsh-muzi-creator"] .dailyHotHeaderCount {
-  flex: none;
-  font-variant-numeric: tabular-nums;
-}
-
 [data-plugin="dsh-muzi-creator"] .dailyHotRefresh {
   min-height: 36px;
   white-space: nowrap;

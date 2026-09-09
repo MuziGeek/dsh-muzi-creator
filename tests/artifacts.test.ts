@@ -58,7 +58,7 @@ describe("pickers", () => {
 
 describe("applyArtifactMoves", () => {
   it("renames files on disk", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-art-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-art-"));
     const folder = join(root, "2025-09-21_去 ai 味儿");
     await mkdir(folder);
     await writeFile(join(folder, "2025-09-21_去-ai-味儿.mp4"), "v");

@@ -3,7 +3,7 @@ import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
 import { normalizeEnabledPlatforms } from "./overlay.ts";
 import { PUBLISH_PLATFORMS } from "./platforms.ts";
 import { isPublishMark, isPublishPlatform } from "./publishStatus.ts";
-import type { OilCreatorService } from "./service.ts";
+import type { MzCreatorService } from "./service.ts";
 import type { CreatorProfile, PublishPlatform } from "./types.ts";
 
 interface ToolsContext {
@@ -28,9 +28,9 @@ function present(title: string, rawInput: unknown): { card: "generic"; title: st
 
 const JSON_VALUE = { type: "json" } as const;
 
-export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorService): void {
+export function registerCreatorTools(ctx: ToolsContext, service: MzCreatorService): void {
   ctx.tools.register(defineTool({
-    name: "oil_creator_guide",
+    name: "mz_creator_guide",
     description:
       "Self-bootstrap guide for this plugin. Call this when the user asks what this plugin does, "
       + "how to use it, or when you are unsure which step comes next. "
@@ -51,7 +51,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_script_rules",
+    name: "mz_script_rules",
     description:
       "Read or update the creator's script rules (persona): tone, structure, audience, and taboos "
       + "that every script.md must follow. Omit text to read. Send text to save. Empty text clears. "
@@ -78,7 +78,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_creator_setup",
+    name: "mz_creator_setup",
     description:
       "Inspect the creator workspace, optional local capabilities, credential status, and current configuration. "
       + "Omit fields for a read-only diagnosis. Proposed changes are previewed unless apply=true. "
@@ -118,7 +118,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_create_content",
+    name: "mz_create_content",
     description:
       "Create an empty dated library folder named YYYY-MM-DD_title using today's date and a readable title.",
     parameters: {
@@ -143,14 +143,18 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_update_content",
+    name: "mz_update_content",
     description:
-      "Write overlay-only marks for one episode: readyToRecord, bind a Screen Studio project, "
+      "Write overlay-only marks for one episode: readyToRecord, bind a production project or Screen Studio project, "
       + "or set a platform publish status. To change topic.md or script.md, write those files "
       + "in the episode folder with the built-in file tools.",
     parameters: {
       id: { type: "string", required: true, description: "Folder id." },
       readyToRecord: { type: "boolean", description: "True moves idle content to 待录制." },
+      productionProjectPath: {
+        oneOf: [{ type: "string" }, { type: "null" }],
+        description: "Bind an existing local production file or directory. Send null to unbind. Cannot be combined with studioPath.",
+      },
       studioPath: { type: "string", description: "Bind a .screenstudio project to this episode." },
       publishPlatform: {
         type: "string",
@@ -175,8 +179,17 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
     async execute(args, exec) {
       const signal = signalOf(exec);
       if (args.id === "") throw new Error("id is required");
+      if (args.productionProjectPath !== undefined && args.studioPath !== undefined) {
+        throw new Error("productionProjectPath and studioPath cannot be sent together");
+      }
       if (args.readyToRecord !== undefined) {
         await service.setContentStage({ id: args.id, readyToRecord: args.readyToRecord }, signal);
+      }
+      if (args.productionProjectPath !== undefined) {
+        if (args.productionProjectPath !== null && typeof args.productionProjectPath !== "string") {
+          throw new Error("productionProjectPath must be a string or null");
+        }
+        await service.bindProductionProject({ id: args.id, path: args.productionProjectPath }, signal);
       }
       if (args.studioPath !== undefined && args.studioPath !== "") {
         await service.bindStudio({ id: args.id, path: args.studioPath }, signal);
@@ -199,7 +212,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_creator_profile",
+    name: "mz_creator_profile",
     description:
       "Read or update the list of enabled publishing platforms. "
       + "Omit the list to read. Send the complete list to replace it.",
@@ -227,7 +240,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_organize_library",
+    name: "mz_organize_library",
     description:
       "Preview or apply library folder cleanup to YYYY-MM-DD_readable title. "
       + "Adds a date from the recording/folder time when missing, and turns hyphens/underscores in titles into spaces. "
@@ -256,7 +269,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_sync_publish",
+    name: "mz_sync_publish",
     description:
       "Sync published titles, URLs, and counts from logged-in creator dashboards. "
       + "Pass id to update one episode only and stop paging once that title is found. "
@@ -305,7 +318,28 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_open_studio",
+    name: "mz_open_production_project_folder",
+    description:
+      "Reveal the directory containing the bound production project. This never launches the project file or editor.",
+    parameters: {
+      id: { type: "string", required: true, description: "Folder id." },
+    },
+    output: {
+      schema: JSON_VALUE,
+      render: (_args, value) => {
+        const record = value as { title?: string; id?: string };
+        return compactText("Open production folder", record.title || record.id || "");
+      },
+    },
+    presentCall: (args) => present("Open production folder", args),
+    execute: async (args, exec) => {
+      if (args.id === "") throw new Error("id is required");
+      return asJson(await service.openProductionProjectFolder({ id: args.id }, signalOf(exec)));
+    },
+  }));
+
+  ctx.tools.register(defineTool({
+    name: "mz_open_studio",
     description:
       "Open the bound Screen Studio project for this episode so the user can review and export.",
     parameters: {
@@ -326,7 +360,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_wait_export",
+    name: "mz_wait_export",
     description:
       "Start watching the episode folder for a finished MP4/MOV (Screen Studio export) and return immediately. "
       + "When the file is stable, the folder has the video and waitingForExport clears. "
@@ -363,7 +397,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_open_subtitle_preview",
+    name: "mz_open_subtitle_preview",
     description:
       "Open the oil-subtitle preview editor in the browser for this episode (video + editable cues).",
     parameters: {
@@ -388,10 +422,10 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_burn_subtitles",
+    name: "mz_burn_subtitles",
     description:
       "Burn the current oil-subtitle draft onto the raw video after the user has previewed and confirmed it. "
-      + "Do not call this before oil_open_subtitle_preview (or the preview opened by oil_generate_subtitles). "
+      + "Do not call this before mz_open_subtitle_preview (or the preview opened by mz_generate_subtitles). "
       + "Returns immediately. When finished, the episode folder has a *_subtitled.mp4.",
     parameters: {
       id: { type: "string", required: true, description: "Folder id." },
@@ -411,10 +445,10 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_generate_subtitles",
+    name: "mz_generate_subtitles",
     description:
       "Run the oil-subtitle draft workflow: transcribe, auto-review, and lay out captions. "
-      + "Does not burn. When it finishes, a preview editor opens; wait for the user to proofread, then call oil_burn_subtitles. "
+      + "Does not burn. When it finishes, a preview editor opens; wait for the user to proofread, then call mz_burn_subtitles. "
       + "Requires DASHSCOPE_API_KEY in Settings → Plugins → 内容工作台. "
       + "Returns immediately. Completion is subtitle-transcript.json / subtitle-manifest.json, not *_subtitled.mp4.",
     parameters: {
@@ -435,7 +469,7 @@ export function registerCreatorTools(ctx: ToolsContext, service: OilCreatorServi
   }));
 
   ctx.tools.register(defineTool({
-    name: "oil_generate_cover",
+    name: "mz_generate_cover",
     description:
       "Generate 3x4 / 4x3 / 16x9 covers with oil-cover. "
       + "Extract a cover title first from the episode script or subtitles (oil-cover rule: do not leave this to the image model). "

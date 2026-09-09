@@ -1,22 +1,24 @@
-import { homedir } from "node:os";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import {
+  Config,
   defaultCoverSkillDir,
   defaultDataDir,
   defaultLibraryRoot,
   defaultSubtitleSkillDir,
   defaultTrellisProjectsRoot,
   expandHomePath,
+  legacyDataDir,
   resolveConfiguredPath,
   resolveDataDir,
   resolveSkillDir,
   resolveTrellisConfig,
   skillDirCandidates,
 } from "../src/config.ts";
-import type { Config } from "../src/config.ts";
 
 describe("portable config defaults", () => {
   it("uses Creator Studio on Windows and a Muzi Creator media root elsewhere", () => {
@@ -32,14 +34,38 @@ describe("portable config defaults", () => {
       .toBe(defaultTrellisProjectsRoot());
   });
 
-  it("keeps the legacy home-local data directory", () => {
-    expect(defaultDataDir()).toBe(join(homedir(), ".dsh-oil-creator"));
-    expect(resolveDataDir({
-      libraryRoot: defaultLibraryRoot(),
-      dataDir: "",
-      subtitleSkillDir: "",
-      coverSkillDir: "",
-    })).toBe(defaultDataDir());
+  it("uses the Muzi data directory for a fresh installation", () => {
+    const home = mkdtempSync(join(tmpdir(), "dsh-mz-data-home-"));
+    expect(defaultDataDir(home)).toBe(join(home, ".dsh-mz-creator"));
+    expect(resolveDataDir({ dataDir: "" }, home)).toBe(defaultDataDir(home));
+  });
+
+  it("uses the legacy directory unchanged when it is the only existing data directory", () => {
+    const home = mkdtempSync(join(tmpdir(), "dsh-mz-data-home-"));
+    const legacy = legacyDataDir(home);
+    mkdirSync(legacy);
+    const history = join(legacy, "overlay.json");
+    writeFileSync(history, "{\"history\":true}\n", "utf8");
+
+    expect(resolveDataDir({ dataDir: "" }, home)).toBe(legacy);
+    expect(defaultDataDir(home)).not.toBe(legacy);
+    expect(resolveDataDir({ dataDir: "" }, home)).toBe(legacy);
+    expect(readFileSync(history, "utf8")).toBe("{\"history\":true}\n");
+  });
+
+  it("requires an explicit dataDir when both old and new data directories exist", () => {
+    const home = mkdtempSync(join(tmpdir(), "dsh-mz-data-home-"));
+    const legacy = legacyDataDir(home);
+    const current = defaultDataDir(home);
+    const explicit = join(home, "chosen-data");
+    mkdirSync(legacy);
+    mkdirSync(current);
+
+    expect(() => resolveDataDir({ dataDir: "" }, home)).toThrow(/显式设置 dataDir/);
+    expect(Config().dataDir).toBe("");
+    const parsed = Config({ dataDir: explicit } as Config);
+    expect(parsed.dataDir).toBe(explicit);
+    expect(resolveDataDir(parsed, home)).toBe(explicit);
   });
 
   it("lets config and env override skill directories", () => {

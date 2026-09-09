@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import type { DailyHotItem, DailyHotResult } from "../../dailyHotTypes.ts";
@@ -126,10 +127,9 @@ export function DailyHotPanel({ t, resource }: DailyHotPanelProps) {
       <div className="muziSectionHeader dailyHotHeader">
         <span className="muziSectionLabel">
           <span>{t("hot.title")}</span>
-          {data !== null && <IslandTag className="dailyHotHeaderCount" size="small" color="brown" variant="soft">{allItems.length}</IslandTag>}
         </span>
         <div className="muziHeaderActions">
-          <IslandButton
+          <IslandButton icon={<WorkbenchIcon name="refresh" />}
             type="text"
             size="small"
             className="dailyHotRefresh"
@@ -157,7 +157,7 @@ export function DailyHotPanel({ t, resource }: DailyHotPanelProps) {
             kind="error"
             title={t("hot.error.title")}
             message={error}
-            action={<IslandButton type="primary" onClick={() => { void load(true); }}>{t("hot.error.retry")}</IslandButton>}
+            action={<IslandButton icon={<WorkbenchIcon name="refresh" />} type="primary" onClick={() => { void load(true); }}>{t("hot.error.retry")}</IslandButton>}
           />
         )}
 

@@ -8,6 +8,8 @@ import {
   Card as AnimalCard,
   type CardColor as AnimalCardColor,
   type CardProps as AnimalCardProps,
+  Input as AnimalInput,
+  type InputProps as AnimalInputProps,
   Select as AnimalSelect,
   type SelectProps as AnimalSelectProps,
   Skeleton as AnimalSkeleton,
@@ -24,8 +26,6 @@ export {
   Checkbox as IslandCheckbox,
   Divider as IslandDivider,
   Drawer as IslandDrawer,
-  Icon as IslandIcon,
-  Input as IslandInput,
   Modal as IslandModal,
   Radio as IslandRadio,
   Skeleton as IslandSkeleton,
@@ -53,6 +53,17 @@ export type {
 
 export { selectableIslandOptions, type IslandSelectOption } from "./selectOptions.ts";
 
+/** Input presentation belongs to its rounded shell; native input props retain their targets. */
+export function IslandInput({ className, status, disabled, ...props }: AnimalInputProps) {
+  const invalid = status === "error" || props["aria-invalid"] === true || props["aria-invalid"] === "true";
+  return <AnimalInput
+    {...props}
+    status={status}
+    disabled={disabled}
+    className={["islandField", "islandInput", invalid && "is-error", status === "warning" && !invalid && "is-warning", disabled && "is-disabled", className].filter(Boolean).join(" ")}
+  />;
+}
+
 export interface IslandSelectProps extends Omit<AnimalSelectProps, "options"> {
   options: IslandSelectOption[];
 }
@@ -63,7 +74,7 @@ export function IslandSelect({ options, value, placeholder, disabled, ...props }
   const selectable = selectableIslandOptions(options);
   const selected = options.find((option) => option.key === value);
   const selectedUnavailableLabel = selected?.disabled === true ? `${selected.label}（不可用）` : undefined;
-  return <>
+  return <div className="islandField islandSelect">
     <AnimalSelect
       {...props}
       options={selectable}
@@ -74,7 +85,7 @@ export function IslandSelect({ options, value, placeholder, disabled, ...props }
     {unavailable.length > 0 && <small className="islandSelectUnavailable">
       不可用选项：{unavailable.map((option) => `${option.label}${option.disabledReason === undefined ? "" : `（${option.disabledReason}）`}`).join("；")}
     </small>}
-  </>;
+  </div>;
 }
 
 export interface IslandSelectableCardProps extends Omit<AnimalCardProps, "color" | "hoverable" | "onClick"> {
@@ -128,7 +139,7 @@ export interface IslandTextareaProps extends Omit<
 
 /** Controlled native textarea used only where Animal Island has no multiline control. */
 export function IslandTextarea({ className, ...props }: IslandTextareaProps) {
-  return <textarea {...props} className={["islandTextarea", className].filter(Boolean).join(" ")} />;
+  return <textarea {...props} className={["islandField", "islandTextarea", className].filter(Boolean).join(" ")} />;
 }
 
 export interface IslandStateProps {

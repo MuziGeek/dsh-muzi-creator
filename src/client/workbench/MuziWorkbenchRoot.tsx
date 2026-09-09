@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
 import { useEffect, useMemo, useRef } from "react";
 import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 
@@ -7,6 +8,7 @@ import type { CreatorViewFace, InspirationViewFace, MuziViewFace, TrellisViewFac
 import type { CreatorKey } from "../locales.ts";
 import { DailyHotInspector } from "../DailyHotInspector.tsx";
 import { MuziInspector } from "../MuziInspector.tsx";
+import { VideoAccountManager } from "../VideoAccountManager.tsx";
 import { TrellisProjectInspector } from "../TrellisProjectInspector.tsx";
 import { KnowledgePreview } from "../KnowledgePreview.tsx";
 import { InspirationWorkbench, type InspirationCopyKey } from "../inspiration/index.ts";
@@ -14,6 +16,7 @@ import { setInspirationSelection, useInspirationSelection } from "../inspiration
 import {
   bumpLibrary,
   setContentSelection,
+  getContentSelection,
   setKnowledgeSelection,
   useFeatureSelections,
   useSidebarTab,
@@ -43,6 +46,8 @@ import {
 } from "./sidebarLayoutBridge.ts";
 import "./MuziWorkbench.css";
 
+const FEATURE_ICONS = { hot: "hotspots", inspiration: "inspiration", content: "content", knowledge: "knowledge", projects: "projects" } as const;
+
 const TAB_TITLES = {
   hot: "热点工作台",
   inspiration: "灵感",
@@ -57,7 +62,7 @@ export type MuziWorkbenchRootProps = PropsRuntime<"conversation"> & {
   resources: WorkbenchResources;
   inspirationFace: InspirationViewFace;
   muziFace: MuziViewFace;
-  oilFace: CreatorViewFace;
+  mzFace: CreatorViewFace;
   trellisFace: TrellisViewFace;
   t: (key: CreatorKey | InspirationCopyKey) => string;
   openInspirationSession: (sessionId: string) => void;
@@ -71,7 +76,7 @@ export function MuziWorkbenchRoot({
   resources,
   inspirationFace,
   muziFace,
-  oilFace,
+  mzFace,
   trellisFace,
   t,
   openInspirationSession,
@@ -192,7 +197,12 @@ export function MuziWorkbenchRoot({
       );
     }
     if (feature === "content" && content.data !== null) {
-      return <ContentOverview result={content.data} onSelect={setContentSelection} />;
+      return <ContentOverview result={content.data} onSelect={setContentSelection} onManageAccounts={() => { setContentSelection("content-accounts"); }} t={(key) => t(key as CreatorKey)} onDelete={async (project) => {
+        await muziFace.deleteProject(project.id, project.revision);
+        if (getContentSelection() === project.id) setContentSelection(null);
+        await resources.content.refreshAfterMutation();
+        bumpLibrary();
+      }} />;
     }
     if (feature === "knowledge" && knowledge.data !== null) {
       return <KnowledgePreview result={knowledge.data} onRefresh={async () => { await resources.knowledge.load(true); }} />;
@@ -201,13 +211,15 @@ export function MuziWorkbenchRoot({
       return <ProjectsOverview result={projects.data} onSelect={selectTrellisProject} />;
     }
     return null;
-  }, [content.data, feature, hot.data, inspirationFace, knowledge.data, openInspirationSession, projects.data, promoteInspiration, resources.inspiration, resources.knowledge, t]);
+  }, [muziFace, resources.content, content.data, feature, hot.data, inspirationFace, knowledge.data, openInspirationSession, projects.data, promoteInspiration, resources.inspiration, resources.knowledge, t]);
 
   const detail = feature === "hot"
     ? hotItem === null ? null : <DailyHotInspector t={t} />
     : feature === "inspiration" ? null
-    : feature === "content" || feature === "knowledge"
-      ? detailKey === null ? null : <MuziInspector muziFace={muziFace} oilFace={oilFace} startPendingProcessing={startPendingProcessing} startKnowledgeDiscussion={startKnowledgeDiscussion} />
+    : feature === "content" && detailKey === "content-accounts"
+      ? mzFace.accountManagement === undefined ? <p role="status">账号管理暂不可用。</p> : <VideoAccountManager api={mzFace.accountManagement} t={(key) => t(key)} />
+      : feature === "content" || feature === "knowledge"
+        ? detailKey === null ? null : <MuziInspector t={t} muziFace={muziFace} mzFace={mzFace} startPendingProcessing={startPendingProcessing} startKnowledgeDiscussion={startKnowledgeDiscussion} />
       : trellisSelection.projectId === null ? null : <TrellisProjectInspector face={trellisFace} t={t} />;
 
   if (sidebarTab === "sessions") return null;
@@ -216,13 +228,14 @@ export function MuziWorkbenchRoot({
     <main data-plugin="dsh-muzi-creator" data-surface="central-workbench" data-feature={feature}>
       <header className="muziWorkbenchBar">
         <div className="muziWorkbenchHeading">
+          <WorkbenchIcon name={FEATURE_ICONS[feature]} size={32} />
           <h1 ref={headingRef} tabIndex={-1}>{TAB_TITLES[feature]}</h1>
           <IslandTag size="small" color={snapshot.error === null ? "app-green" : "app-yellow"} variant="soft">{statusLabel}</IslandTag>
         </div>
         <div className="muziWorkbenchActions">
-          <IslandButton className="muziWorkbenchExpand" type="text" size="small" onClick={expandSidebarList}>展开列表</IslandButton>
-          {detailKey !== null && <IslandButton type="text" size="small" onClick={returnToOverview}>返回概览</IslandButton>}
-          <IslandButton type="default" size="small" loading={snapshot.refreshing} disabled={snapshot.refreshing} onClick={() => { void refresh().catch(() => undefined); }}>刷新</IslandButton>
+          <IslandButton icon={<WorkbenchIcon name="sidebar-open" />} className="muziWorkbenchExpand" type="default" size="small" onClick={expandSidebarList}>展开列表</IslandButton>
+          {detailKey !== null && <IslandButton icon={<WorkbenchIcon name="back" />} type="default" size="small" onClick={returnToOverview}>返回概览</IslandButton>}
+          <IslandButton icon={<WorkbenchIcon name="refresh" />} type="default" size="small" loading={snapshot.refreshing} disabled={snapshot.refreshing} onClick={() => { void refresh().catch(() => undefined); }}>刷新</IslandButton>
         </div>
       </header>
       {snapshot.error !== null && snapshot.data !== null && <div className="muziWorkbenchRefreshError" role="status">刷新失败，继续显示上次数据：{snapshot.error}</div>}
@@ -230,7 +243,7 @@ export function MuziWorkbenchRoot({
         {detail}
         {detail === null && overview}
         {detail === null && overview === null && snapshot.loading && <div className="muziWorkbenchLoading" aria-label="正在读取工作台数据"><IslandSkeleton variant="rect" widthValue="100%" heightValue={128} /><IslandSkeleton variant="rect" widthValue="100%" heightValue={220} /></div>}
-        {detail === null && overview === null && !snapshot.loading && snapshot.error !== null && <IslandState kind="error" title="当前功能暂不可用" message={snapshot.error} action={<IslandButton type="primary" onClick={() => { void refresh().catch(() => undefined); }}>重试</IslandButton>} />}
+        {detail === null && overview === null && !snapshot.loading && snapshot.error !== null && <IslandState kind="error" title="当前功能暂不可用" message={snapshot.error} action={<IslandButton icon={<WorkbenchIcon name="refresh" />} type="primary" onClick={() => { void refresh().catch(() => undefined); }}>重试</IslandButton>} />}
       </div>
     </main>
   );

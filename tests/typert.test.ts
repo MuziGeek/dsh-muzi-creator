@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { OIL_CREATOR_INVOCATIONS, PACKAGE_NAME, REMOTE_NAMESPACE } from "../src/remote-contract.ts";
+import { MZ_CREATOR_INVOCATIONS, PACKAGE_NAME, REMOTE_NAMESPACE } from "../src/remote-contract.ts";
 import { TYPERT } from "../src/typert.host.ts";
 
 describe("handwritten TYPERT", () => {
   it("matches the package and host face", () => {
     expect(TYPERT.package).toBe(PACKAGE_NAME);
     expect(TYPERT.face).toBe("host");
-    expect(TYPERT.invocations).toBe(OIL_CREATOR_INVOCATIONS);
+    expect(TYPERT.invocations).toBe(MZ_CREATOR_INVOCATIONS);
   });
 
-  it("exposes oilCreator methods with zod v4 codecs", () => {
-    const methods = OIL_CREATOR_INVOCATIONS.map((item) => item.method);
+  it("exposes mzCreator methods with zod v4 codecs", () => {
+    const methods = MZ_CREATOR_INVOCATIONS.map((item) => item.method);
     expect(methods).toEqual([
       "listContents",
       "getContent",
@@ -19,6 +19,21 @@ describe("handwritten TYPERT", () => {
       "getVideoPlayback",
       "getArticleMedia",
       "getSubtitleText",
+      "getVideoAccounts",
+      "addVideoAccount",
+      "setVideoAccountEnabled",
+      "removeVideoAccount",
+      "openVideoAccountLogin",
+      "checkVideoAccountLogin",
+      "reconnectVideoAccount",
+      "pollVideoAccountConnection",
+      "cancelVideoAccountConnection",
+      "reopenVideoAccountConnection",
+      "getPublishFlow",
+      "preparePublishFlow",
+      "resumePublishFlow",
+      "invalidatePublishFlow",
+      "commitPublishFlow",
       "getSettings",
       "getCapabilities",
       "getRevision",
@@ -30,6 +45,10 @@ describe("handwritten TYPERT", () => {
       "setContentStage",
       "setProfile",
       "setScriptRules",
+      "bindProductionProject",
+      "openProductionProjectFolder",
+      "waitForExport",
+      "cancelWaitForExport",
       "bindStudio",
       "openStudio",
       "setPublish",
@@ -49,11 +68,10 @@ describe("handwritten TYPERT", () => {
       "beginMuziVideoAcceptance",
       "getMuziVideoPublishCapabilities",
       "finalizeMuziVideoAcceptance",
-      "prepareMuziVideoPublish",
-      "commitMuziVideoPublish",
       "getMuziVideoPublishStatus",
       "syncMuziVideoMetrics",
       "archiveMuziProject",
+      "deleteMuziProject",
       "getMuziWorkspaceRevision",
       "getMuziDocumentLocation",
       "openMuziDocumentInObsidian",
@@ -78,14 +96,16 @@ describe("handwritten TYPERT", () => {
       "runInspirationTaskNow",
       "markInspirationRead",
       "archiveInspiration",
+      "deleteInspiration",
       "openInspirationReportInObsidian",
       "serializeInspirationReference",
+      "manageTrellisGithub",
       "listTrellisProjects",
       "getTrellisProject",
       "prepareTrellisTaskArchive",
       "archiveTrellisTask",
     ]);
-    for (const item of OIL_CREATOR_INVOCATIONS) {
+    for (const item of MZ_CREATOR_INVOCATIONS) {
       expect(item.service).toBe(REMOTE_NAMESPACE);
       expect(item.namespace).toBe(REMOTE_NAMESPACE);
       expect(item.result.mode).toBe("strict");

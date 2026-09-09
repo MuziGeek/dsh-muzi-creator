@@ -87,6 +87,7 @@ export const contentSummarySchema = z.object({
   subtitles: contentSubtitlesSchema,
   hasPublishPackage: z.boolean(),
   hasArticle: z.boolean(),
+  productionProjectPath: z.string().optional(),
   studioPath: z.string().optional(),
   waitingForExport: z.boolean(),
   exportTimedOut: z.boolean().optional(),
@@ -196,6 +197,11 @@ export const setContentStageRequestSchema = z.object({
 export const bindStudioRequestSchema = z.object({
   id: z.string().min(1),
   path: z.string().min(1),
+});
+
+export const bindProductionProjectRequestSchema = z.object({
+  id: z.string().min(1),
+  path: z.string().nullable(),
 });
 
 export const setPublishRequestSchema = z.object({

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +19,7 @@ import {
   setInspirationSelection,
 } from "../src/client/inspirationSelection.ts";
 import { ReadonlyResource } from "../src/client/workbench/WorkbenchData.ts";
+import { inspirationEn } from "../src/client/inspiration/copy.ts";
 
 const SPEC = {
   topic: "AI 写作工作流",
@@ -123,6 +124,7 @@ function face(detail: InspirationDetail = DETAIL): InspirationViewFace {
     setTaskState: vi.fn(),
     runTaskNow: vi.fn(),
     markRead: vi.fn(async () => ({ ...RUN, unread: false })),
+    deleteRecord: vi.fn(async () => ({ deleted: true })),
     archive: vi.fn(),
     openReportInObsidian: vi.fn(async () => {}),
     serializeReference: vi.fn(async () => ({
@@ -143,6 +145,88 @@ afterEach(() => {
 });
 
 describe("inspiration research UI", () => {
+  it("reveals history filtering on demand and restores the list and focus on Escape or clear", async () => {
+    const user = userEvent.setup();
+    const creator = face();
+    render(<InspirationSidebarPanel face={creator} resource={new ReadonlyResource(async () => OVERVIEW)} t={t} />);
+    const history = await screen.findByRole("region", { name: "历史记录" });
+    const searchHistory = screen.getByRole("button", { name: "搜索历史" });
+    expect(screen.queryByRole("textbox", { name: "搜索历史" })).toBeNull();
+    expect(searchHistory.getAttribute("aria-expanded")).toBe("false");
+    expect(searchHistory.querySelector('[data-workbench-icon="search"]')).not.toBeNull();
+    expect(within(history).getByRole("button", { name: /AI 写作工作流 ·/ })).toBeTruthy();
+
+    for (const close of ["escape", "clear"]) {
+      await user.click(searchHistory);
+      const input = screen.getByRole("textbox", { name: "搜索历史" });
+      await waitFor(() => expect(document.activeElement).toBe(input));
+      expect(searchHistory.getAttribute("aria-controls")).toBe(input.id);
+      await user.type(input, "不存在的主题");
+      expect(within(history).queryByRole("button", { name: /AI 写作工作流 ·/ })).toBeNull();
+      if (close === "escape") await user.keyboard("{Escape}");
+      else await user.click(screen.getByRole("button", { name: "清除历史搜索" }));
+      await waitFor(() => expect(document.activeElement).toBe(searchHistory));
+      expect(screen.queryByRole("textbox", { name: "搜索历史" })).toBeNull();
+      expect(searchHistory.getAttribute("aria-expanded")).toBe("false");
+      expect(within(history).getByRole("button", { name: /AI 写作工作流 ·/ })).toBeTruthy();
+    }
+
+    expect(searchHistory.textContent).toBe("搜索");
+    expect(screen.queryByRole("button", { name: "搜索" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "新搜索" })).toBeNull();
+    expect(creator.startResearch).not.toHaveBeenCalled();
+    await user.click(within(history).getByRole("button", { name: /AI 写作工作流 ·/ }));
+    expect(getInspirationSelection()?.runId).toBe(RUN.id);
+  });
+
+  it("labels the English history filter without a separate research action", async () => {
+    const user = userEvent.setup();
+    render(<InspirationSidebarPanel face={face()} resource={new ReadonlyResource(async () => OVERVIEW)} t={(key) => inspirationEn[key as keyof typeof inspirationEn] ?? key} />);
+    await user.click(screen.getByRole("button", { name: "Search history" }));
+    expect(screen.getByRole("textbox", { name: "Search history" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Clear history search" }));
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getByRole("button", { name: "Search history" }).textContent).toBe("Search");
+    expect(screen.queryByRole("button", { name: "Search" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeTruthy();
+  });
+
+  it("confirms deletion, removes the selected history card and preserves cancelled cards", async () => {
+    const creator = face();
+    let current = OVERVIEW;
+    const shared = new ReadonlyResource(async () => current);
+    creator.deleteRecord = vi.fn(async () => {
+      current = { ...OVERVIEW, revision: 9, items: [], recentRuns: [] };
+      return { deleted: true };
+    });
+    setInspirationSelection({ kind: "item", id: ITEM.id, runId: RUN.id });
+    render(<InspirationSidebarPanel face={creator} resource={shared} t={t} />);
+    const button = await screen.findByRole("button", { name: `删除：${SPEC.topic}` });
+    await userEvent.setup().click(button);
+    expect(screen.getByRole("dialog").textContent).toContain("保留本地目录、稿件和报告文件");
+    await userEvent.setup().click(screen.getByRole("button", { name: "取消" }));
+    expect(creator.deleteRecord).not.toHaveBeenCalled();
+    expect(getInspirationSelection()?.runId).toBe(RUN.id);
+    await userEvent.setup().click(button);
+    await userEvent.setup().click(screen.getByRole("button", { name: "删除" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: `删除：${SPEC.topic}` })).toBeNull());
+    expect(creator.deleteRecord).toHaveBeenCalledWith({kind: "item", id: ITEM.id, runId: RUN.id, expectedRevision: RUN.revision, confirmed: true});
+    expect(getInspirationSelection()).toBeNull();
+  });
+
+  it("keeps failed deletions visible and disables deletion for running research", async () => {
+    const creator = face();
+    creator.deleteRecord = vi.fn(async () => { throw new Error("revision conflict"); });
+    const mounted = render(<InspirationSidebarPanel face={creator} resource={resource()} t={t} />);
+    await userEvent.setup().click(await screen.findByRole("button", { name: `删除：${SPEC.topic}` }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "删除" }));
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "revision conflict");
+    expect(screen.getByRole("button", { name: `删除：${SPEC.topic}` })).toBeTruthy();
+    mounted.unmount();
+    render(<InspirationSidebarPanel face={creator} resource={resource({...OVERVIEW, recentRuns: [{...RUN, status: "running"}]})} t={t} />);
+    expect(await screen.findByRole("button", { name: `删除：${SPEC.topic}` })).toHaveProperty("disabled", true);
+  });
+
   it("blocks duplicate submits and selects the run only after history has loaded", async () => {
     const creator = face();
     let finishRefresh!: (value: InspirationOverview) => void;
@@ -213,7 +297,50 @@ describe("inspiration research UI", () => {
       screen
         .getAllByRole("heading", { level: 3 })
         .map((heading) => heading.textContent),
-    ).toEqual(["总结", "参考素材", "来源"]);
+    ).toEqual(["总结", "主要发现", "来源"]);
+    const article = screen.getByRole("article");
+    expect(article.firstElementChild?.textContent).toContain("没有可靠来源");
+  });
+
+  it("keeps the full report expanded and matches citation numbers to source order", async () => {
+    const report = {
+      ...DETAIL.report,
+      summary: "第一段总结。\n\n第二段总结，保留完整内容。",
+      findings: [
+        { text: "第一条发现\n保留补充说明", sourceIds: ["source-9", "source-1"], evidence: "supported" as const },
+        { text: "第二条发现", sourceIds: ["source-9"], evidence: "uncertain" as const },
+      ],
+      disagreements: [
+        ...DETAIL.report.disagreements,
+        { text: "证据不足的事项", sourceIds: [], evidence: "uncertain" as const },
+        { text: "来源支持的补充", sourceIds: ["source-9"], evidence: "supported" as const },
+      ],
+      sources: [
+        DETAIL.report.sources[0]!,
+        { ...DETAIL.report.sources[0]!, id: "source-9", title: "补充来源", url: "https://example.com/second", publishedAt: null },
+      ],
+    };
+    const creator = face({ ...DETAIL, report });
+    setInspirationSelection({ kind: "item", id: ITEM.id, runId: RUN.id });
+    render(<InspirationWorkbench resource={resource()} face={creator} t={t} openSession={vi.fn()} promote={vi.fn()} />);
+    const article = await screen.findByRole("article");
+    expect(within(article).getAllByRole("heading").map((heading) => heading.textContent))
+      .toEqual(["总结", "主要发现", "分歧与未知", "创作角度", "来源"]);
+    expect(article.querySelector(".inspirationSummaryContent")?.textContent).toBe(report.summary);
+    expect(article.querySelectorAll("details")).toHaveLength(0);
+    const firstFinding = article.querySelector(".inspirationEvidenceList > li")! as HTMLElement;
+    expect(firstFinding.querySelector("p")?.textContent).toBe(report.findings[0]!.text);
+    const citations = within(firstFinding).getAllByRole("link");
+    expect(citations.map((link) => [link.textContent, link.getAttribute("href")]))
+      .toEqual([["[2]", "https://example.com/second"], ["[1]", "https://example.com/source"]]);
+    expect(citations[0]?.getAttribute("aria-label")).toBe("来源 2：补充来源");
+    const sourceList = article.querySelector(".inspirationSources")!;
+    expect(Array.from(sourceList.querySelectorAll("li")).map((item) => [item.querySelector("span")?.textContent, item.querySelector("a")?.getAttribute("href")]))
+      .toEqual([["[1]", "https://example.com/source"], ["[2]", "https://example.com/second"]]);
+    expect(sourceList.textContent).toContain("未知");
+    expect(Array.from(article.querySelectorAll(".inspirationEvidenceStatus")).map((label) => label.textContent))
+      .toEqual(["存在分歧", "尚不确定", "有来源支持"]);
+    expect(creator.startResearch).not.toHaveBeenCalled();
   });
 
   it("submits the default topic search with Enter once", async () => {
@@ -312,13 +439,13 @@ describe("inspiration research UI", () => {
       recentRuns: [RUN],
     };
     render(
-      <InspirationSidebarPanel resource={resource(duplicateOverview)} t={t} />,
+      <InspirationSidebarPanel face={face()} resource={resource(duplicateOverview)} t={t} />,
     );
     const entry = await screen.findByRole("button", {
-      name: /AI 写作工作流/,
+      name: /^AI 写作工作流/,
     });
     expect(
-      screen.getAllByRole("button", { name: /AI 写作工作流/ }),
+      screen.getAllByRole("button", { name: /^AI 写作工作流/ }),
     ).toHaveLength(1);
     entry.focus();
     await userEvent.setup().keyboard("{Enter}");
@@ -356,9 +483,9 @@ describe("inspiration research UI", () => {
       ),
     );
     expect(screen.getByText("总结")).toBeTruthy();
-    expect(screen.getByText("参考素材")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "主要发现" })).toBeTruthy();
     expect(screen.getByText("分歧与未知")).toBeTruthy();
-    await userEvent.setup().click(screen.getByText("更多"));
+    expect(screen.queryByText("更多")).toBeNull();
     expect(
       screen.getByRole("button", { name: "在 Obsidian 中打开" }),
     ).toBeTruthy();

@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "./ui/WorkbenchIcon.tsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
@@ -11,6 +12,7 @@ import type { TrellisViewFace } from "./face.ts";
 import type { CreatorKey } from "./locales.ts";
 import {
   selectTrellisTask,
+  selectTrellisProject,
   useTrellisEpoch,
   useTrellisSelection,
 } from "./trellisSelection.ts";
@@ -150,7 +152,7 @@ function TaskList({ groupKey, label, tasks, selected, emptyLabel, scrollResetKey
 
   return (
     <section className="trellisTaskGroup">
-      <header><h3 id={headingId}>{label}</h3><span>{tasks.length}</span></header>
+      <header><h3 id={headingId} className="muziIconLabel"><WorkbenchIcon name="tasks" />{label}</h3><span>{tasks.length}</span></header>
       <div
         ref={rowsRef}
         id={rowsId}
@@ -278,8 +280,8 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
       <div className="trellisInspectorTop">
         <div><span>{detail?.project.title ?? t("projects.detail")}</span></div>
         <div className="trellisTopActions">
-          <IslandButton type="text" size="small" aria-label={t("projects.refresh")} onClick={() => { void load(); }}>{t("projects.refresh")}</IslandButton>
-          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton type="text" size="small" aria-label={t("projects.openFolder")} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }}>{t("projects.openFolder")}</IslandButton>}
+          <IslandButton icon={<WorkbenchIcon name="refresh" />} type="text" size="small" aria-label={t("projects.refresh")} onClick={() => { void load(); }}>{t("projects.refresh")}</IslandButton>
+          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton icon={<WorkbenchIcon name="folder-open" />} type="text" size="small" aria-label={t("projects.openFolder")} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }}>{t("projects.openFolder")}</IslandButton>}
         </div>
       </div>
 
@@ -289,6 +291,17 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
         <div className="trellisInspectorScroll">
           <header className="trellisProjectHero">
             <div className="trellisHeroHeading"><IslandTag className={`trellisProjectState ${detail.project.status}`} color={detail.project.status === "ready" ? "app-green" : detail.project.status === "degraded" ? "app-yellow" : "app-red"} size="small" variant="soft">{detail.project.status === "ready" ? t("projects.ready") : detail.project.status === "degraded" ? t("projects.degraded") : t("projects.unavailable")}</IslandTag><h1 id="muzi-workbench-detail-title" tabIndex={-1}>{detail.project.title}</h1><p>{detail.project.statusMessage}</p></div>
+            {detail.project.github && <div className="trellisGithubSnapshot">
+              <a href={detail.project.github.url} target="_blank" rel="noreferrer"><WorkbenchIcon name="external-link" />{t("github.open")}</a>
+              <span>{detail.project.github.branch}</span>
+              <code title={detail.project.github.sha ?? ""}>{detail.project.github.sha?.slice(0, 12) ?? "—"}</code>
+              <span>{detail.project.github.syncedAt ? new Date(detail.project.github.syncedAt).toLocaleString() : "—"}</span>
+              {detail.project.github.stale && <strong role="status">{t("github.stale")}</strong>}
+              <p>{t("github.readonly")}</p>
+              {face.github && <IslandButton icon={<WorkbenchIcon name="remove" />} type="text" size="small" onClick={() => {
+                void face.github!({ action: "remove", projectId: detail.project.projectId }).then(() => { selectTrellisProject(null); }).catch((cause: unknown) => { setNotice(String(cause)); });
+              }}>{t("github.remove")}</IslandButton>}
+            </div>}
             {counts !== null && <div className="trellisDistribution" aria-label="任务状态分布">
               <div><strong>{counts.planning}</strong><span>{t("projects.planning")}</span></div>
               <div><strong>{counts.inProgress}</strong><span>{t("projects.inProgress")}</span></div>
@@ -321,7 +334,7 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
           </div>
 
           {selectedTask !== null && <section className="trellisTaskDetail">
-            <header><div><IslandTag className={`trellisStatusLabel ${selectedTask.status}`} color={selectedTask.status === "completed" ? "app-green" : selectedTask.status === "in_progress" ? "yellow-green" : selectedTask.status === "planning" ? "app-yellow" : "brown"} size="small" variant="soft">{STATUS_LABELS[selectedTask.status]}</IslandTag><h2>{selectedTask.title}</h2><p>{selectedTask.description || "未填写任务说明"}</p></div>{!selectedTask.archived && selectedTask.status === "completed" && <IslandButton className="trellisArchiveButton" loading={archiveBusy} disabled={archiveBusy} onClick={() => { void prepareArchive(); }}>{archiveBusy ? t("projects.archive.checking") : t("projects.archive")}</IslandButton>}</header>
+            <header><div><IslandTag className={`trellisStatusLabel ${selectedTask.status}`} color={selectedTask.status === "completed" ? "app-green" : selectedTask.status === "in_progress" ? "yellow-green" : selectedTask.status === "planning" ? "app-yellow" : "brown"} size="small" variant="soft">{STATUS_LABELS[selectedTask.status]}</IslandTag><h2>{selectedTask.title}</h2><p>{selectedTask.description || "未填写任务说明"}</p></div>{!detail.project.github && !selectedTask.archived && selectedTask.status === "completed" && <IslandButton className="trellisArchiveButton" icon={<WorkbenchIcon name="archive" />} loading={archiveBusy} disabled={archiveBusy} onClick={() => { void prepareArchive(); }}>{archiveBusy ? t("projects.archive.checking") : t("projects.archive")}</IslandButton>}</header>
             <dl className="trellisTaskFacts">
               <div><dt>优先级</dt><dd>{selectedTask.priority ?? "—"}</dd></div>
               <div><dt>负责人</dt><dd>{selectedTask.assignee ?? "—"}</dd></div>

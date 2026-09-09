@@ -42,14 +42,14 @@ export function libraryConventionText(
     "Muzi Atlas 是只读知识事实源；只用 muzi_knowledge_* 工具读取正式 Wiki。raw/ 不参与搜索或生成，知识写入只能由标准 llm-wiki 流程完成。",
     "项目包含母内容、视频稿、公众号、小红书和博客稿，可从母内容或视频稿起步。派生稿记录源文档哈希，源更新后不自动覆盖。",
     "创建或保存必须先展示预览并等待用户明确确认。发布状态不根据文件存在推断。",
-    "写或改 script.md 必须遵循用户的脚本规则（人设）：先用 oil_script_rules 读取；还没配置时主动问清语气、结构和禁忌，再用 oil_script_rules 存下来。",
-    "Oil 工具继续提供 Screen Studio、字幕、封面与本地媒体能力。外部同步、上传和发布默认关闭；启用后也必须逐次通过 DSH 审批。",
+    "写或改 script.md 必须遵循用户的脚本规则（人设）：先用 mz_script_rules 读取；还没配置时主动问清语气、结构和禁忌，再用 mz_script_rules 存下来。",
+    "Mz 工具提供通用制作工程引用、成片等待、字幕、封面与本地媒体能力；Screen Studio 是 macOS 可选适配。外部同步、上传和发布默认关闭；启用后也必须逐次通过 DSH 审批。",
   ];
   if (enabledPlatforms !== undefined) {
     lines.push(
       enabledPlatforms.length === 0
-        ? "当前没有启用发布平台。不要调用 video-publisher 或 oil_sync_publish。"
-        : `当前启用平台：${enabledPlatformNames(enabledPlatforms)}。video-publisher 和 oil_sync_publish 只处理这些平台。`,
+        ? "当前没有启用发布平台。不要调用 video-publisher 或 mz_sync_publish。"
+        : `当前启用平台：${enabledPlatformNames(enabledPlatforms)}。video-publisher 和 mz_sync_publish 只处理这些平台。`,
     );
   }
   if (scriptRules !== undefined && scriptRules.trim() !== "") {
@@ -60,7 +60,7 @@ export function libraryConventionText(
 
 export function registerLibraryPrompt(ctx: PromptSectionHost, source: LibraryPromptSource): () => void {
   return ctx.systemPrompt.section({
-    name: "oil:library",
+    name: "mz:library",
     order: 120,
     text: () => libraryConventionText(
       resolvePromptLibraryRoot(source),

@@ -12,6 +12,7 @@ const REQUIRED_FILES = [
   "scripts/collect-publish.mjs",
   "scripts/copy-inplace.mjs",
   "scripts/check-release.mjs",
+  "scripts/check-mz-names.mjs",
   "src/index.ts",
   "src/client/index.tsx",
   "src/creatorSkill.ts",
@@ -139,8 +140,11 @@ function checkRelease(root) {
   if (typeof scripts.test !== "string" || scripts.test.length === 0) {
     addFailure("缺少 test 脚本");
   }
-  if (scripts.check !== "pnpm typecheck && pnpm test && pnpm build") {
-    addFailure("check 必须固定为完整的 pnpm typecheck、test、build 流程");
+  if (scripts.check !== "pnpm check:names && pnpm typecheck && pnpm test && pnpm build") {
+    addFailure("check 必须固定为完整的 pnpm check:names、typecheck、test、build 流程");
+  }
+  if (scripts["check:names"] !== "node scripts/check-mz-names.mjs") {
+    addFailure("check:names 必须执行仓库命名检查脚本");
   }
   if (scripts["release:check"] !== "node scripts/check-release.mjs") {
     addFailure("缺少显式 release:check 门禁脚本");

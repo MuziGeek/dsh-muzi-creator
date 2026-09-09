@@ -157,7 +157,7 @@ describe("muzi.creator/2", () => {
     expect(await readFile(join(projectRoot, "project.yml"), "utf8")).toContain("muzi.creator/2");
   });
 
-  it("prefers the portrait Oil cover and exposes no filesystem path", async () => {
+  it("prefers the portrait Mz cover and exposes no filesystem path", async () => {
     const cfg = await config();
     const service = new MuziCreatorService(cfg);
     const created = await service.createProject({ title: "有封面", primaryDocument: "mother", confirmed: true });
@@ -196,5 +196,37 @@ describe("muzi.creator/2", () => {
     await symlink(external, join(projectRoot, "linked_3x4.png"), "junction");
     expect((await service.getProject({ id: created.id })).coverRevision).toBeNull();
     expect(await service.getProjectCover({ id: created.id })).toEqual({ found: false, mime: "", base64: "" });
+  });
+
+  it("soft-deletes a project while preserving its directory and drafts", async () => {
+    const cfg = await config();
+    const service = new MuziCreatorService(cfg);
+    const created = await service.createProject({ title: "保留稿件", primaryDocument: "mother", confirmed: true });
+    const saved = await service.saveDocument({ id: created.id, document: "mother", text: "仍然保留", status: "draft", expectedRevision: created.revision, confirmed: true });
+    const projectRoot = join(cfg.creatorRoot, "10-active", created.folderName);
+
+    await expect(service.deleteProject({ id: created.id, expectedRevision: saved.revision, confirmed: false })).rejects.toThrow("delete confirmation required");
+    await expect(service.deleteProject({ id: created.id, expectedRevision: created.revision, confirmed: true })).rejects.toThrow("revision conflict");
+    await expect(service.deleteProject({ id: created.id, expectedRevision: saved.revision, confirmed: true })).resolves.toEqual({ deleted: true });
+
+    expect((await service.listProjects({})).items).toEqual([]);
+    await expect(service.getProject({ id: created.id })).rejects.toThrow("creator project not found");
+    expect(await readFile(join(projectRoot, "mother-content.md"), "utf8")).toBe("仍然保留");
+    expect(await readFile(join(projectRoot, "project.yml"), "utf8")).toContain("deleted: true");
+  });
+
+  it("rejects a stale located write after project deletion", async () => {
+    const cfg = await config();
+    const service = new MuziCreatorService(cfg);
+    const created = await service.createProject({ title: "并发删除", primaryDocument: "mother", confirmed: true });
+    const internals = service as unknown as {
+      locate: (id: string, includeDeleted?: boolean) => Promise<unknown>;
+      patchManifest: (located: unknown, expectedRevision: number, patch: object) => Promise<unknown>;
+    };
+    const located = await internals.locate(created.id, true);
+    await service.deleteProject({ id: created.id, expectedRevision: created.revision, confirmed: true });
+
+    await expect(internals.patchManifest(located, created.revision, { stage: "research" })).rejects.toThrow("deleted projects are read-only");
+    expect(await readFile(join(cfg.creatorRoot, "10-active", created.folderName, "project.yml"), "utf8")).toContain("deleted: true");
   });
 });

@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
+import { resolveDataDir } from "./config.ts";
 import { jobPidStillOurs, pidAlive } from "./processAlive.ts";
 
 export interface PreviewServerRecord {
@@ -13,7 +14,7 @@ export interface PreviewServerRecord {
 }
 
 export function previewRegistryPath(root = homedir()): string {
-  return join(root, ".dsh-oil-creator", "preview-servers.json");
+  return previewRegistryPathForDataDir(resolveDataDir({ dataDir: "" }, root));
 }
 
 export function previewRegistryPathForDataDir(dataDir: string): string {

@@ -84,7 +84,7 @@ describe("remapOverlayItems", () => {
 
 describe("applyOrganize", () => {
   it("renames folders and leaves files inside", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-organize-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-organize-"));
     const folder = join(root, "2025-09-21_去-ai-味儿");
     await mkdir(folder);
     await writeFile(join(folder, "clip.mp4"), "video");

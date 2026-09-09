@@ -41,7 +41,7 @@ describe("folderNameForTitle", () => {
 
 describe("createContentFolder", () => {
   it("makes an empty dated folder", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-create-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-create-"));
     const created = await createContentFolder(root, "一期测试", new Date(2026, 7, 15));
     expect(created.id).toBe("2026-08-15_一期测试");
     const items = await scanLibrary(root, emptyOverlay());
@@ -53,7 +53,7 @@ describe("createContentFolder", () => {
 
 describe("scanLibrary video pick", () => {
   it("uses the newest raw video when several exist", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-videos-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-videos-"));
     const created = await createContentFolder(root, "多成片", new Date(2026, 7, 15));
     const older = join(created.folderPath, "take-1.mp4");
     const newer = join(created.folderPath, "take-2.mp4");
@@ -68,7 +68,7 @@ describe("scanLibrary video pick", () => {
 
 describe("script.md", () => {
   it("writes and clears the spoken script", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-script-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-script-"));
     const created = await createContentFolder(root, "脚本测试", new Date(2026, 7, 15));
     await writeScript(created.folderPath, "先讲问题，再演示。");
     expect(await readScript(created.folderPath)).toBe("先讲问题，再演示。\n");
@@ -115,6 +115,8 @@ describe("pipeline and filters", () => {
     expect(workflowOf(base)).toBe("idle");
     expect(workflowOf(base, { readyToRecord: true })).toBe("record");
     expect(workflowOf({ ...base, studioPath: "/p.screenstudio" })).toBe("cut");
+    expect(workflowOf({ ...base, productionProjectPath: "/p/project.prproj" })).toBe("cut");
+    expect(workflowOf(base, { studioPath: "/p.screenstudio", productionProjectPath: null })).toBe("idle");
     expect(workflowOf({ ...base, videoRaw: "/a.mp4" })).toBe("finish");
     expect(workflowOf({
       ...base,
@@ -203,7 +205,7 @@ describe("subtitle text", () => {
 
 describe("recordedAt precedence", () => {
   it("keeps the name date even when the folder is touched later", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-new-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-new-"));
     const created = await createContentFolder(root, "刚建的内容", new Date(2026, 7, 16));
     await utimes(created.folderPath, new Date(2026, 7, 18, 14, 40), new Date(2026, 7, 18, 14, 40));
     const items = await scanLibrary(root, emptyOverlay());
@@ -211,7 +213,7 @@ describe("recordedAt precedence", () => {
   });
 
   it("keeps the planned name date for an old topic folder", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-old-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-old-"));
     const folder = join(root, "2020-09-01_old topic");
     await mkdir(folder);
     await utimes(folder, new Date(2026, 7, 16, 14, 40), new Date(2026, 7, 16, 14, 40));
@@ -220,7 +222,7 @@ describe("recordedAt precedence", () => {
   });
 
   it("ignores video mtime: re-exporting must not move the episode", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-vid-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-vid-"));
     const created = await createContentFolder(root, "有成片", new Date(2026, 7, 16));
     const video = join(created.folderPath, "final.mp4");
     await writeFile(video, "x");
@@ -241,7 +243,7 @@ describe("folderDateMs", () => {
 
 describe("scanLibrary", () => {
   it("reads one content folder", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-creator-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-muzi-creator-"));
     const folder = join(root, "2026-01-23_demo");
     await mkdir(folder);
     await writeFile(join(folder, "2026-01-23_demo_3x4.png"), "x");
@@ -265,7 +267,7 @@ describe("scanLibrary", () => {
   });
 
   it("sorts by recordedAt: the name date decides, not the last touch", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-sort-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-sort-"));
     const older = join(root, "2026-06-27_old video");
     const newer = join(root, "2026-08-15_new video");
     await mkdir(older);
@@ -281,7 +283,7 @@ describe("scanLibrary", () => {
   });
 
   it("breaks same-date ties by folder creation time", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-tie-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-tie-"));
     await mkdir(join(root, "2026-08-18_先做的一期"));
     await new Promise((resolve) => setTimeout(resolve, 20));
     await mkdir(join(root, "2026-08-18_后做的一期"));
@@ -293,7 +295,7 @@ describe("scanLibrary", () => {
   });
 
   it("reads an article from 公众号文章", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-art-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-art-"));
     const folder = join(root, "2026-04-06_demo");
     await mkdir(join(folder, "公众号文章"), { recursive: true });
     await writeFile(join(folder, "公众号文章", "一篇文章.md"), "# hello\n");
@@ -305,7 +307,7 @@ describe("scanLibrary", () => {
   });
 
   it("reads publisher draft status from auto-publish.json", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-pub-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-pub-"));
     const folder = join(root, "2026-08-13_demo");
     await mkdir(folder);
     await writeFile(join(folder, "demo.auto-publish.json"), JSON.stringify({
@@ -324,7 +326,7 @@ describe("scanLibrary", () => {
   });
 
   it("lets overlay publish status win", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-ov-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-ov-"));
     const folder = join(root, "2026-08-13_demo");
     await mkdir(folder);
     await writeFile(join(folder, "demo.auto-publish.json"), JSON.stringify({
@@ -343,7 +345,7 @@ describe("scanLibrary", () => {
   });
 
   it("reads srt even when the work transcript is a bare array", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-sub-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-mz-sub-"));
     const folder = join(root, "2026-08-13_demo");
     const work = join(folder, "demo.subtitle-work");
     await mkdir(work, { recursive: true });
@@ -364,7 +366,7 @@ describe("scanLibrary", () => {
   });
 
   it("lists newer recordings first", async () => {
-    const root = await mkdtemp(join(tmpdir(), "dsh-oil-creator-"));
+    const root = await mkdtemp(join(tmpdir(), "dsh-muzi-creator-"));
     const older = join(root, "2026-01-01_old");
     const newer = join(root, "2026-08-01_new");
     await mkdir(older);

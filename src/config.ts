@@ -12,6 +12,9 @@ export interface Config {
   subtitleSkillDir: string;
   coverSkillDir: string;
   videoPublisherSkillDir?: string;
+  videoConnectionTimeoutMs?: number;
+  videoConnectionPollIntervalMs?: number;
+  videoAccountCapabilitiesTimeoutMs?: number;
   previewMaxBytes: number;
   searchResultLimit: number;
   graphNodeLimit: number;
@@ -21,6 +24,11 @@ export interface Config {
   externalActionsEnabled: boolean;
   obsidianExecutable?: string;
   trellisProjectsRoot?: string;
+  trellisGithubClientId?: string;
+  trellisGithubConcurrency?: number;
+  trellisGithubSyncTimeoutMs?: number;
+  trellisGithubMaxRepositories?: number;
+  trellisGithubMaxResponseBytes?: number;
   trellisGitExecutable?: string;
   trellisPythonExecutable?: string;
   trellisPythonArgs?: string[];
@@ -87,8 +95,12 @@ export function defaultLibraryRoot(platform: NodeJS.Platform = process.platform)
   return join(homedir(), videos, "Muzi Creator");
 }
 
-export function defaultDataDir(): string {
-  return join(homedir(), ".dsh-oil-creator");
+export function defaultDataDir(home = homedir()): string {
+  return join(home, ".dsh-mz-creator");
+}
+
+export function legacyDataDir(home = homedir()): string {
+  return join(home, ".dsh-oil-creator");
 }
 
 export function defaultSubtitleSkillDir(): string {
@@ -131,10 +143,13 @@ export const Config: Schema<Config> = Schema.object({
   libraryRoot: Schema.string().default(defaultLibraryRoot()),
   creatorRoot: Schema.string().default(defaultCreatorRoot()),
   atlasRoot: Schema.string().default(defaultAtlasRoot()),
-  dataDir: Schema.string().default(defaultDataDir()),
+  dataDir: Schema.string().default(""),
   subtitleSkillDir: Schema.string().default(""),
   coverSkillDir: Schema.string().default(""),
   videoPublisherSkillDir: Schema.string().default(""),
+  videoConnectionTimeoutMs: Schema.number().min(60_000).max(1_800_000).default(600_000),
+  videoConnectionPollIntervalMs: Schema.number().min(1000).max(30_000).default(2000),
+  videoAccountCapabilitiesTimeoutMs: Schema.number().min(1000).max(90_000).default(5000),
   previewMaxBytes: Schema.number().min(4096).max(1048576).default(262144),
   searchResultLimit: Schema.number().min(1).max(100).default(30),
   graphNodeLimit: Schema.number().min(10).max(2000).default(500),
@@ -143,6 +158,11 @@ export const Config: Schema<Config> = Schema.object({
   enabledPublishTargets: Schema.array(String).default(["bilibili", "douyin", "wechat", "xiaohongshu", "blog"]),
   externalActionsEnabled: Schema.boolean().default(false),
   obsidianExecutable: Schema.string().default(""),
+  trellisGithubSyncTimeoutMs: Schema.number().min(1000).max(600000).default(120000),
+  trellisGithubConcurrency: Schema.number().min(1).max(8).default(4),
+  trellisGithubClientId: Schema.string().default(""),
+  trellisGithubMaxRepositories: Schema.number().min(1).max(2000).default(200),
+  trellisGithubMaxResponseBytes: Schema.number().min(1048576).max(33554432).default(8388608),
   trellisProjectsRoot: Schema.string().default(defaultTrellisProjectsRoot()),
   trellisGitExecutable: Schema.string().default("git"),
   trellisPythonExecutable: Schema.string().default(process.platform === "win32" ? "python" : "python3"),
@@ -157,8 +177,20 @@ export const Config: Schema<Config> = Schema.object({
   trellisOutputMaxBytes: Schema.number().min(4096).max(1048576).default(65536),
 });
 
-export function resolveDataDir(config: Pick<Config, "dataDir"> & Partial<Config>): string {
-  return config.dataDir === "" ? defaultDataDir() : config.dataDir;
+export function resolveDataDir(
+  config: Pick<Config, "dataDir"> & Partial<Config>,
+  home = homedir(),
+): string {
+  if (config.dataDir !== "") return config.dataDir;
+
+  const legacy = legacyDataDir(home);
+  const current = defaultDataDir(home);
+  if (existsSync(legacy) && existsSync(current)) {
+    throw new Error(
+      `检测到旧数据目录 ${legacy} 和新数据目录 ${current}；请在 dsh-muzi-creator 配置中显式设置 dataDir。`,
+    );
+  }
+  return existsSync(legacy) ? legacy : current;
 }
 
 export function resolveConfiguredPath(configured: string, fallback: string, envValue?: string): string {

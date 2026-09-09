@@ -22,6 +22,7 @@ import type {
 const DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})_(.+)$/;
 const SKIP_DIRS = new Set([
   ".dsh-oil-creator",
+  ".dsh-mz-creator",
   ".oil-cover",
   "公众号文章",
 ]);
@@ -133,7 +134,11 @@ export function workflowOf(
     if (hasSubtitle(item as ContentSummary) && hasCover(item as ContentSummary)) return "publish";
     return "finish";
   }
-  if (item.studioPath !== undefined || overlay?.studioPath !== undefined) return "cut";
+  if (
+    item.productionProjectPath !== undefined
+    || item.studioPath !== undefined
+    || (overlay?.productionProjectPath !== null && overlay?.studioPath !== undefined)
+  ) return "cut";
   if (overlay?.waitingForExport === true) return "finish";
   if (overlay?.readyToRecord === true) return "record";
   return "idle";
@@ -264,8 +269,16 @@ async function scanFolder(
 
   const overlayItem = overlay.items[folderName];
   const studioInFolder = names.find((name) => name.endsWith(".screenstudio"));
-  const studioPath = overlayItem?.studioPath
-    ?? (studioInFolder === undefined ? undefined : join(folderPath, studioInFolder));
+  const explicitlyUnbound = overlayItem?.productionProjectPath === null;
+  const studioPath = explicitlyUnbound
+    ? undefined
+    : overlayItem?.studioPath ?? (studioInFolder === undefined ? undefined : join(folderPath, studioInFolder));
+  // Only a stored legacy binding can seed the cross-platform reference. A
+  // `.screenstudio` folder discovered on disk remains visible to the macOS
+  // workflow, but must not undo an explicit production-project unbind.
+  const productionProjectPath = explicitlyUnbound
+    ? undefined
+    : overlayItem?.productionProjectPath ?? overlayItem?.studioPath;
 
   let articlePath: string | undefined;
   if (names.includes(ARTICLE_DIR)) {
@@ -290,6 +303,7 @@ async function scanFolder(
     ...(date === undefined ? {} : { date }),
     ...(videoRaw === undefined ? {} : { videoRaw }),
     ...(videoSubtitled === undefined ? {} : { videoSubtitled }),
+    ...(productionProjectPath === undefined ? {} : { productionProjectPath }),
     ...(studioPath === undefined ? {} : { studioPath }),
     ...(articlePath === undefined ? {} : { articlePath }),
     publish: mergePublish(await readFolderPublish(folderPath, names), overlayItem?.publish),

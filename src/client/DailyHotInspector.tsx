@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "./ui/WorkbenchIcon.tsx";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   dailyHotItemTimestamp,
@@ -112,12 +113,12 @@ export function DailyHotInspector({ t }: DailyHotInspectorProps) {
             {(primaryLink !== null || item.links.original !== null) && (
               <nav className="dailyHotLinks" aria-label={t("hot.links")}>
                 {primaryLink !== null && (
-                  <a href={primaryLink} target="_blank" rel="noreferrer">
+                  <a href={primaryLink} target="_blank" rel="noreferrer"><WorkbenchIcon name="external-link" />
                     {t("hot.openEvent")}
                   </a>
                 )}
                 {item.links.original !== null && (
-                  <a href={item.links.original} target="_blank" rel="noreferrer">
+                  <a href={item.links.original} target="_blank" rel="noreferrer"><WorkbenchIcon name="external-link" />
                     {t("hot.openOriginal")}
                   </a>
                 )}

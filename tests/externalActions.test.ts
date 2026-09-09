@@ -7,10 +7,15 @@ describe("explicit external action classification", () => {
     expect(externalActionKind("muzi_creator_video_publish_capabilities")).toBeNull();
     expect(externalActionKind("muzi_creator_begin_video_acceptance")).toBe("acceptance");
     expect(externalActionKind("muzi_creator_finalize_video_acceptance")).toBe("acceptance");
-    expect(externalActionKind("muzi_creator_prepare_video_publish")).toBe("prepare");
-    expect(externalActionKind("muzi_creator_commit_video_publish")).toBe("commit");
+    expect(externalActionKind("muzi_creator_connect_account")).toBe("connection");
+    expect(externalActionKind("muzi_creator_reconnect_account")).toBe("connection");
+    expect(externalActionKind("muzi_creator_open_account")).toBe("connection");
+    expect(externalActionKind("muzi_creator_check_connection")).toBeNull();
+    expect(externalActionKind("muzi_creator_prepare_publish_flow")).toBe("prepare");
+    expect(externalActionKind("muzi_creator_resume_publish_flow")).toBe("prepare");
+    expect(externalActionKind("muzi_creator_commit_publish_flow")).toBe("commit");
     expect(externalActionKind("muzi_creator_sync_video_metrics")).toBe("metrics");
-    expect(externalActionKind("oil_sync_publish")).toBe("metrics");
+    expect(externalActionKind("mz_sync_publish")).toBe("metrics");
     expect(externalActionKind("publish-looking-but-local")).toBeNull();
     expect(externalActionKind("upload_notes")).toBeNull();
   });

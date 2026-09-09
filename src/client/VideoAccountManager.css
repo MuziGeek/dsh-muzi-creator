@@ -1,0 +1,68 @@
+.videoAccountManager { width: 100%; min-width: 0; box-sizing: border-box; container: video-accounts / inline-size; padding-block: 12px; color: var(--muzi-island-text); }
+[data-plugin="dsh-muzi-creator"] .muziWorkbenchContent.detail > .videoAccountManager { flex: 1; min-height: 0; padding: 24px; overflow-y: auto; overscroll-behavior: contain; }
+.videoAccountHeading, .videoAccountIdentity, .videoAccountActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.videoAccountHeading { justify-content: space-between; align-items: flex-start; }
+.videoAccountHeading > div { min-width: 0; flex: 1 1 240px; }
+.videoAccountManager h2 { margin: 0; font-size: 16px; line-height: 1.5; }
+.videoAccountCount { color: var(--muzi-island-text-muted); font-weight: 600; }
+.videoAccountManager p { margin: 6px 0 10px; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.videoAccountMessage { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muzi-island-text); }
+.videoAccountMessage.error { color: var(--muzi-island-danger, #953a29); }
+.videoAccountState { padding: 14px 0; color: var(--muzi-island-text-muted); }
+.videoAccountPaper { margin: 14px 0; padding: 4px 14px; border: 1px solid var(--muzi-island-line); border-radius: var(--muzi-island-radius-md); background: var(--muzi-island-paper); }
+.videoAccountList { display: grid; margin: 0; padding: 0; list-style: none; }
+.videoAccountList > li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, max-content) auto; align-items: center; gap: 24px; padding: 16px 0; border-bottom: 1px solid var(--muzi-island-line); }
+.videoAccountList > li:last-child { border-bottom: 0; }
+.videoAccountIdentity { display: grid; grid-template-columns: 20px minmax(0, max-content) max-content; justify-content: start; min-width: 0; align-items: start; }
+.videoAccountIdentity > div { display: grid; min-width: 0; gap: 2px; }
+.videoAccountIdentity strong, .videoAccountIdentity small { overflow-wrap: anywhere; }
+.videoAccountIdentity strong { font-size: 14px; }
+.videoAccountIdentity small { color: var(--muzi-island-text-muted); font-size: 12px; }
+.videoAccountIdentity .animal-tag { margin-left: 0; }
+.videoAccountList > li > p { margin: 0; color: var(--muzi-island-text-muted); }
+.videoAccountActions { justify-content: flex-end; }
+.videoAccountActions > button { min-height: 36px; }
+.videoAccountManager > button { padding-inline-start: 0; }
+.videoAccountDialogField { display: grid; gap: 7px; font-size: 13px; }
+.videoConnectionStatus { padding: 10px 0; color: var(--muzi-island-text); }
+.videoConnectionStatus p { margin-bottom: 0; }
+.videoAccountProblems { margin-top: 24px; }
+.videoAccountProblems h3 { margin: 0; font-size: 14px; }
+.videoAccountProblems .videoIssueToggle { display: flex; width: 100%; justify-content: flex-start; gap: 12px; padding: 8px 0; text-align: start; }
+.videoIssueToggle > span { display: flex; width: 100%; align-items: center; gap: 12px; }
+.videoAccountActions .videoAccountRemoveAction { color: var(--muzi-island-danger, #953a29); }
+.videoIssueChevron { flex: none; margin-inline-start: auto; }
+.videoIssueChevron.open { transform: rotate(180deg); }
+.videoIssueList > li { grid-template-columns: minmax(0, 1fr) minmax(120px, 200px) auto; }
+.videoIssueList > li > .videoAccountActions { max-width: 320px; }
+.videoIssueProgress { grid-column: 1 / -1; min-width: 0; padding-top: 12px; border-top: 1px solid var(--muzi-island-line); }
+.videoIssueProgress .videoConnectionStatus { padding-top: 0; }
+@container video-accounts (width < 640px) {
+  .videoAccountHeading > div { flex-basis: 180px; }
+  .videoAccountPaper { padding: 0 14px; }
+  .videoAccountList > li { grid-template-columns: 1fr; gap: 8px; }
+  .videoAccountList .videoAccountActions { align-items: stretch; flex-direction: column; }
+  .videoAccountList .videoAccountActions > button { width: 100%; min-height: 40px; }
+  .videoIssueList > li > .videoAccountActions { max-width: none; }
+}
+@container muzi-workbench (width < 640px) {
+  [data-plugin="dsh-muzi-creator"] .muziWorkbenchContent.detail > .videoAccountManager { padding: 16px; }
+}
+
+.videoAccountManagementModal > div { box-sizing: border-box; padding-inline: clamp(24px, 8vw, 48px); }
+.videoAccountManagementTitle { display: block; min-width: 0; font-size: 22px; line-height: 1.45; overflow-wrap: anywhere; }
+.videoAccountManagementBody { display: grid; width: 100%; min-width: 0; gap: 16px; }
+.videoAccountManagementBody p { margin: 0; color: #725d42; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.videoAccountManagementStatus { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-block: 4px; color: #725d42; font-size: 14px; }
+.videoAccountManagementActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.videoAccountManagementFooter { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%; padding-top: 16px; border-top: 1px solid rgba(114, 93, 66, 0.2); }
+.videoAccountManagementModal button { min-height: 44px; height: auto; padding: 12px 16px; box-sizing: border-box; font-size: 14px; }
+.videoAccountManagementActions > button { width: 100%; min-width: 0; }
+.videoAccountManagementFooter > button:last-child { min-width: 96px; }
+.videoAccountManagementModal .videoAccountManagementFooter .videoAccountManagementRemove { color: #9a3a3a; }
+.videoAccountManagementModal .videoAccountManagementFooter .videoAccountManagementRemove:hover:not(:disabled),
+.videoAccountManagementModal .videoAccountManagementFooter .videoAccountManagementRemove:active:not(:disabled) { color: #9a3a3a; }
+@media (max-width: 380px) {
+  .videoAccountManagementActions { grid-template-columns: minmax(0, 1fr); }
+  .videoAccountManagementFooter > button { flex: 1 1 auto; }
+}

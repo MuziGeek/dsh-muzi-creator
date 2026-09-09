@@ -70,7 +70,7 @@ vi.mock("../src/processAlive.ts", async (importOriginal) => {
   };
 });
 
-import { OilCreatorService } from "../src/service.ts";
+import { MzCreatorService } from "../src/service.ts";
 import { saveCollectCache } from "../src/collectCache.ts";
 import { emptyOverlay, loadOverlay, saveOverlay } from "../src/overlay.ts";
 import { emptyBurn, emptyPublish } from "../src/publishStatus.ts";
@@ -100,14 +100,14 @@ function item(folderPath: string, videoRaw: string): ContentSummary {
   };
 }
 
-describe("OilCreatorService.startSubtitleGenerate", () => {
+describe("MzCreatorService.startSubtitleGenerate", () => {
   it("always prepares subtitles without resolving or injecting the cover credential", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-service-subtitle-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-service-subtitle-"));
     const video = join(folder, "demo.mp4");
     await writeFile(video, "v");
 
-    let launch: Parameters<OilCreatorService["startChainedJob"]>[2] | undefined;
-    const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
+    let launch: Parameters<MzCreatorService["startChainedJob"]>[2] | undefined;
+    const service = Object.create(MzCreatorService.prototype) as MzCreatorService;
     const probe = service as unknown as {
       ctx: { get: (name: string) => unknown };
       find: () => Promise<ContentSummary>;
@@ -115,7 +115,7 @@ describe("OilCreatorService.startSubtitleGenerate", () => {
       startChainedJob: (
         id: string,
         field: "burn" | "subtitleJob" | "coverJob",
-        nextLaunch: Parameters<OilCreatorService["startChainedJob"]>[2],
+        nextLaunch: Parameters<MzCreatorService["startChainedJob"]>[2],
         signal: AbortSignal,
       ) => Promise<ContentDetail>;
     };
@@ -146,10 +146,10 @@ describe("OilCreatorService.startSubtitleGenerate", () => {
   });
 });
 
-describe("OilCreatorService.startChainedJob", () => {
+describe("MzCreatorService.startChainedJob", () => {
   it("passes each step only its declared credential", async () => {
     chained.calls.length = 0;
-    const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
+    const service = Object.create(MzCreatorService.prototype) as MzCreatorService;
     const probe = service as unknown as {
       patchItem: () => Promise<ContentDetail>;
     };
@@ -174,14 +174,14 @@ describe("OilCreatorService.startChainedJob", () => {
   });
 });
 
-describe("OilCreatorService.openSubtitlePreview", () => {
-  async function previewService(folder: string, video: string): Promise<OilCreatorService> {
-    const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
+describe("MzCreatorService.openSubtitlePreview", () => {
+  async function previewService(folder: string, video: string): Promise<MzCreatorService> {
+    const service = Object.create(MzCreatorService.prototype) as MzCreatorService;
     const previewItem = item(folder, video);
     previewItem.subtitles = { srt: join(folder, "demo.srt") };
     const probe = service as unknown as {
       dataDir: string;
-      previews: OilCreatorService["previews"];
+      previews: MzCreatorService["previews"];
       find: () => Promise<ContentSummary>;
       subtitleSkill: () => Promise<{ root: string; python: string }>;
     };
@@ -193,7 +193,7 @@ describe("OilCreatorService.openSubtitlePreview", () => {
   }
 
   it.each(["failure", "abort"] as const)("terminates and cleans up after waitHttp %s", async (mode) => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-service-preview-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-service-preview-"));
     const video = join(folder, "demo.mp4");
     await writeFile(video, "v");
     await writeFile(join(folder, "demo.srt"), "1\n00:00:00,000 --> 00:00:01,000\n字幕\n");
@@ -211,12 +211,12 @@ describe("OilCreatorService.openSubtitlePreview", () => {
   });
 });
 
-async function syncService(profile: CreatorProfile, externalActionsEnabled = true): Promise<OilCreatorService> {
-  const dataDir = await mkdtemp(join(tmpdir(), "oil-service-sync-"));
+async function syncService(profile: CreatorProfile, externalActionsEnabled = true): Promise<MzCreatorService> {
+  const dataDir = await mkdtemp(join(tmpdir(), "mz-service-sync-"));
   const overlay = emptyOverlay();
   overlay.profile = profile;
   await saveOverlay(dataDir, overlay);
-  const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
+  const service = Object.create(MzCreatorService.prototype) as MzCreatorService;
   const probe = service as unknown as {
     dataDir: string;
     externalActionsEnabled: boolean;
@@ -248,7 +248,7 @@ async function syncService(profile: CreatorProfile, externalActionsEnabled = tru
   return service;
 }
 
-describe("OilCreatorService.syncPublish", () => {
+describe("MzCreatorService.syncPublish", () => {
   beforeEach(() => {
     collect.calls.length = 0;
     collect.run.mockClear();
@@ -311,15 +311,15 @@ describe("OilCreatorService.syncPublish", () => {
   });
 });
 
-describe("OilCreatorService subtitle job reconcile", () => {
+describe("MzCreatorService subtitle job reconcile", () => {
   async function overlayService(item: OverlayItem) {
-    const dataDir = await mkdtemp(join(tmpdir(), "oil-service-job-"));
-    const libraryRoot = await mkdtemp(join(tmpdir(), "oil-service-lib-"));
+    const dataDir = await mkdtemp(join(tmpdir(), "mz-service-job-"));
+    const libraryRoot = await mkdtemp(join(tmpdir(), "mz-service-lib-"));
     const overlay = emptyOverlay();
     overlay.libraryRoot = libraryRoot;
     overlay.items.demo = item;
     await saveOverlay(dataDir, overlay);
-    const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
+    const service = Object.create(MzCreatorService.prototype) as MzCreatorService;
     const probe = service as unknown as {
       dataDir: string;
       libraryRoot: string;
@@ -400,11 +400,11 @@ describe("OilCreatorService subtitle job reconcile", () => {
   });
 });
 
-describe("OilCreatorService settings paths", () => {
+describe("MzCreatorService settings paths", () => {
   async function settingsService() {
-    const dataDir = await mkdtemp(join(tmpdir(), "oil-service-settings-"));
+    const dataDir = await mkdtemp(join(tmpdir(), "mz-service-settings-"));
     await saveOverlay(dataDir, emptyOverlay());
-    const service = Object.create(OilCreatorService.prototype) as OilCreatorService;
+    const service = Object.create(MzCreatorService.prototype) as MzCreatorService;
     const probe = service as unknown as {
       dataDir: string;
       libraryRoot: string;
@@ -429,7 +429,7 @@ describe("OilCreatorService settings paths", () => {
 
   it("persists a validated projects root and applies it to the trellis service", async () => {
     const { dataDir, service } = await settingsService();
-    const root = await mkdtemp(join(tmpdir(), "oil-settings-projects-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-settings-projects-"));
 
     const settings = await service.setTrellisProjectsRoot({ path: root }, new AbortController().signal);
 
@@ -440,7 +440,7 @@ describe("OilCreatorService settings paths", () => {
 
   it("rejects a projects root that is not a directory", async () => {
     const { service } = await settingsService();
-    const missing = join(tmpdir(), "oil-settings-missing-");
+    const missing = join(tmpdir(), "mz-settings-missing-");
 
     await expect(service.setTrellisProjectsRoot({ path: missing }, new AbortController().signal))
       .rejects.toThrow("项目目录不是文件夹");
@@ -457,7 +457,7 @@ describe("OilCreatorService settings paths", () => {
 
   it("persists a validated obsidian executable", async () => {
     const { dataDir, service } = await settingsService();
-    const folder = await mkdtemp(join(tmpdir(), "oil-settings-obsidian-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-settings-obsidian-"));
     const executable = join(folder, "Obsidian.exe");
     await writeFile(executable, "");
 
@@ -469,7 +469,7 @@ describe("OilCreatorService settings paths", () => {
 
   it("rejects an obsidian path that is not a file and clears with an empty path", async () => {
     const { dataDir, service } = await settingsService();
-    const folder = await mkdtemp(join(tmpdir(), "oil-settings-obsidian-dir-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-settings-obsidian-dir-"));
 
     await expect(service.setObsidianExecutable({ path: folder }, new AbortController().signal))
       .rejects.toThrow("Obsidian 可执行文件不是普通文件");

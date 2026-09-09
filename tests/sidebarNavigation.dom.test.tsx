@@ -1,20 +1,24 @@
 /** @vitest-environment jsdom */
 import type { ComponentProps } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getSelectedContentId, setSelectedContentId, setSidebarTab } from "../src/client/contentSelection.ts";
-import { selectDailyHotItem } from "../src/client/dailyHotSelection.ts";
+import { getContentSelection, getKnowledgeSelection, getSidebarTab, setContentSelection, setKnowledgeSelection, getSelectedContentId, setSelectedContentId, setSidebarTab } from "../src/client/contentSelection.ts";
+import { getSelectedDailyHotId, selectDailyHotItem } from "../src/client/dailyHotSelection.ts";
+import { CREATOR_STORAGE_KEY, loadCreatorUiState } from "../src/client/persistence.ts";
+import { getInspirationSelection, setInspirationSelection } from "../src/client/inspirationSelection.ts";
 import { KnowledgePanel } from "../src/client/sidebar/KnowledgePanel.tsx";
-import { OilSidebarRoot } from "../src/client/sidebar/OilSidebarRoot.tsx";
-import { selectTrellisProject } from "../src/client/trellisSelection.ts";
+import { MuziContentPanel } from "../src/client/sidebar/MuziContentPanel.tsx";
+import { MzSidebarRoot } from "../src/client/sidebar/MzSidebarRoot.tsx";
+import { getSelectedTrellisProjectId, selectTrellisProject } from "../src/client/trellisSelection.ts";
 import type { SessionActivitySnapshot } from "../src/client/workbench/sessionActivity.ts";
+import { zh, en } from "../src/client/locales.ts";
 import { ReadonlyResource } from "../src/client/workbench/WorkbenchData.ts";
 
 const EMPTY_SESSIONS: SessionActivitySnapshot = { ids: [], byId: {} };
 
-function sidebarProps(sessionSnapshot: SessionActivitySnapshot = EMPTY_SESSIONS): ComponentProps<typeof OilSidebarRoot> {
+function sidebarProps(sessionSnapshot: SessionActivitySnapshot = EMPTY_SESSIONS): ComponentProps<typeof MzSidebarRoot> {
   const unavailable = <T,>() => new ReadonlyResource<T>(async () => { throw new Error("测试数据不可用"); });
   return {
     collapsed: false,
@@ -50,10 +54,116 @@ function sidebarProps(sessionSnapshot: SessionActivitySnapshot = EMPTY_SESSIONS)
       getSnapshot: () => sessionSnapshot,
       subscribe: () => () => undefined,
     },
-  } as unknown as ComponentProps<typeof OilSidebarRoot>;
+  } as unknown as ComponentProps<typeof MzSidebarRoot>;
 }
 
 describe("Muzi Creator sidebar navigation", () => {
+  it("clears a restored hotspot identity before its data has loaded", async () => {
+    const saved = localStorage.getItem(CREATOR_STORAGE_KEY);
+    try {
+      localStorage.setItem(CREATOR_STORAGE_KEY, JSON.stringify({ ...loadCreatorUiState(undefined), selections: { ...loadCreatorUiState(undefined).selections, hotId: "cold-hotspot" } }));
+      vi.resetModules();
+      const cold = await import("../src/client/dailyHotSelection.ts");
+      expect(cold.getSelectedDailyHotItem()).toBeNull();
+      expect(cold.getSelectedDailyHotId()).toBe("cold-hotspot");
+      cold.selectDailyHotItem(null);
+      expect(cold.getSelectedDailyHotId()).toBeNull();
+      expect(JSON.parse(localStorage.getItem(CREATOR_STORAGE_KEY)!).selections.hotId).toBeNull();
+    } finally {
+      if (saved === null) localStorage.removeItem(CREATOR_STORAGE_KEY);
+      else localStorage.setItem(CREATOR_STORAGE_KEY, saved);
+    }
+  });
+
+  const features = [
+    { tab: "hot", label: "热点", previous: "会话", seed: () => selectDailyHotItem({ id: "hot-navigation", title: "测试热点" } as NonNullable<Parameters<typeof selectDailyHotItem>[0]>), selected: getSelectedDailyHotId },
+    { tab: "inspiration", label: "灵感", previous: "热点", seed: () => setInspirationSelection({ kind: "item", id: "inspiration-navigation" }), selected: getInspirationSelection },
+    { tab: "content", label: "内容", previous: "灵感", seed: () => setContentSelection("content-navigation"), selected: getContentSelection },
+    { tab: "knowledge", label: "知识", previous: "内容", seed: () => setKnowledgeSelection({ kind: "page", locator: "atlas://wiki/topics/navigation.md" }), selected: getKnowledgeSelection },
+    { tab: "projects", label: "项目", previous: "知识", seed: () => selectTrellisProject("project-navigation" as NonNullable<Parameters<typeof selectTrellisProject>[0]>), selected: getSelectedTrellisProjectId },
+  ] as const;
+
+  it.each(features)("opens $label overview on entry, repeated click, return and keyboard navigation", async (feature) => {
+    const user = userEvent.setup();
+    const props = sidebarProps();
+    render(<MzSidebarRoot {...props} />);
+    act(() => { for (const entry of features) entry.seed(); });
+    await user.click(screen.getByRole("tab", { name: feature.label }));
+    expect(getSidebarTab()).toBe(feature.tab);
+    expect(feature.selected()).toBeNull();
+    for (const other of features.filter((entry) => entry !== feature)) expect(other.selected()).not.toBeNull();
+    act(feature.seed);
+    expect(feature.selected()).not.toBeNull();
+    await user.click(screen.getByRole("tab", { name: feature.label }));
+    expect(feature.selected()).toBeNull();
+    act(feature.seed);
+    await user.click(screen.getByRole("tab", { name: "会话" }));
+    expect(feature.selected()).not.toBeNull();
+    await user.click(screen.getByRole("tab", { name: feature.label }));
+    expect(feature.selected()).toBeNull();
+    await user.click(screen.getByRole("tab", { name: feature.previous }));
+    act(feature.seed);
+    fireEvent.keyDown(screen.getByRole("tab", { name: feature.previous }), { key: "ArrowDown" });
+    expect(getSidebarTab()).toBe(feature.tab);
+    expect(feature.selected()).toBeNull();
+    expect(props.startSession).not.toHaveBeenCalled();
+  });
+
+  it("retains the original host icon action without title decoration or added labels", () => {
+    const activate = vi.fn();
+    const props = sidebarProps();
+    const translate = (dictionary: Record<string, string>) => (key: string) => dictionary[key] ?? key;
+    const renderSlot: typeof props.renderSlot = (slot) => slot === "sidebar.workspaces"
+      ? <button aria-label="Host search" onClick={activate}><svg /></button>
+      : null;
+    const { rerender } = render(<MzSidebarRoot {...props} renderSlot={renderSlot} t={translate(zh)} />);
+    const button = screen.getByRole("button", { name: "Host search" });
+    const wrapper = document.querySelector<HTMLElement>('[data-surface="session-browser"]')!;
+    expect(wrapper.style.getPropertyValue("--muzi-workspace-title-icon")).toBe("");
+    expect(wrapper.style.getPropertyValue("--muzi-workspace-search-label")).toBe("");
+    rerender(<MzSidebarRoot {...props} renderSlot={renderSlot} t={translate(en)} />);
+    expect(wrapper.style.getPropertyValue("--muzi-workspace-search-label")).toBe("");
+    expect(screen.getByRole("button", { name: "Host search" })).toBe(button);
+    expect(button.querySelector("svg")).not.toBeNull();
+    fireEvent.click(button);
+    expect(activate).toHaveBeenCalledOnce();
+  });
+
+  it("keeps content search and archive options without a toolbar create action or total", async () => {
+    const user = userEvent.setup();
+    const listProjects = vi.fn(async () => ({ items: [] }));
+    const face = { listProjects } as unknown as ComponentProps<typeof MuziContentPanel>["face"];
+    render(<MuziContentPanel face={face} resource={new ReadonlyResource(() => face.listProjects("", false))} />);
+    await screen.findByText("可通过会话创建内容，创建后会显示在这里。");
+    const header = document.querySelector(".muziSectionHeader")!;
+    expect(header.textContent).toBe("创作项目搜索视图");
+    expect(screen.queryByRole("button", { name: /新增|预览/ })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "内容视图选项" }));
+    await user.click(screen.getByRole("checkbox", { name: "显示归档目录" }));
+    await waitFor(() => expect(listProjects).toHaveBeenCalledWith("", true));
+    await user.click(screen.getByRole("button", { name: "搜索内容" }));
+    await user.type(screen.getByRole("textbox", { name: "搜索内容" }), "测试主题");
+    await waitFor(() => expect(listProjects).toHaveBeenCalledWith("测试主题", true));
+  });
+
+  it("keeps project browsing and the global settings trigger without a project sources entry", async () => {
+    const user = userEvent.setup();
+    const props = sidebarProps();
+    const github = vi.fn();
+    const openSettings = vi.fn();
+    render(<MzSidebarRoot {...props} trellisFace={{ ...props.trellisFace, github }} renderSlot={(slot) => slot === "sidebar.settings" ? <button onClick={openSettings}>设置</button> : null} />);
+    await user.click(screen.getByRole("tab", { name: "项目" }));
+    expect(screen.queryByRole("button", { name: "github.sources" })).toBeNull();
+    expect(document.querySelector(".trellisGithubSources")).toBeNull();
+    expect(screen.getByRole("button", { name: "projects.refresh" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "projects.search" }));
+    expect(screen.getByRole("textbox", { name: "projects.search" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "设置" }));
+    expect(openSettings).toHaveBeenCalledTimes(1);
+    expect(github).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
@@ -63,6 +173,8 @@ describe("Muzi Creator sidebar navigation", () => {
     setSelectedContentId(null);
     selectDailyHotItem(null);
     selectTrellisProject(null);
+    setKnowledgeSelection(null);
+    setInspirationSelection(null);
   });
 
   afterEach(() => {
@@ -71,17 +183,19 @@ describe("Muzi Creator sidebar navigation", () => {
   });
 
   it("keeps all six entries in product order with roving keyboard focus", async () => {
-    render(<OilSidebarRoot {...sidebarProps()} />);
+    render(<MzSidebarRoot {...sidebarProps()} />);
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(["会话", "热点", "灵感", "内容", "知识", "项目"]);
+    expect(tabs.map((tab) => tab.querySelector("img")?.getAttribute("data-workbench-icon"))).toEqual(["sessions", "hotspots", "inspiration", "content", "knowledge", "projects"]);
+    expect(tabs.every((tab) => tab.querySelector("img")?.getAttribute("alt") === "")).toBe(true);
     expect(tabs.map((tab) => tab.getAttribute("tabindex"))).toEqual(["0", "-1", "-1", "-1", "-1", "-1"]);
     expect(tabs.map((tab) => tab.getAttribute("data-sidebar-tab"))).toEqual(["sessions", "hot", "inspiration", "content", "knowledge", "projects"]);
     for (const tab of tabs) {
       expect(tab.querySelector(".tabIcon")?.getAttribute("aria-hidden")).toBe("true");
       expect(tab.querySelector(".tabLabel")?.textContent).not.toBe("");
     }
-    expect(screen.getByRole("tab", { name: "知识" }).querySelector('[class*="icon-critterpedia"]')).not.toBeNull();
+    expect(screen.getByRole("tab", { name: "知识" }).querySelector('[data-workbench-icon="knowledge"]')).not.toBeNull();
 
     tabs[0]?.focus();
     fireEvent.keyDown(tabs[0]!, { key: "ArrowDown" });
@@ -96,19 +210,35 @@ describe("Muzi Creator sidebar navigation", () => {
     await waitFor(() => { expect(document.activeElement).toBe(sessions); });
   });
 
+  it("keeps exactly one selected entry when clicking between all six features", async () => {
+    const user = userEvent.setup();
+    render(<MzSidebarRoot {...sidebarProps()} />);
+    const tabs = screen.getAllByRole("tab");
+
+    for (const tab of [...tabs.slice(1), tabs[0]!]) {
+      await user.click(tab);
+      expect(screen.getAllByRole("tab", { selected: true })).toEqual([tab]);
+      expect(tab.tabIndex).toBe(0);
+      for (const other of tabs.filter((entry) => entry !== tab)) {
+        expect(other.getAttribute("aria-selected")).toBe("false");
+        expect(other.tabIndex).toBe(-1);
+      }
+    }
+  });
+
   it("preserves the host-provided 360px expanded width and settles into the collapsed rail", async () => {
-    const { rerender } = render(<OilSidebarRoot {...sidebarProps()} />);
+    const { rerender } = render(<MzSidebarRoot {...sidebarProps()} />);
     const sidebar = document.querySelector<HTMLElement>('[data-surface="sidebar"]');
     expect(sidebar?.style.width).toBe("360px");
 
-    rerender(<OilSidebarRoot {...sidebarProps()} collapsed />);
+    rerender(<MzSidebarRoot {...sidebarProps()} collapsed />);
     await waitFor(() => {
       expect(document.querySelector<HTMLElement>('[data-surface="sidebar"]')?.classList.contains("collapsed")).toBe(true);
     });
   });
 
   it("announces pending interactions before background running sessions", () => {
-    render(<OilSidebarRoot {...sidebarProps({
+    render(<MzSidebarRoot {...sidebarProps({
       ids: ["running", "pending"],
       byId: {
         running: { running: true },
@@ -125,7 +255,7 @@ describe("Muzi Creator sidebar navigation", () => {
     const user = userEvent.setup();
     const startSession = vi.fn();
     const props = sidebarProps();
-    render(<OilSidebarRoot {...props} startSession={startSession} />);
+    render(<MzSidebarRoot {...props} startSession={startSession} />);
 
     const topAction = document.querySelector<HTMLButtonElement>(".logoRow > .topNewSession");
     expect(topAction).not.toBeNull();
@@ -146,7 +276,7 @@ describe("Muzi Creator sidebar navigation", () => {
     const onView = vi.fn();
     const onAdd = vi.fn();
     const props = sidebarProps();
-    render(<OilSidebarRoot {...props} renderSlot={(slot) => slot === "sidebar.workspaces" ? (
+    render(<MzSidebarRoot {...props} renderSlot={(slot) => slot === "sidebar.workspaces" ? (
       <div>
         <div>
           <span>Workspaces</span>
@@ -157,7 +287,7 @@ describe("Muzi Creator sidebar navigation", () => {
     ) : null} />);
 
     const sessionBrowser = document.querySelector<HTMLElement>('[data-surface="session-browser"]');
-    expect(sessionBrowser?.hasAttribute("style")).toBe(false);
+    expect(sessionBrowser?.style.getPropertyValue("--muzi-workspace-title-icon")).toBe("");
     for (const id of ["official-search", "official-view", "official-add"]) {
       expect(document.querySelector(`#${id} > svg`)).not.toBeNull();
     }
@@ -199,13 +329,15 @@ describe("Muzi Creator sidebar navigation", () => {
     render(
       <KnowledgePanel
         face={face as unknown as ComponentProps<typeof KnowledgePanel>["face"]}
-        onAddDirectory={vi.fn()}
       />,
     );
 
     const card = await screen.findByRole("button", { name: /A deliberately long English knowledge title/ });
+    expect(document.querySelector(".muziSectionHeader")?.textContent).toBe("知识搜索");
+    expect(screen.queryByRole("button", { name: /预览知识库|通过会话新增知识/ })).toBeNull();
+    expect(document.querySelector(".muziBrowseHeading")?.textContent).toBe("主题知识1");
     expect(card.querySelector(".muziListIcon")).toBeNull();
-    expect(card.querySelector('[class*="icon-critterpedia"]')).toBeNull();
+    expect(card.querySelector('[data-workbench-icon="knowledge"]')).toBeNull();
     expect(card.querySelector('[aria-hidden="true"]')).toBeNull();
     expect(card.textContent).toContain(topic.title);
     expect(card.textContent).toContain("主题知识");

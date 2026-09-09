@@ -1,9 +1,10 @@
+import type { InspirationViewFace } from "../face.ts";
+import { DeleteCardButton } from "../DeleteCardButton.tsx";
 import {
   useCallback,
   useEffect,
   useMemo,
   useState,
-  type ChangeEvent,
 } from "react";
 
 import type {
@@ -12,17 +13,18 @@ import type {
   InspirationRun,
   InspirationTask,
 } from "../../inspirationTypes.ts";
-import { useInspirationSelection } from "../inspirationSelection.ts";
+import { getInspirationSelection, useInspirationSelection } from "../inspirationSelection.ts";
 import { sidebarItemElementId } from "../workbench/sidebarLayoutBridge.ts";
 import type { ReadonlyResource } from "../workbench/WorkbenchData.ts";
 import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
 import {
   IslandButton,
-  IslandInput,
   IslandSelectableCard,
   IslandState,
   IslandTag,
 } from "../ui/IslandControls.tsx";
+import { PanelSectionHeader } from "../sidebar/PanelSectionHeader.tsx";
+import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
 import { inspirationZh } from "./copy.ts";
 import "./Inspiration.css";
 
@@ -32,9 +34,9 @@ type Entry =
   | { kind: "run"; run: InspirationRun }
   | { kind: "owner"; owner: Owner };
 export interface InspirationSidebarPanelProps {
+  face: InspirationViewFace;
   resource: ReadonlyResource<InspirationOverview>;
   t: Translator;
-  onNew?: () => void;
 }
 function label(t: Translator, key: string): string {
   const namespaced = `inspiration.${key}` as keyof typeof inspirationZh;
@@ -88,7 +90,7 @@ function entryMatches(entry: Entry, query: string): boolean {
   );
 }
 
-function HistoryCard({ entry, t }: { entry: Entry; t: Translator }) {
+function HistoryCard({ entry, t, face, resource }: { entry: Entry; t: Translator; face: InspirationViewFace; resource: ReadonlyResource<InspirationOverview> }) {
   const [selection, select] = useInspirationSelection();
   const isRun = entry.kind === "run";
   const kind = isRun
@@ -104,6 +106,7 @@ function HistoryCard({ entry, t }: { entry: Entry; t: Translator }) {
     selection.id === id &&
     (selection.runId ?? undefined) === runId;
   return (
+    <div className="cardWithActions">
     <IslandSelectableCard
       id={sidebarItemElementId("inspiration", key)}
       className="inspirationLedgerCard"
@@ -124,14 +127,23 @@ function HistoryCard({ entry, t }: { entry: Entry; t: Translator }) {
         <time dateTime={entryDate(entry)}>{time(entryDate(entry))}</time>
       </span>
     </IslandSelectableCard>
+    <DeleteCardButton title={title(entry)} t={t}
+      disabled={isRun && (entry.run.status === "queued" || entry.run.status === "running")}
+      onDelete={async () => {
+        await face.deleteRecord({ kind, id: id as never, ...(runId === undefined ? {} : { runId }), expectedRevision: isRun ? entry.run.revision : entry.owner.revision, confirmed: true });
+        const current = getInspirationSelection();
+        if (current?.kind === kind && current.id === id && (runId === undefined || current.runId === runId || current.runId === undefined)) select(null);
+        await resource.refreshAfterMutation();
+      }} />
+    </div>
   );
 }
 
 /** One chronological history keeps legacy owners reachable without duplicating any run. */
 export function InspirationSidebarPanel({
+  face,
   resource,
   t,
-  onNew,
 }: InspirationSidebarPanelProps) {
   const { data, loading, refreshing, error } = useResourceSnapshot(resource);
   const [query, setQuery] = useState("");
@@ -175,34 +187,22 @@ export function InspirationSidebarPanel({
       aria-label={label(t, "title")}
       aria-busy={loading || refreshing}
     >
-      <header className="muziSectionHeader inspirationSidebarHeader">
-        <span className="muziSectionLabel">{label(t, "title")}</span>
-        <div className="muziHeaderActions">
-          <IslandButton
-            type="text"
-            size="small"
-            disabled={refreshing}
-            onClick={() => {
-              void load(true);
-            }}
-          >
-            {label(t, "refresh")}
-          </IslandButton>
-          <IslandButton type="text" size="small" onClick={onNew}>
-            {label(t, "new")}
-          </IslandButton>
-        </div>
-      </header>
+      <PanelSectionHeader
+        label={label(t, "title")}
+        query={query}
+        searchLabel={label(t, "historySearch")}
+        searchName="inspiration-history-search"
+        searchPlaceholder={label(t, "historySearch")}
+        searchButtonText={label(t, "search")}
+        clearSearchLabel={label(t, "clearHistorySearch")}
+        clearSearchText={label(t, "clear")}
+        onQueryChange={setQuery}
+        refreshLabel={label(t, "refresh")}
+        refreshText={label(t, "refresh")}
+        refreshing={refreshing}
+        onRefresh={() => { void load(true); }}
+      />
       <div className="inspirationSidebarBody">
-        <IslandInput
-          aria-label={label(t, "historySearch")}
-          value={query}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => {
-            setQuery(event.target.value);
-          }}
-          allowClear
-          placeholder={label(t, "historySearch")}
-        />
         {loading && data === null && (
           <IslandState kind="loading" title={label(t, "loading")} />
         )}
@@ -212,7 +212,7 @@ export function InspirationSidebarPanel({
             title={label(t, "error")}
             message={error}
             action={
-              <IslandButton
+              <IslandButton icon={<WorkbenchIcon name="refresh" />}
                 type="primary"
                 onClick={() => {
                   void load(true);
@@ -243,6 +243,8 @@ export function InspirationSidebarPanel({
                         ? entry.run.id
                         : `${"name" in entry.owner ? "task" : "item"}:${entry.owner.id}`
                     }
+                    face={face}
+                    resource={resource}
                     entry={entry}
                     t={t}
                   />

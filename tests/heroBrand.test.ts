@@ -8,7 +8,7 @@ import {
   type CompatibleHeroBrandSlots,
 } from "../src/client/heroBrand.tsx";
 import { en, zh } from "../src/client/locales.ts";
-import { OilBrand } from "../src/client/sidebar/OilBrand.tsx";
+import { MzBrand } from "../src/client/sidebar/MzBrand.tsx";
 
 function registerSlots(): SlotCore {
   const slots = new SlotCore();
@@ -47,7 +47,7 @@ describe("Muzi brand", () => {
     expect(zh["brand.tagline"]).toBe("木子在生长");
     expect(en["brand.tagline"]).toBe("Muzi is growing");
 
-    const brand = OilBrand({ tagline: en["brand.tagline"] });
+    const brand = MzBrand({ tagline: en["brand.tagline"] });
     const copy = brand.props.children[1];
     expect(copy.props.children[0].props.children).toBe("Muzi Creator");
     expect(copy.props.children[1].props.children).toBe("Muzi is growing");

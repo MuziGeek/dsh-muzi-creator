@@ -32,6 +32,7 @@ export const inspirationItemSchema = z.object({
   revision: revisionSchema,
   spec: inspirationResearchSpecSchema,
   archived: z.boolean(),
+  deleted: z.boolean().default(false),
   sessionId: z.string().min(1).nullable(),
   latestRunId: idSchema.nullable(),
   createdAt: timestampSchema,
@@ -44,6 +45,7 @@ export const inspirationTaskSchema = z.object({
   name: z.string().trim().min(1).max(100),
   spec: inspirationResearchSpecSchema,
   state: z.enum(["enabled", "paused", "archived"]),
+  deleted: z.boolean().default(false),
   dailyTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
   timeZone: z.string().min(1).max(100),
   authorizedAt: timestampSchema.nullable(),
@@ -72,6 +74,7 @@ export const inspirationRunSchema = z.object({
   ownerId: idSchema,
   trigger: z.enum(["manual", "rerun", "scheduled", "catch-up", "run-now"]),
   status: inspirationRunStatusSchema,
+  deleted: z.boolean().default(false),
   spec: inspirationResearchSpecSchema,
   timeWindow: z.object({ startAt: timestampSchema, endAt: timestampSchema }).strict().optional(),
   scheduledFor: timestampSchema.nullable(),
@@ -215,6 +218,13 @@ export const archiveInspirationRequestSchema = z.object({
   id: idSchema,
   expectedRevision: revisionSchema,
 }).strict();
+
+export const deleteInspirationRequestSchema = getInspirationRequestSchema.extend({
+  expectedRevision: revisionSchema,
+  confirmed: z.boolean(),
+}).strict();
+
+export const deleteInspirationResultSchema = z.object({ deleted: z.boolean() }).strict();
 
 export const serializeInspirationReferenceRequestSchema = z.object({
   runId: idSchema,

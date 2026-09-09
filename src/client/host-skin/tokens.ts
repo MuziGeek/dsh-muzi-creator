@@ -32,6 +32,8 @@ export const MUZI_HOST_THEME_TOKENS: ThemeTokenOverrides = Object.freeze({
   "--muzi-host-focus": modes("#6EA972", "#F0C867"),
   "--muzi-host-code": modes("#F7ECD3", "#30241D"),
   "--muzi-host-shadow": modes("rgba(89, 61, 40, 0.12)", "rgba(20, 13, 10, 0.3)"),
+  "--muzi-host-tooltip-text": modes("#694633", "#694633"),
+  "--muzi-host-tooltip-border": modes("rgba(105, 70, 51, 0.2)", "rgba(105, 70, 51, 0.2)"),
 
   "--dsw-alias-bg-base": modes("var(--muzi-host-canvas)", "var(--muzi-host-canvas)"),
   "--dsw-alias-bg-layer-1": modes("var(--muzi-host-cream)", "var(--muzi-host-cream)"),
@@ -120,7 +122,7 @@ export const MUZI_HOST_THEME_TOKENS: ThemeTokenOverrides = Object.freeze({
   "--dsw-alias-state-warn-secondary": modes("#EDC56C", "#F7DA8A"),
   "--dsw-alias-state-warn-tertiary": modes("#FFF0C9", "#5A4222"),
   "--dsw-alias-toast-bg": modes("var(--muzi-host-bark-deep)", "#201713"),
-  "--dsw-alias-tooltip-bg": modes("#50362A", "#201713"),
+  "--dsw-alias-tooltip-bg": modes("#FFF8EA", "#FFF8EA"),
 
   "--dsw-specific-bubble-highlight": modes("var(--muzi-host-mint-strong)", "#42674C"),
   "--dsw-specific-bubble": modes("#EAF5E6", "#344D3A"),

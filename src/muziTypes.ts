@@ -294,6 +294,11 @@ export interface MuziArchiveRequest {
   confirmed: boolean;
 }
 
+/** Result of hiding one project while retaining its project directory and drafts. */
+export interface MuziDeleteResult {
+  deleted: boolean;
+}
+
 export interface KnowledgeStatus {
   status: "ready" | "incomplete" | "unavailable";
   schemaVersion: string | null;

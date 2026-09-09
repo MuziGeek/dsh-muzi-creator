@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { inspirationResearchSpecSchema } from "../src/inspirationSchemas.ts";
 import { InspirationService } from "../src/inspirationService.ts";
 import { inspirationIndexPath } from "../src/inspirationStore.ts";
-import type { InspirationResearchSpec, InspirationReportSubmission } from "../src/inspirationTypes.ts";
+import type { InspirationResearchSpec, InspirationReportSubmission, InspirationRun } from "../src/inspirationTypes.ts";
 
 const temporary: string[] = [];
 
@@ -34,6 +35,28 @@ function submission(runId: string, publishedAt: string | null = null): Inspirati
   };
 }
 
+function settledRun(id: string, ownerId: string, revision = 0): InspirationRun {
+  return {
+    id: id as never,
+    revision,
+    ownerKind: "item",
+    ownerId: ownerId as never,
+    trigger: "manual",
+    status: "ready",
+    deleted: false,
+    spec: topicSpec,
+    scheduledFor: null,
+    queuedAt: "2026-09-07T00:00:00.000Z",
+    startedAt: "2026-09-07T00:00:00.000Z",
+    finishedAt: "2026-09-07T00:01:00.000Z",
+    sessionId: null,
+    reportPath: null,
+    reportSha256: null,
+    unread: false,
+    error: null,
+  };
+}
+
 afterEach(async () => {
   await Promise.all(temporary.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
@@ -45,7 +68,7 @@ describe("inspiration ledger", () => {
     const item = await service.saveInspirationDraft({ spec: topicSpec });
     const index = await service.store.read();
     index.runs["run-0001"] = {
-      id: "run-0001" as never, revision: 0, ownerKind: "item", ownerId: item.id, trigger: "manual", status: "running", spec: topicSpec,
+      id: "run-0001" as never, revision: 0, ownerKind: "item", ownerId: item.id, trigger: "manual", status: "running", deleted: false, spec: topicSpec,
       scheduledFor: null, queuedAt: "2026-01-01T00:00:00.000Z", startedAt: "2026-01-01T00:00:00.000Z", finishedAt: null,
       sessionId: null, reportPath: null, reportSha256: null, unread: false, error: null,
     };
@@ -240,7 +263,7 @@ describe("inspiration ledger", () => {
     const initial = new InspirationService({ dataDir, creatorRoot });
     const item = await initial.saveInspirationDraft({ spec: topicSpec });
     const index = await initial.store.read();
-    index.runs["run-manual"] = { id: "run-manual" as never, revision: 0, ownerKind: "item", ownerId: item.id, trigger: "manual", status: "queued", spec: topicSpec, scheduledFor: null, queuedAt: "2026-09-07T00:00:00.000Z", startedAt: null, finishedAt: null, sessionId: null, reportPath: null, reportSha256: null, unread: false, error: null };
+    index.runs["run-manual"] = { id: "run-manual" as never, revision: 0, ownerKind: "item", ownerId: item.id, trigger: "manual", status: "queued", deleted: false, spec: topicSpec, scheduledFor: null, queuedAt: "2026-09-07T00:00:00.000Z", startedAt: null, finishedAt: null, sessionId: null, reportPath: null, reportSha256: null, unread: false, error: null };
     index.items[item.id]!.latestRunId = "run-manual" as never;
     await writeFile(inspirationIndexPath(dataDir), JSON.stringify(index), "utf8");
     const restarted = new InspirationService({ dataDir, creatorRoot });
@@ -264,6 +287,95 @@ describe("inspiration ledger", () => {
     await expect(service.saveInspirationTask({ name: "Daily", spec: topicSpec, dailyTime: "09:00", timeZone: "Asia/Shanghai" })).rejects.toThrow("已停用");
     await expect(service.setInspirationTaskState({ taskId: "task-0001" as never, expectedRevision: 0, state: "enabled", confirmed: true })).rejects.toThrow("已停用");
     await expect(service.runInspirationTaskNow({ taskId: "task-0001" as never, expectedRevision: 0 })).rejects.toThrow("已停用");
+  });
+
+  it("soft-deletes a settled report card without resurrecting its owner as a draft", async () => {
+    const { dataDir, creatorRoot } = await workspace();
+    const service = new InspirationService({ dataDir, creatorRoot });
+    const item = await service.saveInspirationDraft({ spec: topicSpec });
+    await service.store.mutate((index) => {
+      index.runs["run-only"] = settledRun("run-only", item.id, 3);
+      index.items[item.id]!.latestRunId = "run-only" as never;
+    });
+
+    await expect(service.deleteInspiration({ kind: "item", id: item.id, runId: "run-only" as never, expectedRevision: 2, confirmed: true })).rejects.toThrow("请刷新后重试");
+    await expect(service.deleteInspiration({ kind: "item", id: item.id, runId: "run-only" as never, expectedRevision: 3, confirmed: false })).rejects.toThrow("需要确认");
+    await expect(service.deleteInspiration({ kind: "item", id: item.id, runId: "run-only" as never, expectedRevision: 3, confirmed: true })).resolves.toEqual({ deleted: true });
+
+    expect((await service.listInspirations()).items).toEqual([]);
+    expect((await service.listInspirations()).recentRuns).toEqual([]);
+    await expect(service.getInspiration({ kind: "item", id: item.id, runId: "run-only" as never })).rejects.toThrow("已删除");
+    await expect(service.markInspirationRead({ runId: "run-only" as never, expectedRevision: 3 })).rejects.toThrow("已删除");
+    expect((await new InspirationService({ dataDir, creatorRoot }).store.read()).runs["run-only"]?.deleted).toBe(true);
+  });
+
+  it("retains a deleted report's original file and hash", async () => {
+    const { dataDir, creatorRoot } = await workspace();
+    const service = new InspirationService({ dataDir, creatorRoot });
+    await service.attachRuntime({
+      sessionController: {
+        create: vi.fn(async () => ({ id: "session-retained", agentId: "agent-retained" })),
+        prompt: vi.fn(async (_sessionId: string, text: string) => {
+          const runId = /runId ([^\s]+)/.exec(text)?.[1] ?? "";
+          await service.submitReport("agent-retained", submission(runId));
+        }),
+        waitForIdle: vi.fn(async () => {}),
+      },
+      agents: { restrict: vi.fn() },
+    });
+    const started = await service.startInspirationResearch({ spec: topicSpec });
+    let detail: Awaited<ReturnType<typeof service.getInspiration>> | undefined;
+    await vi.waitFor(async () => {
+      detail = await service.getInspiration({ kind: "item", id: started.item.id, runId: started.run.id });
+      expect(detail.run?.status).toBe("ready");
+    });
+    const reportPath = detail!.run!.reportPath!;
+    const body = await readFile(reportPath, "utf8");
+    const hash = createHash("sha256").update(body).digest("hex");
+    expect(hash).toBe(detail!.run!.reportSha256);
+
+    await service.deleteInspiration({ kind: "item", id: started.item.id, runId: started.run.id, expectedRevision: detail!.run!.revision, confirmed: true });
+    expect(await readFile(reportPath, "utf8")).toBe(body);
+    expect(createHash("sha256").update(await readFile(reportPath, "utf8")).digest("hex")).toBe(hash);
+  });
+
+  it("does not resume a queued run already marked deleted", async () => {
+    const { dataDir, creatorRoot } = await workspace();
+    const initial = new InspirationService({ dataDir, creatorRoot });
+    const item = await initial.saveInspirationDraft({ spec: topicSpec });
+    await initial.store.mutate((index) => {
+      index.items[item.id]!.deleted = true;
+      index.runs["run-deleted"] = { ...settledRun("run-deleted", item.id), status: "queued", startedAt: null, finishedAt: null, deleted: true };
+    });
+    const resumed = new InspirationService({ dataDir, creatorRoot });
+    const create = vi.fn(async () => ({ id: "session-deleted", agentId: "agent-deleted" }));
+    const prompt = vi.fn(async () => {});
+    await resumed.attachRuntime({ sessionController: { create, prompt }, agents: { restrict: vi.fn() } });
+    expect(create).not.toHaveBeenCalled();
+    expect(prompt).not.toHaveBeenCalled();
+    expect((await resumed.listInspirations()).recentRuns).toEqual([]);
+  });
+
+  it("keeps other settled report cards visible and rejects active deletions", async () => {
+    const { dataDir, creatorRoot } = await workspace();
+    const service = new InspirationService({ dataDir, creatorRoot });
+    const item = await service.saveInspirationDraft({ spec: topicSpec });
+    await service.store.mutate((index) => {
+      index.runs["run-earlier"] = settledRun("run-earlier", item.id, 1);
+      index.runs["run-latest"] = { ...settledRun("run-latest", item.id, 2), queuedAt: "2026-09-07T01:00:00.000Z" };
+      index.items[item.id]!.latestRunId = "run-latest" as never;
+    });
+
+    await service.deleteInspiration({ kind: "item", id: item.id, runId: "run-latest" as never, expectedRevision: 2, confirmed: true });
+    const overview = await service.listInspirations();
+    expect(overview.items).toHaveLength(1);
+    expect(overview.recentRuns.map((run) => run.id)).toEqual(["run-earlier"]);
+    expect((await service.getInspiration({ kind: "item", id: item.id })).run?.id).toBe("run-earlier");
+
+    await service.store.mutate((index) => {
+      index.runs["run-active"] = { ...settledRun("run-active", item.id, 4), status: "running", finishedAt: null };
+    });
+    await expect(service.deleteInspiration({ kind: "item", id: item.id, expectedRevision: overview.items[0]!.revision, confirmed: true })).rejects.toThrow("运行中的研究不能删除");
   });
 
   it("rejects an unsupported durable index instead of replacing it", async () => {

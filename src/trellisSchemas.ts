@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { githubSnapshotSchema } from "./trellisGithubSchemas.ts";
 
 const projectIdSchema = z.string().min(1);
 const taskKeySchema = z.string().min(1);
@@ -34,6 +35,7 @@ export const trellisProjectSummarySchema = z.object({
   projectId: projectIdSchema,
   title: z.string(),
   rootPath: z.string().nullable(),
+  github: githubSnapshotSchema.optional(),
   status: trellisProjectConnectionStatusSchema,
   statusMessage: z.string(),
   counts: trellisProjectCountsSchema.nullable(),

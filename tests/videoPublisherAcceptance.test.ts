@@ -57,9 +57,12 @@ async function fixture(): Promise<{
   await writeFile(join(projectDir, "publish-package.json"), "{}\n");
   await writeFile(join(projectDir, "project.yml"), "revision: 4\n");
   await writeFile(join(skillDir, "scripts", "v3", "publisher.mjs"), `
+if (process.env.ELECTRON_RUN_AS_NODE !== "1") process.exit(3);
 const command = process.argv[2];
 const task = ${JSON.stringify(task)};
-if (command === "finalize-acceptance") {
+if (command === "capabilities") {
+  console.log(JSON.stringify({ schema: "muzi.video-publisher.capabilities/1", generatedAt: "2026-09-08T00:00:00.000Z", accounts: [] }));
+} else if (command === "finalize-acceptance") {
   console.log(JSON.stringify({ ok: true, platform: "xiaohongshu", accountProfile: "xiaohongshu-main", capability: "publish_now", adapterVersion: "xiaohongshu-patchright-publish/2", acceptedAt: "2026-08-31T00:02:00.000Z", evidencePath: "C:\\\\evidence\\\\acceptance.json", sessionId: "${SESSION_ID}", commitEnabled: false, authorizationDigest: null }));
 } else if (command === "commit") {
   console.log(JSON.stringify({ task }));
@@ -80,6 +83,12 @@ if (command === "finalize-acceptance") {
 }
 
 describe("controlled publish acceptance project facts", () => {
+  it("reads capabilities through the Node CLI without changing the host environment", async () => {
+    const inherited = process.env.ELECTRON_RUN_AS_NODE;
+    const { service } = await fixture();
+    await expect(service.capabilities(new AbortController().signal)).resolves.toMatchObject({ accounts: [], unavailableReason: null });
+    expect(process.env.ELECTRON_RUN_AS_NODE).toBe(inherited);
+  });
   it("does not change project revision during the session-bound commit", async () => {
     const { service, patchPublicationStates } = await fixture();
     await expect(service.commit({

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { WorkbenchIcon } from "./ui/WorkbenchIcon.tsx";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   MarkdownText,
   type MarkdownFileMentions,
@@ -10,13 +11,12 @@ import type {
   MuziDocumentKey,
   MuziDocumentStatus,
   MuziProjectDetail,
-  MuziProjectStage,
-  MuziPublicationStatus,
   MuziPublishTarget,
   MuziVideoPlatform,
   AcceptanceCapability,
   VideoAcceptanceSessionResult,
   VideoPublishMode,
+  VideoPublishState,
   VideoPublishStatusResult,
   PendingKnowledgeFile,
 } from "../muziTypes.ts";
@@ -25,6 +25,8 @@ import {
   type VideoPublishAccountCapabilities,
   type VideoPublishCapabilitiesResult,
 } from "../videoCapabilities.ts";
+import { ProductionProjectControls } from "./ProductionProjectControls.tsx";
+import { zh, type CreatorKey } from "./locales.ts";
 import type { ContentDetail } from "../types.ts";
 import type { CreatorViewFace, MuziViewFace } from "./face.ts";
 import {
@@ -34,7 +36,7 @@ import {
   resolveKnowledgeWikiMention,
 } from "./knowledgeDisplay.ts";
 import { KnowledgePreview } from "./KnowledgePreview.tsx";
-import { MuziProjectCover } from "./MuziProjectCover.tsx";
+import { ContentOverview } from "./ContentOverview.tsx";
 import { PlatformMark, type PlatformId } from "./PlatformMark.tsx";
 import {
   videoProductionProgress,
@@ -51,7 +53,6 @@ import {
 import {
   IslandButton,
   IslandCard,
-  IslandIcon,
   IslandInput,
   IslandSelect,
   IslandSwitch,
@@ -60,6 +61,11 @@ import {
   type IslandTabItem,
   type IslandTagProps,
 } from "./ui/IslandControls.tsx";
+import { VideoAccountManager } from "./VideoAccountManager.tsx";
+import { PublishFlowPanel } from "./PublishFlowPanel.tsx";
+import type { PublishFlowFace } from "../publishFlowSchemas.ts";
+import { useVideoAccountEpoch } from "./videoAccountState.ts";
+import type { VideoAccount } from "../videoAccountSchemas.ts";
 import "./MuziInspector.css";
 
 const DOCUMENTS: Array<{ key: MuziDocumentKey; label: string }> = [
@@ -89,16 +95,11 @@ const VIDEO_CAPABILITY_LABELS: Record<AcceptanceCapability, string> = {
   schedule: "定时发布",
   metrics: "播放数据同步",
 };
-const VIDEO_STATE_LABELS: Record<string, string> = {
-  NEW: "未开始",
-  PREPARING: "准备中",
-  READY_DRAFT: "草稿已备",
-  READY_TO_PUBLISH: "待立即发布",
-  READY_TO_SCHEDULE: "待定时提交",
-  PUBLISHED_CONFIRMED: "发布已确认",
-  SCHEDULE_CONFIRMED: "排程已确认",
-  COMMIT_UNKNOWN: "提交结果未知",
-  BLOCKED: "已阻塞",
+const VIDEO_STATE_KEYS: Record<VideoPublishState, CreatorKey> = {
+  NEW: "overview.task.new", PREPARING: "overview.task.preparing",
+  READY_DRAFT: "overview.task.readyDraft", READY_TO_PUBLISH: "overview.task.readyPublish",
+  READY_TO_SCHEDULE: "overview.task.readySchedule", PUBLISHED_CONFIRMED: "overview.task.published",
+  SCHEDULE_CONFIRMED: "overview.task.scheduled", COMMIT_UNKNOWN: "overview.task.unknown", BLOCKED: "overview.task.blocked",
 };
 
 function metricText(value: number | null, delta: number | null): string {
@@ -138,25 +139,11 @@ function shanghaiRfc3339(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error("请选择有效的中国标准时间");
   return `${value}:00+08:00`;
 }
-const STAGE_LABELS: Record<MuziProjectStage, string> = {
-  idea: "灵感",
-  research: "研究中",
-  mother_draft: "母内容草稿",
-  adaptation: "渠道改编",
-  review: "审阅中",
-  ready: "已就绪",
-  archived: "已归档",
-};
 const DOCUMENT_STATUS_LABELS: Record<MuziDocumentStatus, string> = {
   not_started: "未开始",
   draft: "草稿",
   review: "审阅中",
   ready: "已就绪",
-};
-const PUBLICATION_STATUS_LABELS: Record<MuziPublicationStatus, string> = {
-  unpublished: "未发布",
-  platform_draft: "平台草稿",
-  published: "已发布",
 };
 const KNOWLEDGE_CATEGORY_LABELS: Record<string, string> = {
   entities: "实体",
@@ -187,13 +174,6 @@ function StatusBadge({ status, label }: { status: string; label: string }) {
   return <IslandTag className="muziStatusBadge" size="small" variant="soft" color={statusColor(status)}>{label}</IslandTag>;
 }
 
-function projectCounts(project: MuziProjectDetail): { ready: number; published: number } {
-  return {
-    ready: Object.values(project.documents).filter((item) => item.status === "ready").length,
-    published: Object.values(project.publications).filter((item) => item.status === "published").length,
-  };
-}
-
 const PRODUCTION_STAGE_STATUS_LABELS: Record<VideoProductionStageStatus, string> = {
   complete: "已完成",
   current: "进行中",
@@ -222,8 +202,9 @@ function formatProjectDate(value: string): string {
 }
 
 export interface MuziInspectorProps {
+  t?: (key: CreatorKey) => string;
   muziFace: MuziViewFace;
-  oilFace: CreatorViewFace;
+  mzFace: CreatorViewFace;
   startPendingProcessing: (file: PendingKnowledgeFile) => Promise<void>;
   startKnowledgeDiscussion: (page: KnowledgePage) => Promise<void>;
 }
@@ -259,7 +240,7 @@ function PendingKnowledgeDetail({ file, onProcess }: { file: PendingKnowledgeFil
           <h1 id="muzi-workbench-detail-title" tabIndex={-1}>{file.title}</h1>
           <p>{file.relativePath} · {(file.size / 1024).toFixed(file.size < 1024 ? 1 : 0)} KB · 指纹 <code>{file.sha256.slice(0, 12)}…</code></p>
         </div>
-        <IslandButton type="primary" size="middle" className="knowledgeDiscuss" icon={<IslandIcon name="icon-diy" size={18} />} onClick={onProcess}>处理文件</IslandButton>
+        <IslandButton type="primary" size="middle" className="knowledgeDiscuss" icon={<WorkbenchIcon name="content" />} onClick={onProcess}>处理文件</IslandButton>
       </header>
       <div className="muziMarkdown pendingPreview">
         {file.previewKind === "binary"
@@ -296,7 +277,7 @@ function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: 
           <h1 id="muzi-workbench-detail-title" tabIndex={-1}>{page.title}</h1>
           <p>内容指纹 <code>{page.sha256.slice(0, 12)}…</code></p>
         </div>
-        <IslandButton type="default" size="middle" className="knowledgeDiscuss" icon={<IslandIcon name="icon-chat" size={18} />} onClick={onDiscuss}>
+        <IslandButton type="default" size="middle" className="knowledgeDiscuss" icon={<WorkbenchIcon name="sessions" />} onClick={onDiscuss}>
           与智能助手讨论
         </IslandButton>
       </header>
@@ -310,8 +291,9 @@ function KnowledgeDetail({ page, onDiscuss }: { page: KnowledgePage; onDiscuss: 
 }
 
 export function MuziInspector({
+  t = (key) => zh[key],
   muziFace,
-  oilFace,
+  mzFace,
   startPendingProcessing,
   startKnowledgeDiscussion,
 }: MuziInspectorProps) {
@@ -338,6 +320,39 @@ export function MuziInspector({
   const [acceptanceSession, setAcceptanceSession] = useState<VideoAcceptanceSessionResult | null>(null);
   const [acceptanceMetricsCollectedSessionId, setAcceptanceMetricsCollectedSessionId] = useState<string | null>(null);
   const [acceptanceBlocker, setAcceptanceBlocker] = useState<string | null>(null);
+  const [publishManagementOpen, setPublishManagementOpen] = useState(false);
+  const [acceptanceOpen, setAcceptanceOpen] = useState(false);
+  const accountEpoch = useVideoAccountEpoch();
+  const [accountManagerOpen, setAccountManagerOpen] = useState(false);
+  const [accountAddRequest, setAccountAddRequest] = useState<{ platform: MuziVideoPlatform; sequence: number } | null>(null);
+  const accountManagerRef = useRef<HTMLDivElement>(null);
+  const [focusPlatform, setFocusPlatform] = useState<MuziVideoPlatform | null>(null);
+  const publishManagementRef = useRef<HTMLElement>(null);
+  const publishFlow = (muziFace as MuziViewFace & { publishFlow?: PublishFlowFace }).publishFlow;
+
+  useEffect(() => {
+    setPublishManagementOpen(false);
+    setAcceptanceOpen(false);
+    setAccountManagerOpen(false);
+    setAccountAddRequest(null);
+    setFocusPlatform(null);
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!publishManagementOpen || focusPlatform === null) return;
+    const row = publishManagementRef.current?.querySelector<HTMLElement>(`[data-publish-platform="${focusPlatform}"]`);
+    row?.focus({ preventScroll: true });
+    row?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
+    setFocusPlatform(null);
+  }, [publishManagementOpen, focusPlatform]);
+
+  const managePublish = (platform?: MuziVideoPlatform): void => {
+    if (platform === undefined) setPublishManagementOpen((value) => !value);
+    else {
+      setPublishManagementOpen(true);
+      setFocusPlatform(platform);
+    }
+  };
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -408,7 +423,8 @@ export function MuziInspector({
           enabled: prepareAvailable && (previouslyBound ? current[item.key].enabled : true),
         }];
       })) as Record<MuziVideoPlatform, PublishIntentDraft>);
-      const preferred = value.accounts.find((account) => account.platform === acceptancePlatform && account.enabled)
+      const preferred = value.accounts.find((account) => account.platform === acceptancePlatform && account.accountProfile === acceptanceAccountProfile && account.enabled)
+        ?? value.accounts.find((account) => account.platform === acceptancePlatform && account.enabled)
         ?? value.accounts.find((account) => account.enabled);
       if (preferred !== undefined) {
         setAcceptancePlatform(preferred.platform);
@@ -418,7 +434,7 @@ export function MuziInspector({
       if (!cancelled) setVideoCapabilities({ schema: "muzi.video-publisher.capabilities/1", generatedAt: new Date().toISOString(), accounts: [], unavailableReason: cause instanceof Error ? cause.message : "发布能力不可用" });
     });
     return () => { cancelled = true; };
-  }, [muziFace, project?.id]);
+  }, [muziFace, project?.id, accountEpoch]);
 
   useEffect(() => {
     const folderName = project?.folderName;
@@ -430,13 +446,13 @@ export function MuziInspector({
     let cancelled = false;
     setProductionDetail(null);
     setProductionError(null);
-    void oilFace.getContent(folderName).then((value) => {
+    void mzFace.getContent(folderName).then((value) => {
       if (!cancelled) setProductionDetail(value);
     }, (cause: unknown) => {
       if (!cancelled) setProductionError(cause instanceof Error ? cause.message : "视频制作信息不可用");
     });
     return () => { cancelled = true; };
-  }, [epoch, oilFace, project?.folderName]);
+  }, [epoch, mzFace, project?.folderName]);
 
   const openInObsidian = async (document: MuziDocumentKey): Promise<void> => {
     if (project === null) return;
@@ -469,6 +485,21 @@ export function MuziInspector({
     const next = await muziFace.getVideoPublishCapabilities();
     setVideoCapabilities(next);
     return next;
+  };
+
+  const openAccountManager = (platform?: MuziVideoPlatform): void => {
+    setAccountManagerOpen(true);
+    if (platform !== undefined) setAccountAddRequest(current => ({ platform, sequence: (current?.sequence ?? 0) + 1 }));
+    requestAnimationFrame(() => { accountManagerRef.current?.scrollIntoView({ block: "nearest" }); if (platform === undefined) accountManagerRef.current?.querySelector<HTMLButtonElement>("[data-add-account]")?.focus(); });
+  };
+  const verifyAccount = (account: VideoAccount, capability: AcceptanceCapability): void => {
+    if (acceptanceSession !== null || publishBusy !== null) return;
+    setAcceptancePlatform(account.platform);
+    setAcceptanceAccountProfile(account.accountProfile);
+    setAcceptanceCapability(capability);
+    setAcceptanceBlocker(null);
+    setAcceptanceOpen(true);
+    requestAnimationFrame(() => { const section = document.getElementById("muzi-publish-acceptance"); section?.scrollIntoView({ block: "nearest" }); section?.querySelector<HTMLButtonElement>("button")?.focus(); });
   };
 
   const selectPublishAccount = (platform: MuziVideoPlatform, accountProfile: string): void => {
@@ -743,7 +774,7 @@ export function MuziInspector({
     const evidencePath = acceptanceTaskRow?.acceptanceEvidence?.path;
     if (evidencePath === undefined) return;
     try {
-      await oilFace.openPath(evidencePath);
+      await mzFace.openPath(evidencePath);
     } catch (cause) {
       setAcceptanceBlocker(cause instanceof Error ? cause.message : "无法打开本地验收证据");
     }
@@ -862,138 +893,22 @@ export function MuziInspector({
             leafAnimation={false}
             items={DETAIL_TABS.map((key): IslandTabItem => ({
               key,
-              label: key === "overview" ? "概览" : key === "evidence" ? "证据" : key === "production" ? "视频制作" : DOCUMENTS.find((item) => item.key === key)?.label,
+              label: <span className="muziIconLabel">
+                {key === "wechat" || key === "xiaohongshu"
+                  ? <PlatformMark id={key === "wechat" ? "wechat" : "xhs"} size={20} />
+                  : <WorkbenchIcon name={key === "evidence" ? "sources" : key === "production" || key === "video" ? "video" : "content"} />}
+                {key === "overview" ? "概览" : key === "evidence" ? "证据" : key === "production" ? "视频制作" : DOCUMENTS.find((item) => item.key === key)?.label}
+              </span>,
               children: key === tab ? <div className="muziInspectorBody">
             {tab === "overview" && (
               <div className="muziOverview">
-                <IslandCard className="muziProjectHero" color="default" pattern="default" aria-labelledby="muzi-workbench-detail-title">
-                  <MuziProjectCover id={project.id} title={project.title} revision={project.coverRevision} load={muziFace.getProjectCover} className="muziProjectHeroCover" />
-                  <div className="muziProjectHeroBody">
-                    <div className="muziProjectHeroHeading">
-                      <h1 id="muzi-workbench-detail-title" tabIndex={-1}>{project.title}</h1>
-                      <StatusBadge status={project.stage} label={STAGE_LABELS[project.stage]} />
-                    </div>
-                    <p>最近更新于 {formatProjectDate(project.updatedAt)}</p>
-                  </div>
-                  <dl className="muziProjectFacts">
-                    <div><dt>主稿</dt><dd>{project.primaryDocument === "mother" ? "母内容" : "视频稿"}</dd></div>
-                    <div><dt>修订</dt><dd>第 {project.revision} 版</dd></div>
-                    <div><dt>稿件就绪</dt><dd>{projectCounts(project).ready}/5</dd></div>
-                    <div><dt>已发布</dt><dd>{projectCounts(project).published}/5</dd></div>
-                  </dl>
-                </IslandCard>
-                <ProductionOverviewCard
-                  detail={productionDetail}
-                  error={productionError}
-                  onOpen={openProduction}
-                />
-                <section className="muziStatusSection">
-                  <div className="sectionHeading">
-                    <div><h3>稿件</h3><p>状态依据创作目录中的记录只读显示</p></div>
-                  </div>
-                  <div className="statusGrid">{DOCUMENTS.map((item) => {
-                    const state = project.documents[item.key];
-                    const openDocument = (): void => { setTab(item.key); };
-                    return <IslandCard key={item.key} color="default" pattern="default" hoverable role="button" tabIndex={0} aria-label={`${item.label}：${DOCUMENT_STATUS_LABELS[state.status]}`} onClick={openDocument} onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                      if (event.key !== "Enter" && event.key !== " ") return;
-                      event.preventDefault();
-                      openDocument();
-                    }}>
-                      <span className="statusRow"><strong>{item.label}</strong><StatusBadge status={state.status} label={DOCUMENT_STATUS_LABELS[state.status]} /></span>
-                      <span className="statusNavigation">{state.stale ? <em>来源已更新，待重新加工</em> : <small>查看稿件</small>}</span>
-                    </IslandCard>;
-                  })}</div>
-                </section>
-                <section className="muziStatusSection videoPublishSection">
-                  <div className="sectionHeading videoPublishHeading">
-                    <div><h3>视频发布</h3><p>默认仅准备；最终发布与定时提交逐个平台确认，时间均为中国标准时间</p></div>
-                    <div className="videoPublishActions">
-                      <IslandButton type="default" size="small" loading={publishBusy === "sync"} title={metricCapabilityAvailable ? undefined : metricCapabilityReason} disabled={publishBusy !== null || !metricCapabilityAvailable} onClick={() => { void syncVideoMetrics(); }}>{publishBusy === "sync" ? "同步中…" : "同步播放数据"}</IslandButton>
-                      <IslandButton type="primary" size="small" loading={publishBusy === "prepare"} disabled={publishBusy !== null || videoCapabilities?.unavailableReason !== null} onClick={() => { void prepareVideoPublish(); }}>{publishBusy === "prepare" ? "准备中…" : "准备所选平台"}</IslandButton>
-                    </div>
-                  </div>
-                  <section className="videoAcceptance" aria-label="能力验收">
-                    <div><strong>能力验收</strong><p>选择已登记账号和一项能力；服务端返回可复核证据后，才会显示完成验收。</p></div>
-                    {videoCapabilities?.unavailableReason !== null && videoCapabilities?.unavailableReason !== undefined && <p className="videoPublishBlocker">{videoCapabilities.unavailableReason}</p>}
-                    <div className="videoAcceptanceControls">
-                      <label><span id="acceptance-platform-label">平台</span><IslandSelect aria-labelledby="acceptance-platform-label" value={acceptancePlatform} disabled={publishBusy !== null || videoCapabilities === null || acceptanceSession !== null} onChange={(value: string) => {
-                        const platform = value as MuziVideoPlatform;
-                        setAcceptancePlatform(platform);
-                        setAcceptanceAccountProfile(videoCapabilities?.accounts.find((account) => account.platform === platform && account.enabled)?.accountProfile ?? "");
-                        setAcceptanceSession(null);
-                        setAcceptanceMetricsCollectedSessionId(null);
-                        setAcceptanceBlocker(null);
-                      }} options={VIDEO_TARGETS.map((item) => ({ key: item.key, label: item.label }))} /></label>
-                      <label><span id="acceptance-account-label">已登记账号</span><IslandSelect aria-labelledby="acceptance-account-label" value={acceptanceAccountProfile} placeholder="暂无已登记账号" disabled={publishBusy !== null || selectedAcceptanceAccounts.length === 0 || acceptanceSession !== null} onChange={(value: string) => { const account = selectedAcceptanceAccounts.find((candidate) => candidate.accountProfile === value); if (account?.enabled !== true) { setAcceptanceBlocker("该账号已停用，不能开始能力验收"); return; } setAcceptanceAccountProfile(value); setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); setAcceptanceBlocker(null); }} options={selectedAcceptanceAccounts.map((account) => ({ key: account.accountProfile, label: `${account.displayName}（${account.accountProfile}）`, disabled: !account.enabled, disabledReason: "账号已停用" }))} /></label>
-                      <label><span id="acceptance-capability-label">能力</span><IslandSelect aria-labelledby="acceptance-capability-label" value={acceptanceCapability} disabled={publishBusy !== null || selectedAcceptanceAccount === undefined || acceptanceSession !== null} onChange={(value: string) => { setAcceptanceCapability(value as AcceptanceCapability); setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); setAcceptanceBlocker(null); }} options={Object.entries(VIDEO_CAPABILITY_LABELS).map(([capability, label]) => ({ key: capability, label: `${label}${capabilityEnabled(selectedAcceptanceAccount, capability as AcceptanceCapability) ? "（已验收）" : "（待验收）"}` }))} /></label>
-                      {acceptanceCapability === "schedule" && <label><span>中国标准时间</span><IslandInput type="datetime-local" value={acceptanceScheduledAt} disabled={publishBusy !== null || acceptanceSession !== null} onChange={(event: ChangeEvent<HTMLInputElement>) => { setAcceptanceScheduledAt(event.currentTarget.value); setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); }} /></label>}
-                    </div>
-                    <div className="videoAcceptanceStatus">
-                      {acceptanceSession === null
-                        ? <span>会话状态：未开始</span>
-                        : <span>会话状态：账号已核验，等待取得能力证据；{new Date(acceptanceSession.expiresAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })} 到期</span>}
-                      {acceptanceSession === null && <IslandButton type="default" size="small" loading={publishBusy === "acceptance"} disabled={publishBusy !== null || selectedAcceptanceAccount?.enabled !== true} onClick={() => { void beginVideoAcceptance(); }}>{publishBusy === "acceptance" ? "处理中…" : "开始验收"}</IslandButton>}
-                      {sessionNeedsPrepare && <IslandButton type="default" size="small" loading={publishBusy === "acceptance"} disabled={publishBusy !== null} onClick={() => { void prepareVideoAcceptance(); }}>{publishBusy === "acceptance" ? "处理中…" : "执行验收准备"}</IslandButton>}
-                      {sessionNeedsCommit && <IslandButton type="primary" danger size="small" loading={publishBusy === "acceptance"} disabled={publishBusy !== null} onClick={() => { void commitVideoAcceptance(); }}>{publishBusy === "acceptance" ? "处理中…" : acceptanceSession?.capability === "schedule" ? "执行验收定时提交" : "执行验收立即发布"}</IslandButton>}
-                      {acceptanceSession?.capability === "metrics" && !acceptanceMetricsCollected && <IslandButton type="default" size="small" loading={publishBusy === "acceptance"} disabled={publishBusy !== null} onClick={() => { void syncVideoAcceptanceMetrics(); }}>{publishBusy === "acceptance" ? "处理中…" : "执行验收同步"}</IslandButton>}
-                      {acceptanceTaskMatches && <IslandButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { void openVideoAcceptanceEvidence(); }}>查看本地证据</IslandButton>}
-                      {sessionCanFinalize && <IslandButton type="primary" size="small" loading={publishBusy === "acceptance"} disabled={publishBusy !== null} onClick={() => { void finalizeVideoAcceptance(); }}>完成验收</IslandButton>}
-                      {acceptanceSession !== null && <IslandButton type="default" size="small" disabled={publishBusy !== null} onClick={() => { setAcceptanceSession(null); setAcceptanceMetricsCollectedSessionId(null); setAcceptanceBlocker(null); }}>退出本地会话</IslandButton>}
-                    </div>
-                    {acceptanceBlocker !== null && <p className="videoPublishBlocker">阻塞原因：{acceptanceBlocker}</p>}
-                  </section>
-                  <label className="originalRightsCheck">
-                    <IslandSwitch checked={originalRightsConfirmed} onChange={(checked: boolean) => { setOriginalRightsConfirmed(checked); }} aria-label="确认本次素材拥有所需原创或发布权利" />
-                    <span>本次素材拥有所需原创或发布权利（仅用于本次准备，不保存发布授权）</span>
-                  </label>
-                  <div className="videoPublishList">{VIDEO_TARGETS.map((item) => {
-                    const fact = project.publications[item.key];
-                    const draft = publishIntents[item.key];
-                    const account = accountFor(videoCapabilities, item.key, draft.accountProfile);
-                    const prepareAvailable = capabilityEnabled(account, "prepare_only");
-                    const modeAvailable = capabilityEnabled(account, draft.mode);
-                    const task = videoPublish?.task?.platforms[item.key];
-                    const metric = videoPublish?.metrics[item.key];
-                    const commitReady = task?.commitEnabled === true && task.authorizationDigest !== null && task.approvalSummary !== null && (task.status === "READY_TO_PUBLISH" || task.status === "READY_TO_SCHEDULE");
-                    return <div className="videoPublishRow" key={item.key}>
-                      <div className="videoPublishPrimary">
-                        <label className="videoPlatformToggle">
-                          <IslandSwitch checked={draft.enabled} disabled={publishBusy !== null || !prepareAvailable} aria-label={`选择${item.label}平台`} onChange={(checked: boolean) => { updatePublishIntent(item.key, { enabled: checked }); }} />
-                          <span className="publicationIdentity"><PlatformMark id={item.icon} size={17} /><strong>{item.label}</strong></span>
-                        </label>
-                        <div className="videoPublishControls">
-                          <label><span id={`publish-account-${item.key}`}>账号</span><IslandSelect aria-labelledby={`publish-account-${item.key}`} value={draft.accountProfile} placeholder="暂无已登记账号" disabled={!draft.enabled || publishBusy !== null || videoCapabilities === null} onChange={(value: string) => { const nextAccount = videoCapabilities?.accounts.find((candidate) => candidate.platform === item.key && candidate.accountProfile === value); if (nextAccount?.enabled !== true) { setNotice(`${item.label}账号已停用，不能用于准备或提交`); return; } selectPublishAccount(item.key, value); }} options={(videoCapabilities?.accounts.filter((candidate) => candidate.platform === item.key) ?? []).map((candidate) => ({ key: candidate.accountProfile, label: `${candidate.displayName}（${candidate.accountProfile}）`, disabled: !candidate.enabled, disabledReason: "账号已停用" }))} /></label>
-                          <label><span id={`publish-mode-${item.key}`}>模式</span><IslandSelect aria-labelledby={`publish-mode-${item.key}`} value={draft.mode} disabled={!draft.enabled || publishBusy !== null} onChange={(value: string) => { const mode = value as VideoPublishMode; if (!capabilityEnabled(account, mode)) { setNotice(`${item.label}${VIDEO_MODE_LABELS[mode]}不可用：${capabilityReason(account, mode)}`); return; } updatePublishIntent(item.key, { mode }); }} options={(Object.entries(VIDEO_MODE_LABELS) as Array<[VideoPublishMode, string]>).map(([mode, label]) => ({ key: mode, label, disabled: !capabilityEnabled(account, mode), disabledReason: capabilityReason(account, mode) }))} /></label>
-                          {draft.mode === "schedule" && <label className="scheduleInput"><span>中国标准时间</span><IslandInput type="datetime-local" aria-label={`${item.label}定时时间`} value={draft.scheduledAt} disabled={!draft.enabled || publishBusy !== null} onChange={(event: ChangeEvent<HTMLInputElement>) => { updatePublishIntent(item.key, { scheduledAt: event.currentTarget.value }); }} /></label>}
-                        </div>
-                      </div>
-                      <div className="videoPublishStatusLine">
-                        <StatusBadge status={task?.status ?? fact.status} label={task === undefined ? PUBLICATION_STATUS_LABELS[fact.status] : (VIDEO_STATE_LABELS[task.status] ?? task.status)} />
-                        {fact.source !== null && <small>{fact.source === "manual" ? "人工记录" : fact.source === "publisher" ? "发布器记录" : "同步记录"}</small>}
-                        {fact.scheduledAt !== null && <small>排程 {formatProjectDate(fact.scheduledAt)}</small>}
-                        {fact.url !== null && <a href={fact.url} target="_blank" rel="noreferrer">打开作品</a>}
-                        {task !== undefined && task.mode !== "prepare_only" && <IslandButton type="primary" size="small" loading={publishBusy === "commit"} disabled={!commitReady || publishBusy !== null} onClick={() => { void commitVideoPublish(item.key); }}>{task.mode === "schedule" ? "确认定时提交" : "确认立即发布"}</IslandButton>}
-                      </div>
-                      {task?.commitBlocker !== null && task?.commitBlocker !== undefined && <p className="videoPublishBlocker">{task.commitBlocker.message}</p>}
-                      {!modeAvailable && <p className="videoPublishBlocker">{VIDEO_CAPABILITY_LABELS[draft.mode]}不可用：{capabilityReason(account, draft.mode)}</p>}
-                      {!capabilityEnabled(account, "metrics") && <p className="videoPublishBlocker">播放数据同步不可用：{capabilityReason(account, "metrics")}</p>}
-                      {metric !== undefined && <dl className="videoMetricLine">
-                        <div><dt>播放</dt><dd>{metricText(metric.views, metric.delta.views)}</dd></div>
-                        <div><dt>点赞</dt><dd>{metricText(metric.likes, metric.delta.likes)}</dd></div>
-                        <div><dt>评论</dt><dd>{metricText(metric.comments, metric.delta.comments)}</dd></div>
-                        <div><dt>同步</dt><dd>{formatProjectDate(metric.observedAt)}</dd></div>
-                      </dl>}
-                    </div>;
-                  })}</div>
-                  <div className="publicationList blogPublicationFact">
-                    {(() => {
-                      const state = project.publications.blog;
-                      return <div className="publicationRow">
-                        <span className="publicationIdentity"><PlatformMark id="article" size={16} /><span>博客（不进入视频发布链路）</span></span>
-                        <div><StatusBadge status={state.status} label={PUBLICATION_STATUS_LABELS[state.status]} />{state.url !== null && <a href={state.url} target="_blank" rel="noreferrer">打开链接</a>}</div>
-                      </div>;
-                    })()}
-                  </div>
+                <ContentOverview project={project} production={productionDetail} productionError={productionError}
+                  publication={videoPublish} loadCover={muziFace.getProjectCover} t={t}
+                  onOpenDocument={setTab} onOpenProduction={openProduction}
+                  onManagePublish={managePublish} managementOpen={publishManagementOpen} />
+                <section id="muzi-publish-management" ref={publishManagementRef} className="muziStatusSection videoPublishSection" hidden={!publishManagementOpen} aria-label={t("overview.management.title")}>
+                  {publishFlow !== undefined && muziFace.accountManagement !== undefined && <PublishFlowPanel project={project} api={publishFlow} accounts={muziFace.accountManagement} t={t} onChanged={() => { void muziFace.getProject(project.id).then(setProject, () => undefined); }} />}
+                  {publishFlow === undefined && <p role="status">发布流程正在加载。</p>}
                 </section>
               </div>
             )}
@@ -1012,7 +927,7 @@ export function MuziInspector({
                     type="default"
                     size="middle"
                     className="obsidianLocate"
-                    icon={<IslandIcon name="icon-map" size={18} />}
+                    icon={<WorkbenchIcon name="knowledge" />}
                     onClick={() => { void openInObsidian(tab as MuziDocumentKey); }}
                   >
                     在 Obsidian 中定位
@@ -1026,7 +941,7 @@ export function MuziInspector({
               </div>
             )}
             {tab === "evidence" && <EvidenceView project={project} />}
-            {tab === "production" && <ProductionView detail={productionDetail} error={productionError} />}
+            {tab === "production" && <ProductionView detail={productionDetail} error={productionError} face={mzFace} onChange={setProductionDetail} t={t} />}
               </div> : null,
             }))}
           />
@@ -1149,54 +1064,6 @@ function ProductionProgressStrip({ progress }: { progress: VideoProductionProgre
   );
 }
 
-function ProductionOverviewCard({
-  detail,
-  error,
-  onOpen,
-}: {
-  detail: ContentDetail | null;
-  error: string | null;
-  onOpen: () => void;
-}) {
-  return (
-    <section className="muziStatusSection" aria-labelledby="production-overview-title">
-      <div className="sectionHeading">
-        <div><h3 id="production-overview-title">视频制作</h3><p>从录制准备到成片就绪的只读阶段进度</p></div>
-      </div>
-      {error !== null
-        ? <IslandCard type="dashed" className="productionOverviewState error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></IslandCard>
-        : detail === null
-          ? <IslandCard type="dashed" className="productionOverviewState"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></IslandCard>
-          : (() => {
-            const progress = videoProductionProgress(detail);
-            return (
-              <IslandCard
-                className="productionOverviewCard"
-                color="default"
-                hoverable
-                role="button"
-                tabIndex={0}
-                aria-label={`视频制作：${progress.currentTitle}，下一步：${progress.nextAction}`}
-                onClick={onOpen}
-                onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                  if (event.key !== "Enter" && event.key !== " ") return;
-                  event.preventDefault();
-                  onOpen();
-                }}
-              >
-                <div className="productionOverviewHeading">
-                  <div><strong>{progress.currentTitle}</strong><p>下一步：{progress.nextAction}</p></div>
-                  <StatusBadge status={productionStageStatus(progress)} label={progress.complete ? "已就绪" : PRODUCTION_STAGE_STATUS_LABELS[productionStageStatus(progress)]} />
-                </div>
-                <ProductionProgressStrip progress={progress} />
-                <span className="statusNavigation"><small>查看制作阶段详情</small><small aria-hidden="true">→</small></span>
-              </IslandCard>
-            );
-          })()}
-    </section>
-  );
-}
-
 function ProductionCheckRow({ check }: { check: VideoProductionCheck }) {
   return (
     <li className={`productionCheck ${check.status}`}>
@@ -1210,7 +1077,7 @@ function ProductionCheckRow({ check }: { check: VideoProductionCheck }) {
   );
 }
 
-function ProductionView({ detail, error }: { detail: ContentDetail | null; error: string | null }) {
+function ProductionView({ detail, error, face, onChange, t = (key) => zh[key] }: { detail: ContentDetail | null; error: string | null; face: CreatorViewFace; onChange: (next: ContentDetail) => void; t?: (key: CreatorKey) => string }) {
   if (error !== null) return <IslandCard type="dashed" className="detailStateCard error" role="alert"><strong>视频制作信息不可用</strong><p>{error}</p></IslandCard>;
   if (detail === null) return <IslandCard type="dashed" className="detailStateCard"><strong>正在读取视频制作信息</strong><p>正在同步本地制作目录的状态。</p></IslandCard>;
   const progress = videoProductionProgress(detail);
@@ -1219,7 +1086,7 @@ function ProductionView({ detail, error }: { detail: ContentDetail | null; error
       <IslandCard className="productionSummary" color="default" pattern="default">
         <div>
           <h2>本地视频制作</h2>
-          <p>制作状态只读同步自视频目录，不在此页面修改文件。</p>
+          <p>{t("production.summary")}</p>
         </div>
         <div className="productionStage">
           <span>当前阶段</span>
@@ -1227,6 +1094,7 @@ function ProductionView({ detail, error }: { detail: ContentDetail | null; error
           <small>下一步：{progress.nextAction}</small>
         </div>
       </IslandCard>
+      <ProductionProjectControls key={detail.id} detail={detail} face={face} onChange={onChange} t={t} />
       <section className="productionSection" aria-labelledby="production-steps-title">
         <div className="detailSectionHeading">
           <div>

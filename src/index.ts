@@ -7,24 +7,22 @@ import type {} from "@deepseek-ai/dsh-subprocess";
 import { Config } from "./config.ts";
 import { registerCreatorWorkbenchSkill } from "./creatorSkill.ts";
 import { registerLibraryPrompt } from "./libraryPrompt.ts";
-import { OilCreatorService } from "./service.ts";
+import { MzCreatorService } from "./service.ts";
 import { registerCreatorSettingsNamespace } from "./settingsHost.ts";
 import { registerCreatorTools } from "./tools.ts";
 import { registerMuziTools } from "./muziTools.ts";
+import { registerPublishFlowTools } from "./publishFlowTools.ts";
 import { registerInspirationTools } from "./inspirationTools.ts";
 import { externalActionApprovalReason, externalActionKind } from "./externalActions.ts";
+import { restrictInspirationTools, type InspirationToolAgent } from "./inspirationToolScope.ts";
 
 export const name = "dsh-muzi-creator";
 export const inject = ["settings", "subprocess"];
 export { Config };
 export type { Config as ConfigType } from "./config.ts";
 
-interface InspirationHostAgent {
+interface InspirationHostAgent extends InspirationToolAgent {
   id: string;
-  ctx: { tools: {
-    schemas: () => Array<{ name: string }>;
-    restrict: (filter: { allow: string[] }) => () => void;
-  } };
   whenIdle: () => Promise<void>;
 }
 
@@ -92,8 +90,7 @@ function managedRuntime(ctx: Context) {
       restrict(agentId: string, allowed: (toolName: string) => boolean) {
         const agent = agents.get(agentId);
         if (agent === undefined) throw new Error("灵感研究 Agent 尚未激活");
-        const allow = agent.ctx.tools.schemas().map((schema) => schema.name).filter(allowed);
-        return agent.ctx.tools.restrict({ allow });
+        return restrictInspirationTools(agent, allowed);
       },
       installGlobalGuard(guard: (input: { agent?: { id?: string }; toolName?: string }) => boolean) {
         return host.tools.guard((execution) => guard({
@@ -108,10 +105,11 @@ function managedRuntime(ctx: Context) {
 
 export function apply(ctx: Context, config: Config): void {
   registerCreatorSettingsNamespace(ctx.settings);
-  const service = new OilCreatorService(ctx, config);
+  const service = new MzCreatorService(ctx, config);
   ctx.inject(["tools"], (toolsCtx) => {
     registerCreatorTools(toolsCtx as never, service);
     registerMuziTools(toolsCtx as never, service);
+    registerPublishFlowTools(toolsCtx as never, service);
     registerInspirationTools(toolsCtx as never, service.inspiration);
   });
   ctx.on("tools/pre-execute", async (request: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision> => {
@@ -120,7 +118,7 @@ export function apply(ctx: Context, config: Config): void {
     }
     const action = externalActionKind(request.name);
     if (action === null) return next();
-    if (!service.externalActionsEnabled) {
+    if (action !== "connection" && !service.externalActionsEnabled) {
       return { kind: "deny" as const, reason: "Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。" };
     }
     return { kind: "ask" as const, reason: externalActionApprovalReason(action) };

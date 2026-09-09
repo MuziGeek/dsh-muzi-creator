@@ -87,7 +87,7 @@ export function registerContentTriggers(
 
   const insert = (ref: string, title: string): PickOutcome => ({
     insert: {
-      source: "oil",
+      source: "mz",
       ref,
       label: chipLabel(title),
       clipboardText: `@${title}`,
@@ -96,7 +96,7 @@ export function registerContentTriggers(
 
   const atSource: TriggerSource = {
     trigger: "@",
-    name: "oil",
+    name: "mz",
     order: 30,
     async candidates(_session, req) {
       const query = req.query.trim().toLowerCase();
@@ -136,7 +136,7 @@ export function registerContentTriggers(
 
   const slashSource: TriggerSource = {
     trigger: "/",
-    name: "oil",
+    name: "mz",
     order: 40,
     async candidates(_session, req) {
       const query = req.query.trim().toLowerCase();

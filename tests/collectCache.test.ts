@@ -20,7 +20,7 @@ describe("collect cache scope", () => {
   });
 
   it("round-trips scope", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "oil-collect-cache-"));
+    const dir = await mkdtemp(join(tmpdir(), "mz-collect-cache-"));
     await saveCollectCache(dir, {
       collected: [{ platform: "wechat", items: [{ platform: "wechat", title: "一期" }] }],
     }, { scope: "partial" });
@@ -30,7 +30,7 @@ describe("collect cache scope", () => {
   });
 
   it("round-trips an optional caller context key", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "oil-collect-cache-context-"));
+    const dir = await mkdtemp(join(tmpdir(), "mz-collect-cache-context-"));
     await saveCollectCache(dir, {
       collected: [{ platform: "douyin", items: [] }],
     }, { scope: "partial", contextKey: "project-account-target" });

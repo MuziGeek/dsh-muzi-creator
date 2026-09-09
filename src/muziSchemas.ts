@@ -321,6 +321,8 @@ export const muziArchiveRequestSchema = z.object({
   confirmed: z.boolean(),
 });
 
+export const deleteMuziProjectResultSchema = z.object({ deleted: z.boolean() }).strict();
+
 export const knowledgeStatusSchema = z.object({
   status: z.enum(["ready", "incomplete", "unavailable"]),
   schemaVersion: z.string().nullable(),

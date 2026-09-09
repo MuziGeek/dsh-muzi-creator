@@ -6,17 +6,22 @@ import {
   type KeyboardEvent,
 } from "react";
 
-import type { CreatorViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
+import type { CreatorViewFace, InspirationViewFace, DailyHotViewFace, MuziViewFace, TrellisViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
 import { InspirationSidebarPanel, type InspirationCopyKey } from "../inspiration/index.ts";
-import { setInspirationSelection } from "../inspirationSelection.ts";
 import {
   setSidebarChromeWidth,
   setSidebarTab,
+  setContentSelection,
+  setKnowledgeSelection,
   useSidebarTab,
   useWorkbenchSlotError,
 } from "../contentSelection.ts";
-import { IslandButton, IslandIcon } from "../ui/IslandControls.tsx";
+import { IslandButton } from "../ui/IslandControls.tsx";
+import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
+import { selectDailyHotItem } from "../dailyHotSelection.ts";
+import { setInspirationSelection } from "../inspirationSelection.ts";
+import { selectTrellisProject } from "../trellisSelection.ts";
 import { nextSidebarTab } from "../trellisUiModel.ts";
 import type { WorkbenchResources } from "../workbench/WorkbenchData.ts";
 import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
@@ -26,9 +31,9 @@ import { KnowledgePanel } from "./KnowledgePanel.tsx";
 import { DailyHotPanel } from "./DailyHotPanel.tsx";
 import { MuziContentPanel } from "./MuziContentPanel.tsx";
 import { TrellisProjectPanel } from "./TrellisProjectPanel.tsx";
-import { OilBrand } from "./OilBrand.tsx";
-import type { OilSidebarSlotProps } from "./slots.ts";
-import "./OilSidebarRoot.css";
+import { MzBrand } from "./MzBrand.tsx";
+import type { MzSidebarSlotProps } from "./slots.ts";
+import "./MzSidebarRoot.css";
 
 const COLLAPSE_SETTLE_MS = 150;
 const SCROLLBAR_LINGER_MS = 2000;
@@ -36,13 +41,14 @@ function cx(...parts: Array<string | false | undefined>): string {
   return parts.filter((part): part is string => typeof part === "string" && part !== "").join(" ");
 }
 
-export type OilSidebarRootProps =
-  & OilSidebarSlotProps
+export type MzSidebarRootProps =
+  & MzSidebarSlotProps
   & {
     tabLabels: { sessions: string; hot: string; inspiration: string; content: string; knowledge: string; projects: string };
     contentFace: CreatorViewFace;
     hotFace: DailyHotViewFace;
     muziFace: MuziViewFace;
+    inspirationFace: InspirationViewFace;
     trellisFace: TrellisViewFace;
     contentT: (key: CreatorKey | InspirationCopyKey) => string;
     resources: WorkbenchResources;
@@ -52,7 +58,7 @@ export type OilSidebarRootProps =
     };
   };
 
-export function OilSidebarRoot({
+export function MzSidebarRoot({
   collapsed,
   width,
   startSession,
@@ -63,11 +69,12 @@ export function OilSidebarRoot({
   contentFace,
   hotFace,
   muziFace,
+  inspirationFace,
   trellisFace,
   contentT,
   resources,
   sessionList,
-}: OilSidebarRootProps) {
+}: MzSidebarRootProps) {
   const [settled, setSettled] = useState(collapsed);
   useEffect(() => {
     if (!collapsed) {
@@ -106,6 +113,11 @@ export function OilSidebarRoot({
   useEffect(() => bindSidebarLayout({ collapsed, toggle: toggleSidebar }), [collapsed, toggleSidebar]);
 
   const chooseTab = (tab: typeof sidebarTab): void => {
+    if (tab === "hot") selectDailyHotItem(null);
+    if (tab === "inspiration") setInspirationSelection(null);
+    if (tab === "content") setContentSelection(null);
+    if (tab === "knowledge") setKnowledgeSelection(null);
+    if (tab === "projects") selectTrellisProject(null);
     setSidebarTab(tab);
   };
 
@@ -207,7 +219,7 @@ export function OilSidebarRoot({
             aria-label={t("session.new.label")}
             onClick={() => { startSession(); }}
           >
-            <OilBrand tagline={t("brand.tagline")} />
+            <MzBrand tagline={t("brand.tagline")} />
           </IslandButton>
         )}
         {wide && sidebarTab === "sessions" && (
@@ -218,7 +230,7 @@ export function OilSidebarRoot({
             aria-label={t("session.new.label")}
             onClick={() => { startSession(); }}
           >
-            <IslandIcon name="icon-chat" size={18} />
+            <WorkbenchIcon name="sessions" size={28} />
           </IslandButton>
         )}
         <IslandButton
@@ -227,8 +239,8 @@ export function OilSidebarRoot({
           aria-label={collapsed ? t("toggle.open") : t("toggle.collapse")}
           onClick={() => { toggleSidebar(); }}
         >
-          {!wide && <span className="railBrand"><OilBrand compact /></span>}
-          <span className="toggleText">{wide ? "收起" : "展开"}</span>
+          {!wide && <span className="railBrand"><MzBrand compact /></span>}
+          <span className="toggleText muziIconLabel"><WorkbenchIcon name={wide ? "sidebar-close" : "sidebar-open"} />{wide && "收起"}</span>
         </IslandButton>
       </div>
 
@@ -239,7 +251,7 @@ export function OilSidebarRoot({
           aria-label={t("session.new.label")}
           onClick={() => { startSession(); }}
         >
-          <IslandIcon name="icon-chat" size={20} />
+          <WorkbenchIcon name="sessions" size={28} />
         </IslandButton>
       )}
 
@@ -257,7 +269,7 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("sessions"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "sessions"); }}
             >
-              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-chat" size={18} /></span>
+              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="sessions" size={32} /></span>
               <span className="tabLabel">{tabLabels.sessions}</span>
               {sessionActivity !== null && (
                 <span className={`sessionActivityBadge ${sessionActivity.kind}`} aria-hidden="true">
@@ -276,7 +288,7 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("hot"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "hot"); }}
             >
-              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-miles" size={18} /></span>
+              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="hotspots" size={32} /></span>
               <span className="tabLabel">{tabLabels.hot}</span>
             </IslandButton>
             <IslandButton
@@ -290,7 +302,7 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("inspiration"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "inspiration"); }}
             >
-              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-design" size={18} /></span>
+              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="inspiration" size={32} /></span>
               <span className="tabLabel">{tabLabels.inspiration}</span>
               {inspirationActivity !== null && (
                 <span className={`sessionActivityBadge ${inspirationActivity.kind}`} aria-hidden="true">
@@ -309,7 +321,7 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("content"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "content"); }}
             >
-              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-diy" size={18} /></span>
+              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="content" size={32} /></span>
               <span className="tabLabel">{tabLabels.content}</span>
             </IslandButton>
             <IslandButton
@@ -322,7 +334,7 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("knowledge"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "knowledge"); }}
             >
-              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-critterpedia" size={18} /></span>
+              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="knowledge" size={32} /></span>
               <span className="tabLabel">{tabLabels.knowledge}</span>
             </IslandButton>
             <IslandButton
@@ -335,7 +347,7 @@ export function OilSidebarRoot({
               onClick={() => { chooseTab("projects"); }}
               onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "projects"); }}
             >
-              <span className="tabIcon" aria-hidden="true"><IslandIcon name="icon-map" size={18} /></span>
+              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="projects" size={32} /></span>
               <span className="tabLabel">{tabLabels.projects}</span>
             </IslandButton>
           </div>
@@ -359,27 +371,20 @@ export function OilSidebarRoot({
         )}
         {inspirationMounted && (
           <div className={cx("regionPane", !inspirationVisible && "hidden")}>
-            <InspirationSidebarPanel
+            <InspirationSidebarPanel face={inspirationFace}
               resource={resources.inspiration}
               t={(key) => contentT(key as CreatorKey | InspirationCopyKey)}
-              onNew={() => { setInspirationSelection(null); }}
             />
           </div>
         )}
         {contentMounted && (
           <div className={cx("regionPane", !contentVisible && "hidden")}>
-            <MuziContentPanel face={muziFace} resource={resources.content} />
+            <MuziContentPanel t={(key) => contentT(key as CreatorKey)} face={muziFace} resource={resources.content} />
           </div>
         )}
         {knowledgeMounted && (
           <div className={cx("regionPane", !knowledgeVisible && "hidden")}>
-            <KnowledgePanel
-              face={muziFace}
-              onAddDirectory={() => {
-                chooseTab("sessions");
-                startSession();
-              }}
-            />
+            <KnowledgePanel face={muziFace} />
           </div>
         )}
         {projectsMounted && (

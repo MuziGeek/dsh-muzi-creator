@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "./ui/WorkbenchIcon.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ForceGraph3D, { type ForceGraphMethods } from "react-force-graph-3d";
 import SpriteText from "three-spritetext";
@@ -260,7 +261,7 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
       <section className="knowledgeSummary" aria-labelledby="knowledge-summary-title">
         <header className="knowledgeSummaryHeader">
           <div>
-            <h2 id="knowledge-summary-title">知识库概况</h2>
+            <h2 className="muziIconLabel" id="knowledge-summary-title"><WorkbenchIcon name="knowledge" />知识库概况</h2>
             <p>来自当前 Atlas 快照，整个预览保持只读</p>
           </div>
           <span className={`knowledgeHealth ${result.status.status}`}>
@@ -270,33 +271,30 @@ export function KnowledgePreview({ result, onRefresh }: { result: KnowledgePrevi
         </header>
         <div className="knowledgeSummaryBody">
           <div className="knowledgePrimaryMetric">
-            <strong>{result.stats.formal}</strong>
             <span>正式知识</span>
+            <strong>{result.stats.formal}</strong>
             <small>可检索的结构化页面</small>
           </div>
-          <div className="knowledgeSummaryDetails">
-            <dl className="knowledgeBreakdown">
-              {breakdown.map(([label, value]) => (
-                <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
-              ))}
-            </dl>
-            <div className="knowledgeIngestMetric">
-              <span>待消化素材</span>
-              <strong>{result.stats.pendingMarkdown}</strong>
-              <small>原始文件 {result.stats.rawFiles}</small>
-            </div>
-          </div>
+          <dl className="knowledgeBreakdown">
+            {breakdown.map(([label, value]) => (
+              <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+            ))}
+          </dl>
         </div>
+        <dl className="knowledgeIngestMetric">
+          <div><dt>待消化素材</dt><dd>{result.stats.pendingMarkdown}</dd></div>
+          <div><dt>原始文件</dt><dd>{result.stats.rawFiles}</dd></div>
+        </dl>
       </section>
       <section className={`knowledgeGraphSection${refreshing ? " refreshing" : ""}`} aria-busy={refreshing}>
         <div className="knowledgeGraphHeading">
           <div>
-            <h3>知识星图</h3>
+            <h3 className="muziIconLabel"><WorkbenchIcon name="knowledge-graph" />知识星图</h3>
             <p>当前呈现 {view.nodes.length} 个节点 · {view.edges.length} 条关系</p>
           </div>
           <div className="knowledgeGraphControls" aria-label="星图控制">
-            <IslandButton type="default" size="small" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</IslandButton>
-            <IslandButton type="text" size="small" className="knowledgeRefresh" aria-label={refreshing ? "正在刷新星图" : "刷新星图"} loading={refreshing} disabled={refreshing} onClick={() => { void refresh(); }}>刷新</IslandButton>
+            <IslandButton icon={<WorkbenchIcon name="fit-view" />} type="default" size="small" aria-label="适应视图" disabled={!webGlSupported} onClick={fitGraph}>适应视图</IslandButton>
+            <IslandButton icon={<WorkbenchIcon name="refresh" />} type="text" size="small" className="knowledgeRefresh" aria-label={refreshing ? "正在刷新星图" : "刷新星图"} loading={refreshing} disabled={refreshing} onClick={() => { void refresh(); }}>刷新</IslandButton>
           </div>
         </div>
         <div className="knowledgeGraphGuide">

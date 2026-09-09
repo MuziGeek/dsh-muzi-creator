@@ -145,7 +145,7 @@ describe("central detail bodies", () => {
     const discuss = vi.fn(async () => undefined);
     const props = {
       muziFace: { getKnowledgePage: vi.fn(async () => KNOWLEDGE_PAGE) },
-      oilFace: {},
+      mzFace: {},
       startPendingProcessing: vi.fn(),
       startKnowledgeDiscussion: discuss,
     } as unknown as ComponentProps<typeof MuziInspector>;
@@ -165,7 +165,7 @@ describe("central detail bodies", () => {
           throw new Error("knowledge page is unavailable or outside the formal Wiki categories");
         }),
       },
-      oilFace: {},
+      mzFace: {},
       startPendingProcessing: vi.fn(),
       startKnowledgeDiscussion: vi.fn(),
     } as unknown as ComponentProps<typeof MuziInspector>;

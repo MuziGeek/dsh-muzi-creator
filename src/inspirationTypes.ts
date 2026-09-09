@@ -54,6 +54,8 @@ export interface InspirationItem {
   revision: number;
   spec: InspirationResearchSpec;
   archived: boolean;
+  /** Hides this record and its reports while retaining their durable source data. */
+  deleted: boolean;
   sessionId: string | null;
   latestRunId: InspirationRunId | null;
   createdAt: string;
@@ -67,6 +69,8 @@ export interface InspirationTask {
   name: string;
   spec: InspirationResearchSpec;
   state: InspirationTaskState;
+  /** Hides this retired task and its reports while retaining their durable source data. */
+  deleted: boolean;
   dailyTime: string;
   timeZone: string;
   authorizedAt: string | null;
@@ -90,6 +94,8 @@ export interface InspirationRun {
   ownerId: InspirationId | InspirationTaskId;
   trigger: InspirationRunTrigger;
   status: InspirationRunStatus;
+  /** Hides this report card while retaining its report file and session history. */
+  deleted: boolean;
   spec: InspirationResearchSpec;
   /** Omitted by legacy records created before bounded trend research. */
   timeWindow?: InspirationTimeWindow | undefined;
@@ -241,6 +247,12 @@ export interface ArchiveInspirationRequest {
   expectedRevision: number;
 }
 
+/** Soft-delete either one report card or its entire owner record. */
+export interface DeleteInspirationRequest extends GetInspirationRequest {
+  expectedRevision: number;
+  confirmed: boolean;
+}
+
 export interface SerializeInspirationReferenceRequest {
   runId: InspirationRunId;
   expectedSha256?: string;
@@ -251,3 +263,7 @@ export interface OpenInspirationReportRequest {
 }
 
 export type ArchiveInspirationResult = InspirationItem;
+
+export interface DeleteInspirationResult {
+  deleted: boolean;
+}

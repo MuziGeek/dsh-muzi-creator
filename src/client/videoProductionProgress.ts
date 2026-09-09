@@ -159,9 +159,9 @@ function stageChecks(detail: ContentDetail, index: number, subtitleReady: boolea
         status: workflowHasStarted(detail.workflow) ? "ready" : "pending",
         detail: workflowHasStarted(detail.workflow) ? "已进入录制或后续流程" : "等待进入录制",
       },
-      detail.studioPath === undefined
-        ? { id: "studio", label: "录屏工程", status: "optional", detail: "未绑定，可手动导入视频" }
-        : { id: "studio", label: "录屏工程", status: "ready", detail: "已绑定本地工程" },
+      (detail.productionProjectPath ?? detail.studioPath) === undefined
+        ? { id: "studio", label: "制作工程", status: "optional", detail: "未绑定，可手动导入视频" }
+        : { id: "studio", label: "制作工程", status: "ready", detail: "已绑定本地工程" },
     ];
   }
   if (index === 2) {
@@ -173,9 +173,9 @@ function stageChecks(detail: ContentDetail, index: number, subtitleReady: boolea
           ? { id: "export", label: "导出视频", status: "running", detail: "正在等待视频稳定落盘" }
           : { id: "export", label: "导出视频", status: "pending", detail: "等待剪辑完成并导出视频" };
     return [
-      detail.studioPath === undefined
-        ? { id: "studio", label: "录屏工程", status: "optional", detail: "未绑定，可使用目录中的视频素材" }
-        : { id: "studio", label: "录屏工程", status: "ready", detail: "已绑定本地工程" },
+      (detail.productionProjectPath ?? detail.studioPath) === undefined
+        ? { id: "studio", label: "制作工程", status: "optional", detail: "未绑定，可使用目录中的视频素材" }
+        : { id: "studio", label: "制作工程", status: "ready", detail: "已绑定本地工程" },
       exportCheck,
     ];
   }

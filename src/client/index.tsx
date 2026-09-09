@@ -1,3 +1,5 @@
+import type { VideoAccountFace, VideoAccountManagement, AddVideoAccount, SetVideoAccountEnabled, VideoAccountLogin, VideoConnectionRequest, VideoConnectionReopen } from "../videoAccountSchemas.ts";
+import type { PublishFlow, PublishFlowPrepare, PublishFlowAction } from "../publishFlowSchemas.ts";
 import type { Context as ClientContext } from "@deepseek-ai/cordis";
 import type { SessionId, WorkspaceId } from "@deepseek-ai/dsh-client-connection/client";
 import type { IConversation } from "@deepseek-ai/dsh-client-ui-conversation/client";
@@ -9,6 +11,7 @@ import type {} from "@deepseek-ai/dsh-api-remotes/client";
 import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
 
 import { TYPERT_REMOTE } from "../remote.ts";
+import { WorkbenchSettingsTrigger } from "./ui/WorkbenchSettingsTrigger.tsx";
 import { CREATOR_SETTINGS_NAMESPACE } from "../settingsContract.ts";
 import type { DailyHotResult } from "../dailyHotTypes.ts";
 import type {
@@ -111,8 +114,8 @@ import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
 import type { CreatorViewFace, DailyHotViewFace, InspirationViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
 import { en, NS, type CreatorKey, zh } from "./locales.ts";
 import { inspirationEn, inspirationZh, type InspirationCopyKey } from "./inspiration/index.ts";
-import { OilSidebarRoot } from "./sidebar/OilSidebarRoot.tsx";
-import type { OilSidebarInjected, OilSidebarSlotProps } from "./sidebar/slots.ts";
+import { MzSidebarRoot } from "./sidebar/MzSidebarRoot.tsx";
+import type { MzSidebarInjected, MzSidebarSlotProps } from "./sidebar/slots.ts";
 import {
   registerCreatorSettingsCard,
   type CompatibleSettingsSlots,
@@ -124,7 +127,7 @@ import { ConversationWorkbenchController } from "./workbench/conversationSlot.ts
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
-    "dsh.oil.creator": CreatorKey | InspirationCopyKey;
+    "dsh.mz.creator": CreatorKey | InspirationCopyKey;
   }
 }
 
@@ -134,7 +137,22 @@ interface RemoteAnswer<T> {
   error?: { code: string; message: string };
 }
 
-interface OilCreatorRemote {
+interface MzCreatorRemote {
+  getVideoAccounts: (request: Record<string, never>) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  addVideoAccount: (request: AddVideoAccount) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  setVideoAccountEnabled: (request: SetVideoAccountEnabled) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  removeVideoAccount: (request: VideoAccountLogin) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  openVideoAccountLogin: (request: VideoAccountLogin) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  checkVideoAccountLogin: (request: VideoAccountLogin) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  reconnectVideoAccount: (request: VideoAccountLogin) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  pollVideoAccountConnection: (request: VideoConnectionRequest) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  cancelVideoAccountConnection: (request: VideoConnectionRequest) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  reopenVideoAccountConnection: (request: VideoConnectionReopen) => Promise<RemoteAnswer<VideoAccountManagement>>;
+  getPublishFlow: (request: { id: string }) => Promise<RemoteAnswer<PublishFlow | null>>;
+  preparePublishFlow: (request: PublishFlowPrepare) => Promise<RemoteAnswer<PublishFlow>>;
+  resumePublishFlow: (request: PublishFlowAction) => Promise<RemoteAnswer<PublishFlow>>;
+  invalidatePublishFlow: (request: PublishFlowAction) => Promise<RemoteAnswer<PublishFlow>>;
+  commitPublishFlow: (request: PublishFlowAction) => Promise<RemoteAnswer<PublishFlow>>;
   listContents: (request: { query: string; filter: ContentFilter }) => Promise<RemoteAnswer<ListContentsResult>>;
   getContent: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
   getCoverThumb: (request: { id: string }) => Promise<RemoteAnswer<CoverThumbResult>>;
@@ -152,6 +170,10 @@ interface OilCreatorRemote {
   refreshCatalog: (request: Record<string, never>) => Promise<RemoteAnswer<ListContentsResult>>;
   createContent: (request: { title: string }) => Promise<RemoteAnswer<CreateContentResult>>;
   setContentStage: (request: { id: string; readyToRecord: boolean }) => Promise<RemoteAnswer<ContentDetail>>;
+  bindProductionProject: (request: { id: string; path: string | null }) => Promise<RemoteAnswer<ContentDetail>>;
+  openProductionProjectFolder: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
+  waitForExport: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
+  cancelWaitForExport: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
   bindStudio: (request: { id: string; path: string }) => Promise<RemoteAnswer<ContentDetail>>;
   openStudio: (request: { id: string }) => Promise<RemoteAnswer<ContentDetail>>;
   setPublish: (request: {
@@ -180,6 +202,7 @@ interface OilCreatorRemote {
   commitMuziVideoPublish: (request: VideoPublishCommitRequest) => Promise<RemoteAnswer<VideoPublishTaskResult>>;
   getMuziVideoPublishStatus: (request: { id: string; taskId?: string }) => Promise<RemoteAnswer<VideoPublishStatusResult>>;
   syncMuziVideoMetrics: (request: VideoMetricsSyncRequest) => Promise<RemoteAnswer<VideoMetricsSyncResult>>;
+  deleteMuziProject: (request: MuziArchiveRequest) => Promise<RemoteAnswer<{ deleted: boolean }>>;
   archiveMuziProject: (request: MuziArchiveRequest) => Promise<RemoteAnswer<MuziProjectDetail>>;
   getKnowledgeStatus: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgeStatus>>;
   getKnowledgeHome: (request: Record<string, never>) => Promise<RemoteAnswer<KnowledgeHomeResult>>;
@@ -201,11 +224,13 @@ interface OilCreatorRemote {
   setInspirationTaskState: (request: SetInspirationTaskStateRequest) => Promise<RemoteAnswer<InspirationTask>>;
   runInspirationTaskNow: (request: { taskId: InspirationTask["id"]; expectedRevision: number }) => Promise<RemoteAnswer<InspirationRun>>;
   markInspirationRead: (request: { runId: InspirationRun["id"]; expectedRevision: number }) => Promise<RemoteAnswer<InspirationRun>>;
+  deleteInspiration: (request: GetInspirationRequest & { expectedRevision: number; confirmed: boolean }) => Promise<RemoteAnswer<{ deleted: boolean }>>;
   archiveInspiration: (request: { id: InspirationItem["id"]; expectedRevision: number }) => Promise<RemoteAnswer<InspirationItem>>;
   openInspirationReportInObsidian: (request: { runId: InspirationRun["id"] }) => Promise<RemoteAnswer<{ opened: true }>>;
   serializeInspirationReference: (request: SerializeInspirationReferenceRequest) => Promise<RemoteAnswer<InspirationReference>>;
   getMuziWorkspaceRevision: (request: Record<string, never>) => Promise<RemoteAnswer<MuziWorkspaceRevision>>;
   openMuziDocumentInObsidian: (request: { id: string; document: MuziDocumentSaveRequest["document"] }) => Promise<RemoteAnswer<{ opened: true }>>;
+  manageTrellisGithub: (request: import("../trellisGithubSchemas.ts").GithubRequest) => Promise<RemoteAnswer<import("../trellisGithubSchemas.ts").GithubResult>>;
   listTrellisProjects: (request: Record<string, never>) => Promise<RemoteAnswer<TrellisProjectListResult>>;
   getTrellisProject: (request: GetTrellisProjectRequest) => Promise<RemoteAnswer<TrellisProjectDetail>>;
   prepareTrellisTaskArchive: (request: PrepareTrellisTaskArchiveRequest) => Promise<RemoteAnswer<TrellisArchivePreview>>;
@@ -257,17 +282,17 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, {
     zh: { ...zh, ...inspirationZh },
     en: { ...en, ...inspirationEn },
-  }), "dsh-oil-creator: dictionaries");
+  }), "dsh-muzi-creator: dictionaries");
   ctx.effect(() => {
     remountPluginCss();
     return () => {
       releasePluginCss();
       releaseShellChrome();
     };
-  }, "dsh-oil-creator: chrome");
-  const remoteOf = (): OilCreatorRemote | undefined =>
-    ctx.get("remote.oilCreator") as OilCreatorRemote | undefined;
-  const trellisRemoteOf = (): OilCreatorRemote | undefined => {
+  }, "dsh-muzi-creator: chrome");
+  const remoteOf = (): MzCreatorRemote | undefined =>
+    ctx.get("remote.mzCreator") as MzCreatorRemote | undefined;
+  const trellisRemoteOf = (): MzCreatorRemote | undefined => {
     const remote = remoteOf();
     return remote !== undefined
       && typeof remote.listTrellisProjects === "function"
@@ -277,11 +302,11 @@ export function apply(ctx: ClientContext): void {
       ? remote
       : undefined;
   };
-  const dailyHotRemoteOf = (): OilCreatorRemote | undefined => {
+  const dailyHotRemoteOf = (): MzCreatorRemote | undefined => {
     const remote = remoteOf();
     return remote !== undefined && typeof remote.getDailyHot === "function" ? remote : undefined;
   };
-  const inspirationRemoteOf = (): OilCreatorRemote | undefined => {
+  const inspirationRemoteOf = (): MzCreatorRemote | undefined => {
     const remote = remoteOf();
     return remote !== undefined
       && typeof remote.listInspirations === "function"
@@ -291,7 +316,21 @@ export function apply(ctx: ClientContext): void {
       : undefined;
   };
 
+  const accountManagement: VideoAccountFace = {
+    list: async () => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.getVideoAccounts({}), "读取账号失败"); },
+    add: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.addVideoAccount(request), "添加账号失败"); },
+    setEnabled: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.setVideoAccountEnabled(request), "更新账号失败"); },
+    remove: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.removeVideoAccount(request), "移除账号失败，请重新读取后重试"); },
+    openLogin: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.openVideoAccountLogin(request), "打开登录失败"); },
+    checkLogin: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.checkVideoAccountLogin(request), "核对账号失败"); },
+    reconnect: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.reconnectVideoAccount(request), "重新登录失败"); },
+    pollConnection: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.pollVideoAccountConnection(request), "检查连接失败"); },
+    cancelConnection: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.cancelVideoAccountConnection(request), "取消连接失败"); },
+    reopenConnection: async (request) => { const remote = remoteOf(); if (!remote) throw new Error("账号接口正在连接，请稍后重试"); return unwrap(await remote.reopenVideoAccountConnection(request), "重新打开失败"); },
+  };
+
   const face = (): CreatorViewFace => ({
+    accountManagement,
     ready: () => remoteOf() !== undefined,
     listContents: async (query, filter) => {
       const remote = remoteOf();
@@ -402,6 +441,33 @@ export function apply(ctx: ClientContext): void {
       bumpLibrary();
       return next;
     },
+    bindProductionProject: async (id, path) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.bindProductionProject({ id, path }), "bindProductionProject failed");
+      bumpLibrary();
+      return next;
+    },
+    openProductionProjectFolder: async (id) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.openProductionProjectFolder({ id }), "openProductionProjectFolder failed");
+      return next;
+    },
+    waitForExport: async (id) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.waitForExport({ id }), "waitForExport failed");
+      bumpLibrary();
+      return next;
+    },
+    cancelWaitForExport: async (id) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("remote unavailable");
+      const next = unwrap(await remote.cancelWaitForExport({ id }), "cancelWaitForExport failed");
+      bumpLibrary();
+      return next;
+    },
     bindStudio: async (id, path) => {
       const remote = remoteOf();
       if (remote === undefined) throw new Error("remote unavailable");
@@ -469,6 +535,7 @@ export function apply(ctx: ClientContext): void {
 
   const contentFace = face();
   const muziFace: MuziViewFace = {
+    accountManagement,
     ready: () => remoteOf() !== undefined,
     listProjects: async (query, includeArchived, atlasLocator) => {
       const remote = remoteOf();
@@ -523,6 +590,13 @@ export function apply(ctx: ClientContext): void {
       if (remote === undefined) throw new Error("remote unavailable");
       return unwrap(await remote.getMuziVideoPublishCapabilities({}), "video publish capabilities failed");
     },
+    publishFlow: {
+      get: async request => { const remote = remoteOf(); if (!remote) throw new Error("发布接口正在连接"); return unwrap(await remote.getPublishFlow(request), "读取发布进度失败"); },
+      prepare: async request => { const remote = remoteOf(); if (!remote) throw new Error("发布接口正在连接"); return unwrap(await remote.preparePublishFlow(request), "开始准备失败"); },
+      resume: async request => { const remote = remoteOf(); if (!remote) throw new Error("发布接口正在连接"); return unwrap(await remote.resumePublishFlow(request), "继续准备失败"); },
+      invalidate: async request => { const remote = remoteOf(); if (!remote) throw new Error("发布接口正在连接"); return unwrap(await remote.invalidatePublishFlow(request), "更新准备状态失败"); },
+      commit: async request => { const remote = remoteOf(); if (!remote) throw new Error("发布接口正在连接"); return unwrap(await remote.commitPublishFlow(request), "最终提交失败"); },
+    },
     beginVideoAcceptance: async (request) => {
       const remote = remoteOf();
       if (remote === undefined) throw new Error("remote unavailable");
@@ -556,6 +630,11 @@ export function apply(ctx: ClientContext): void {
       const next = unwrap(await remote.syncMuziVideoMetrics(request), "video metrics sync failed");
       bumpLibrary();
       return next;
+    },
+    deleteProject: async (id, expectedRevision) => {
+      const remote = remoteOf();
+      if (remote === undefined) throw new Error("内容服务尚未连接");
+      return unwrap(await remote.deleteMuziProject({ id, expectedRevision, confirmed: true }), "delete failed");
     },
     archiveProject: async (id, expectedRevision) => {
       const remote = remoteOf();
@@ -629,6 +708,13 @@ export function apply(ctx: ClientContext): void {
   };
 
   const trellisFace: TrellisViewFace = {
+    github: async (request) => {
+      const remote = trellisRemoteOf();
+      if (remote === undefined || typeof remote.manageTrellisGithub !== "function") throw new Error("GitHub 项目接口尚未加载，请更新工作台后重试");
+      const result = unwrap(await remote.manageTrellisGithub(request), "GitHub project connection failed");
+      if (["connect", "remove", "mode", "disconnect"].includes(request.action) || (request.action === "pollAuth" && result.connected)) bumpTrellis();
+      return result;
+    },
     ready: () => trellisRemoteOf() !== undefined,
     listProjects: async () => {
       const remote = trellisRemoteOf();
@@ -722,6 +808,11 @@ export function apply(ctx: ClientContext): void {
       if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
       return unwrap(await remote.markInspirationRead({ runId, expectedRevision }), "mark inspiration read failed");
     },
+    deleteRecord: async (request) => {
+      const remote = inspirationRemoteOf();
+      if (remote === undefined) throw new Error("灵感服务尚未连接");
+      return unwrap(await remote.deleteInspiration(request), "delete failed");
+    },
     archive: async (id, expectedRevision) => {
       const remote = inspirationRemoteOf();
       if (remote === undefined) throw new Error("灵感服务正在连接，请稍候后重试");
@@ -813,9 +904,9 @@ export function apply(ctx: ClientContext): void {
         return (await inspirationFace.serializeReference({ runId: runId as InspirationRun["id"] })).text;
       },
     );
-  }, "dsh-oil-creator: content triggers");
+  }, "dsh-muzi-creator: content triggers");
 
-  const injectSidebar = (): OilSidebarInjected => ({
+  const injectSidebar = (): MzSidebarInjected => ({
     startSession: (workspaceId?: WorkspaceId) => {
       ctx.workspaces.startSession(workspaceId);
     },
@@ -824,10 +915,10 @@ export function apply(ctx: ClientContext): void {
     },
   });
 
-  function BoundSidebar(props: OilSidebarSlotProps) {
+  function BoundSidebar(props: MzSidebarSlotProps) {
     const contentT = ctx.locale.bind(NS);
     return (
-      <OilSidebarRoot
+      <MzSidebarRoot
         {...props}
         tabLabels={{
           sessions: contentT("tab.sessions"),
@@ -837,6 +928,7 @@ export function apply(ctx: ClientContext): void {
           knowledge: contentT("tab.knowledge"),
           projects: contentT("tab.projects"),
         }}
+        inspirationFace={inspirationFace}
         contentFace={contentFace}
         hotFace={dailyHotFace}
         muziFace={muziFace}
@@ -887,7 +979,7 @@ export function apply(ctx: ClientContext): void {
             resources: workbenchResources,
             inspirationFace,
             muziFace,
-            oilFace: contentFace,
+            mzFace: contentFace,
             trellisFace,
             t: ctx.locale.bind(NS),
             openInspirationSession: (sessionId: string) => {
@@ -922,17 +1014,20 @@ export function apply(ctx: ClientContext): void {
         controller.dispose();
       };
     });
+    const stopSettingsTrigger = ctx.slots.inject("settings.trigger", () =>
+      ctx.slots.register({ name: "settings.trigger", priority: -1, locale: NS }, WorkbenchSettingsTrigger));
     const stopSettings = ctx.slots.inject("settings.plugin.item", () =>
       registerCreatorSettingsCard(
         ctx.slots as unknown as CompatibleSettingsSlots,
         CreatorSettingsCard,
         {
           namespace: CREATOR_SETTINGS_NAMESPACE,
-          legacyId: "dsh-oil-creator",
+          legacyId: "dsh-muzi-creator",
           legacyOrder: 40,
           locale: NS,
           inject: () => ({
             ...face(),
+            projectSources: trellisFace,
             credentials: credentialsOf(ctx),
           }),
         },
@@ -959,7 +1054,8 @@ export function apply(ctx: ClientContext): void {
       stopInspirationLive();
       stopWorkbench();
       stopSettings();
+      stopSettingsTrigger();
       await disposeRemote();
     };
-  }, "dsh-oil-creator: remote-view");
+  }, "dsh-muzi-creator: remote-view");
 }

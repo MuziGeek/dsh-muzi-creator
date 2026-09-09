@@ -82,22 +82,22 @@ export async function runCollectPublish(
     });
     const env = { ...process.env };
     if (platforms !== undefined && platforms.length > 0) {
-      env.OIL_COLLECT_PLATFORMS = platforms.join(",");
+      env.MZ_COLLECT_PLATFORMS = platforms.join(",");
     }
     if (targets !== undefined && targets.length > 0) {
-      env.OIL_COLLECT_TARGETS = JSON.stringify(targets);
+      env.MZ_COLLECT_TARGETS = JSON.stringify(targets);
     }
-    env.OIL_COLLECT_SPACE = spaceName;
-    env.OIL_COLLECT_KEEP = options.keepSpace === true ? "1" : "0";
-    env.OIL_COLLECT_CLEANUP_STALE = options.cleanupStale === false ? "0" : "1";
-    env.OIL_COLLECT_CLEANUP_NAMES = cleanupNames.join(",");
+    env.MZ_COLLECT_SPACE = spaceName;
+    env.MZ_COLLECT_KEEP = options.keepSpace === true ? "1" : "0";
+    env.MZ_COLLECT_CLEANUP_STALE = options.cleanupStale === false ? "0" : "1";
+    env.MZ_COLLECT_CLEANUP_NAMES = cleanupNames.join(",");
     if (options.cleanupPrefixes !== undefined && options.cleanupPrefixes.length > 0) {
-      env.OIL_COLLECT_CLEANUP_PREFIXES = options.cleanupPrefixes.join(",");
+      env.MZ_COLLECT_CLEANUP_PREFIXES = options.cleanupPrefixes.join(",");
     }
-    if (options.maxPages !== undefined) env.OIL_COLLECT_MAX_PAGES = String(options.maxPages);
-    if (options.xhsScrollSteps !== undefined) env.OIL_COLLECT_XHS_SCROLL = String(options.xhsScrollSteps);
-    if (options.accounts !== undefined) env.OIL_COLLECT_ACCOUNTS = JSON.stringify(options.accounts);
-    if (options.metricsGrants !== undefined) env.OIL_COLLECT_METRICS_GRANTS = JSON.stringify(options.metricsGrants);
+    if (options.maxPages !== undefined) env.MZ_COLLECT_MAX_PAGES = String(options.maxPages);
+    if (options.xhsScrollSteps !== undefined) env.MZ_COLLECT_XHS_SCROLL = String(options.xhsScrollSteps);
+    if (options.accounts !== undefined) env.MZ_COLLECT_ACCOUNTS = JSON.stringify(options.accounts);
+    if (options.metricsGrants !== undefined) env.MZ_COLLECT_METRICS_GRANTS = JSON.stringify(options.metricsGrants);
     const child = spawn(process.execPath, [resolvedScript], {
       stdio: ["ignore", "pipe", "pipe"],
       env,

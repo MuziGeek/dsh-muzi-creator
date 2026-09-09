@@ -63,11 +63,11 @@ export function setSidebarChromeWidth(px: number): void {
   sidebarWidthPx = px;
   if (typeof document !== "undefined") {
     if (!sidebarWidthStyleCaptured) {
-      previousSidebarWidthStyle = document.documentElement.style.getPropertyValue("--oil-sidebar-width");
-      previousSidebarWidthPriority = document.documentElement.style.getPropertyPriority("--oil-sidebar-width");
+      previousSidebarWidthStyle = document.documentElement.style.getPropertyValue("--mz-sidebar-width");
+      previousSidebarWidthPriority = document.documentElement.style.getPropertyPriority("--mz-sidebar-width");
       sidebarWidthStyleCaptured = true;
     }
-    document.documentElement.style.setProperty("--oil-sidebar-width", `${px}px`);
+    document.documentElement.style.setProperty("--mz-sidebar-width", `${px}px`);
   }
   emitChrome();
 }
@@ -75,10 +75,10 @@ export function setSidebarChromeWidth(px: number): void {
 export function releaseShellChrome(): void {
   if (typeof document !== "undefined" && sidebarWidthStyleCaptured) {
     if (previousSidebarWidthStyle === "") {
-      document.documentElement.style.removeProperty("--oil-sidebar-width");
+      document.documentElement.style.removeProperty("--mz-sidebar-width");
     } else {
       document.documentElement.style.setProperty(
-        "--oil-sidebar-width",
+        "--mz-sidebar-width",
         previousSidebarWidthStyle,
         previousSidebarWidthPriority,
       );

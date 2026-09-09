@@ -68,7 +68,7 @@ describe("creator profile", () => {
 
 describe("script rules", () => {
   it("round-trips through save and load", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "oil-overlay-"));
+    const dir = await mkdtemp(join(tmpdir(), "mz-overlay-"));
     const store = emptyOverlay();
     store.scriptRules = "口语化，少用术语。";
     await saveOverlay(dir, store);
@@ -84,7 +84,7 @@ describe("script rules", () => {
 
 describe("projects root and obsidian executable", () => {
   it("round-trips both fields through save and load", async () => {
-    const dataDir = await mkdtemp(join(tmpdir(), "oil-overlay-paths-"));
+    const dataDir = await mkdtemp(join(tmpdir(), "mz-overlay-paths-"));
     const overlay = emptyOverlay();
     overlay.trellisProjectsRoot = "D:\\GitProject";
     overlay.obsidianExecutable = "D:\\WorkSoft\\Obsidian\\Obsidian.exe";
@@ -105,7 +105,7 @@ describe("projects root and obsidian executable", () => {
 
 describe("overlay lock", () => {
   it("serializes overlapping writes", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "oil-overlay-"));
+    const dir = await mkdtemp(join(tmpdir(), "mz-overlay-"));
     await mkdir(dir, { recursive: true });
     const order: number[] = [];
     await Promise.all([0, 1, 2].map((index) => withOverlayLock(dir, async () => {

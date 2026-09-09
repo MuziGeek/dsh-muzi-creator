@@ -138,7 +138,7 @@ describe("Trellis project UI behavior", () => {
     ]);
     expect(css).toContain("@media (max-width: 620px)");
     expect(css).not.toContain("[data-surface=\"trellis-inspector\"].full");
-    expect(css).not.toContain("--oil-sidebar-width");
+    expect(css).not.toContain("--mz-sidebar-width");
     expect(css).not.toContain("col-resize");
     expect(css).not.toContain("!important");
     expect(inspector).toContain("IslandModal");

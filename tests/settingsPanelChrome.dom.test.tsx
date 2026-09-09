@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { ComponentProps, SVGProps } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +15,7 @@ import { pickSettingsDirectory } from "../src/client/directoryPicker.ts";
 import { en, zh, type CreatorKey } from "../src/client/locales.ts";
 import { PanelSectionHeader } from "../src/client/sidebar/PanelSectionHeader.tsx";
 import { IslandCheckbox } from "../src/client/ui/IslandControls.tsx";
+import type { GithubRequest, GithubResult } from "../src/trellisGithubSchemas.ts";
 
 function settingsCardProps(locale: typeof zh | typeof en) {
   return {
@@ -39,10 +40,73 @@ function settingsCardProps(locale: typeof zh | typeof en) {
     setScriptRules: vi.fn(),
     pickDirectory: vi.fn(),
     credentials: undefined,
+    projectSources: { github: async () => ({ mode: "local", authAvailable: false, connected: false, login: null, pending: null }) },
   } as unknown as ComponentProps<typeof CreatorSettingsCard>;
 }
 
 describe("settings and content-panel disclosure chrome", () => {
+  it("keeps directory drafts separate from immediate project source changes and reloads sources on reopen", async () => {
+    const user = userEvent.setup();
+    const props = settingsCardProps(zh);
+    let status: GithubResult = { mode: "local", authAvailable: false, connected: false, login: null, pending: null };
+    const github = vi.fn(async (request: GithubRequest) => {
+      if (request.action === "mode") status = { ...status, mode: request.mode };
+      return status;
+    });
+    render(<CreatorSettingsCard {...props} projectSources={{ github }} pickDirectory={async () => "D:\\Projects"} />);
+    expect(github).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: zh["settings.expand"] }));
+    const sources = within(screen.getByRole("region", { name: zh["github.sources"] }));
+    await waitFor(() => expect(github).toHaveBeenCalledWith({ action: "status" }));
+    expect(sources.getByText(zh["github.localSettingsHint"])).toBeTruthy();
+    expect(sources.queryByRole("textbox", { name: zh["github.query"] })).toBeNull();
+    expect(sources.queryByRole("button", { name: zh["github.bind"] })).toBeNull();
+    await user.click(sources.getByRole("button", { name: zh["settings.pick"] }));
+    expect(props.setTrellisProjectsRoot).not.toHaveBeenCalled();
+    await user.click(sources.getByRole("combobox", { name: zh["github.sources"] }));
+    await user.click(screen.getByRole("option", { name: zh["github.remote"] }));
+    await waitFor(() => expect(github).toHaveBeenCalledWith({ action: "mode", mode: "github" }));
+    expect(sources.queryByRole("button", { name: zh["settings.pick"] })).toBeNull();
+    expect(sources.queryByText(zh["settings.trellisRoot"])).toBeNull();
+    expect(sources.getByRole("textbox", { name: zh["github.query"] })).toBeTruthy();
+    await user.click(sources.getByRole("combobox", { name: zh["github.sources"] }));
+    await user.click(screen.getByRole("option", { name: zh["github.local"] }));
+    expect(sources.getByText("D:\\Projects")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: zh["settings.discard"] }));
+    expect(sources.queryByText("D:\\Projects")).toBeNull();
+    expect(status.mode).toBe("local");
+    await user.click(sources.getByRole("button", { name: zh["settings.pick"] }));
+    await user.click(screen.getByRole("button", { name: zh["settings.save"] }));
+    await waitFor(() => expect(props.setTrellisProjectsRoot).toHaveBeenCalledWith("D:\\Projects"));
+    await user.click(screen.getByRole("button", { name: zh["settings.collapse"] }));
+    await user.click(screen.getByRole("button", { name: zh["settings.expand"] }));
+    await waitFor(() => expect(github.mock.calls.filter(([request]) => request.action === "status")).toHaveLength(2));
+    expect(screen.getByRole("combobox", { name: zh["github.sources"] }).textContent).toContain(zh["github.local"]);
+    expect(screen.getByText("D:\\Projects")).toBeTruthy();
+  });
+
+  it("shows source status errors without guessing which configuration to display", async () => {
+    const user = userEvent.setup();
+    const props = settingsCardProps(en);
+    render(<CreatorSettingsCard {...props} projectSources={{ github: async () => { throw new Error("Project service unavailable"); } }} pickDirectory={async () => "D:\\Projects"} />);
+    await user.click(screen.getByRole("button", { name: en["settings.expand"] }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Project service unavailable");
+    const sources = within(screen.getByRole("region", { name: en["github.sources"] }));
+    expect(sources.queryByRole("button", { name: en["github.search"] })).toBeNull();
+    expect(sources.queryByRole("button", { name: en["settings.pick"] })).toBeNull();
+    expect(props.setTrellisProjectsRoot).not.toHaveBeenCalled();
+  });
+
+  it("routes account management from settings into the content workbench", async () => {
+    const empty = { accounts: [], loginStatuses: [], connections: [], connectionPollIntervalMs: 2000, capabilities: { schema: "muzi.video-publisher.capabilities/1" as const, generatedAt: "2026-09-08T00:00:00Z", accounts: [], unavailableReason: null }, browserActionsEnabled: false };
+    const list = vi.fn(async () => empty);
+    const accountManagement = { list, add: vi.fn(), remove: vi.fn(), setEnabled: vi.fn(), openLogin: vi.fn(), checkLogin: vi.fn(), reconnect: vi.fn(), pollConnection: vi.fn(), cancelConnection: vi.fn(), reopenConnection: vi.fn() };
+    render(<CreatorSettingsCard {...settingsCardProps(zh)} accountManagement={accountManagement} />);
+    expect(list).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "展开设置" }));
+    expect(screen.getByRole("button", { name: "打开账号管理" })).toBeTruthy();
+    expect(accountManagement.openLogin).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);

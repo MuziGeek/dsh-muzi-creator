@@ -31,21 +31,21 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .wide {
-  animation: oil-sidebar-wide-in 180ms ease;
+  animation: mz-sidebar-wide-in 180ms ease;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].railIn .iconButton,
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].railIn .newSession,
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].railIn .regionArea,
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].railIn .footArea {
-  animation: oil-sidebar-rail-in 150ms ease backwards;
+  animation: mz-sidebar-rail-in 150ms ease backwards;
 }
 
-@keyframes oil-sidebar-wide-in {
+@keyframes mz-sidebar-wide-in {
   from { opacity: 0; }
 }
 
-@keyframes oil-sidebar-rail-in {
+@keyframes mz-sidebar-rail-in {
   from {
     opacity: 0;
     transform: translateX(24px);
@@ -81,42 +81,42 @@
   padding-inline: 4px;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrand {
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrand {
   display: inline-flex;
   min-width: 0;
   align-items: center;
   gap: 9px;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandIcon {
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandIcon {
   width: 26px;
   height: 26px;
   flex: none;
   object-fit: contain;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandCopy {
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandCopy {
   display: grid;
   min-width: 0;
   gap: 3px;
   text-align: left;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandText,
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandTagline {
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandText,
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandTagline {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandText {
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandText {
   font-size: 16px;
   font-weight: 700;
   line-height: 1.1;
 }
 
-[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .oilBrandTagline {
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandTagline {
   color: var(--muzi-island-text-muted);
   font-size: 11px;
   line-height: 1.2;
@@ -170,7 +170,7 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed .toggle:hover .toggleText,
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed .toggle:focus-visible .toggleText {
-  display: inline;
+  display: inline-flex;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed .newSession {
@@ -202,6 +202,28 @@
   justify-content: center;
   padding-inline: 12px;
   text-align: center;
+  color: var(--muzi-island-text);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton[aria-selected="false"]:hover {
+  background: var(--muzi-island-leaf-soft);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton[aria-selected="true"] {
+  color: var(--muzi-island-accent-ink);
+  background: var(--muzi-island-leaf);
+  border-color: var(--muzi-island-leaf);
+  box-shadow: none;
+  transform: none;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton[aria-selected="true"] .tabIcon,
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton[aria-selected="true"] .tabLabel {
+  color: inherit;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton > span {
@@ -217,7 +239,7 @@
   position: absolute;
   inset-inline-start: 0;
   display: grid;
-  width: 22px;
+  width: 32px;
   flex: none;
   place-items: center;
   line-height: 0;
@@ -226,6 +248,8 @@
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabLabel {
   min-width: 0;
   max-width: calc(100% - 116px);
+  padding-block: 2px;
+  line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -51,6 +51,15 @@ describe("videoProductionProgress", () => {
     ]));
   });
 
+  it("recognizes generic projects and keeps legacy project references readable", () => {
+    for (const reference of [{ productionProjectPath: "/tmp/制作工程.prproj" }, { studioPath: "/tmp/legacy.screenstudio" }]) {
+      const progress = videoProductionProgress(detail({ workflow: "cut", ...reference }));
+      expect(progress.stages[2]?.checks).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "studio", status: "ready", label: "制作工程" }),
+      ]));
+    }
+  });
+
   it("treats subtitles and covers as parallel finishing work", () => {
     const progress = videoProductionProgress(detail({ workflow: "finish", videoRaw: "/tmp/demo.mp4" }));
     expect(progress.currentStage).toBe("finishing");

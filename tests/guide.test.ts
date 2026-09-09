@@ -49,10 +49,10 @@ describe("creatorGuideText", () => {
     expect(guide).toContain("/Movies/视频项目");
     expect(guide).toContain("YYYY-MM-DD_可读标题");
     expect(guide).toContain("script.md");
-    expect(guide).toContain("oil_organize_library");
-    expect(guide).toContain("oil_generate_subtitles");
-    expect(guide).toContain("oil_generate_cover");
-    expect(guide).toContain("oil_sync_publish");
+    expect(guide).toContain("mz_organize_library");
+    expect(guide).toContain("mz_generate_subtitles");
+    expect(guide).toContain("mz_generate_cover");
+    expect(guide).toContain("mz_sync_publish");
     expect(guide).toContain("video-publisher");
   });
 
@@ -62,7 +62,7 @@ describe("creatorGuideText", () => {
     }));
     expect(guide).toContain("未发现 Google Chrome");
     expect(guide).toContain("自动发布");
-    expect(guide).toContain("oil_sync_publish");
+    expect(guide).toContain("mz_sync_publish");
     expect(guide).toContain("VIDEO_PUBLISHER_CHROME");
     expect(guide).toContain("不要假装能同步");
   });
@@ -76,22 +76,22 @@ describe("creatorGuideText", () => {
   it("lists enabled platforms and limits publishing and sync to them", () => {
     const guide = creatorGuideText(statusOf({ enabledPlatforms: ["douyin", "bilibili"] }));
     expect(guide).toContain("当前 enabledPlatforms：抖音（douyin）、B站（bilibili）");
-    expect(guide).toContain("video-publisher 与 oil_sync_publish 只处理这些平台");
+    expect(guide).toContain("video-publisher 与 mz_sync_publish 只处理这些平台");
     expect(guide).not.toContain("小红书（xiaohongshu）");
   });
 
   it("stops automatic publishing and sync when no platform is enabled", () => {
     const guide = creatorGuideText(statusOf({ enabledPlatforms: [] }));
     expect(guide).toContain("当前 enabledPlatforms 为空（[]）");
-    expect(guide).toContain("不要调用 video-publisher，也不要调用 oil_sync_publish");
-    expect(guide).toContain("先用 oil_creator_setup 配置启用平台");
+    expect(guide).toContain("不要调用 video-publisher，也不要调用 mz_sync_publish");
+    expect(guide).toContain("先用 mz_creator_setup 配置启用平台");
     expect(guide).toContain("不执行页面准备和数据回收");
   });
 
   it("asks for a persona before writing scripts when rules are unset", () => {
     const guide = creatorGuideText(statusOf({}));
     expect(guide).toContain("当前没有配置脚本规则（人设）");
-    expect(guide).toContain("oil_script_rules");
+    expect(guide).toContain("mz_script_rules");
   });
 
   it("tells the model to follow existing rules when configured", () => {
@@ -100,14 +100,32 @@ describe("creatorGuideText", () => {
     expect(guide).not.toContain("当前没有配置脚本规则");
   });
 
-  it("tells the model auto-editing needs Screen Studio when missing", () => {
+  it("keeps the general production flow available when the exclusive editor is missing", () => {
     const status = statusOf({});
-    status.capabilities.screenStudio = capability("missing", "未发现 Screen Studio；绑定工程、自动剪辑（screen-studio-editor）不可用。");
+    status.capabilities.screenStudio = capability("missing", "未发现可执行的 Screen Studio；专属自动剪辑暂不可用。可继续使用任意制作工具。");
+    status.capabilities.editingSkill = capability("missing", "未发现 screen-studio-editor。");
     const guide = creatorGuideText(status);
     expect(guide).toContain("自动剪辑");
     expect(guide).toContain("screen-studio-editor");
-    expect(guide).toContain("当前没有可用的 Screen Studio");
-    expect(guide).toContain("跳过这一环节");
+    expect(guide).toContain("productionProjectPath");
+    expect(guide).toContain("mz_open_production_project_folder");
+    expect(guide).toContain("mz_wait_export");
+    expect(guide).toContain("这不影响通用制作工程、打开目录或等待成片");
+  });
+
+  it("does not tell Windows to install Screen Studio and identifies the Git Bash setup requirement", () => {
+    const status = statusOf({});
+    status.platform = "win32";
+    status.capabilities.screenStudio = capability("unsupported", "Screen Studio 专属自动剪辑仅支持 macOS。");
+    status.capabilities.editingSkill = capability("unsupported", "当前系统不提供该专属自动剪辑。");
+    status.capabilities.subtitleSkill = {
+      ...capability("missing", "已发现 oil-subtitle 目录，但尚未完成 setup.sh。"),
+      path: "C:\\skills\\oil-subtitle",
+    };
+    const guide = creatorGuideText(status);
+    expect(guide).toContain("当前系统不安装或推荐 screen-studio-editor");
+    expect(guide).not.toContain("安装 Screen Studio（screen.studio");
+    expect(guide).toContain("Git Bash 或其他 bash 环境运行上游 setup.sh");
   });
 
   it("covers article transcription without requiring Screen Studio", () => {

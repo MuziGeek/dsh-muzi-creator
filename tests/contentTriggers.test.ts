@@ -32,7 +32,7 @@ describe("registerContentTriggers", () => {
       async () => [],
     );
     const slash = sources.find((src) => src.trigger === "/");
-    expect(slash?.name).toBe("oil");
+    expect(slash?.name).toBe("mz");
     const items = await slash?.candidates(undefined, { query: "", signal: new AbortController().signal });
     expect(items).toEqual([{
       name: "current content",
@@ -63,7 +63,7 @@ describe("registerContentTriggers", () => {
       },
     })).toEqual({
       insert: {
-        source: "oil",
+        source: "mz",
         ref: "2026-08-14_DeepSeek Harness 安装上手和使用心得",
         label: "DeepSee…",
         clipboardText: "@DeepSeek Harness 安装上手和使用心得",

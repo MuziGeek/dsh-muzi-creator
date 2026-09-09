@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 describe("Animal Island sidebar controls", () => {
   it("uses the shared public control adapter for sidebar actions and the create dialog", async () => {
     const [root, dialog, settings, workbench] = await Promise.all([
-      readFile(new URL("../src/client/sidebar/OilSidebarRoot.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/client/sidebar/MzSidebarRoot.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/client/sidebar/CreateProjectDialog.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/client/CreatorSettingsCard.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/client/IslandWorkbench.css", import.meta.url), "utf8"),
@@ -13,7 +13,7 @@ describe("Animal Island sidebar controls", () => {
 
     expect(root).toContain('from "../ui/IslandControls.tsx"');
     expect(root).toContain("IslandButton");
-    expect(root).toContain("IslandIcon");
+    expect(root).toContain("WorkbenchIcon");
     expect(root).not.toContain("@deepseek-ai/dsh-client-ui-primitives");
     expect(dialog).toContain("IslandModal");
     expect(dialog).toContain("maskClosable={!submitting}");

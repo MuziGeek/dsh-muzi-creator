@@ -51,7 +51,7 @@ function KnowledgeRow({ item, selected }: { item: KnowledgePageSummary; selected
   );
 }
 
-export function KnowledgePanel({ face, onAddDirectory }: { face: MuziViewFace; onAddDirectory: () => void }) {
+export function KnowledgePanel({ face }: { face: MuziViewFace }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<KnowledgeStatus | null>(null);
   const [items, setItems] = useState<KnowledgePageSummary[]>([]);
@@ -90,17 +90,12 @@ export function KnowledgePanel({ face, onAddDirectory }: { face: MuziViewFace; o
   return (
     <div className="muziPanel">
       <PanelSectionHeader
-        label="知识库"
-        count={items.length}
+        label="知识"
         query={query}
         searchLabel="搜索知识"
         searchName="knowledge-search"
         searchPlaceholder="搜索主题知识…"
-        addLabel="通过会话新增知识"
-        previewLabel="预览知识库"
         onQueryChange={setQuery}
-        onAdd={onAddDirectory}
-        onPreview={() => { setSelectedContentId("knowledge-preview"); }}
         onRefresh={() => { setRefreshKey((key) => key + 1); }}
       />
       <div className="muziPanelList" aria-busy={loading}>

@@ -1,3 +1,5 @@
+import type { VideoAccountFace } from "../videoAccountSchemas.ts";
+import type { PublishFlowFace } from "../publishFlowSchemas.ts";
 import type {
   DailyHotResult,
 } from "../dailyHotTypes.ts";
@@ -77,6 +79,7 @@ import type {
 } from "../trellisTypes.ts";
 
 export interface CreatorViewFace {
+  accountManagement?: VideoAccountFace;
   ready: () => boolean;
   listContents: (query: string, filter: ContentFilter) => Promise<ListContentsResult>;
   getRevision: () => Promise<number>;
@@ -97,6 +100,10 @@ export interface CreatorViewFace {
   refreshCatalog: () => Promise<ListContentsResult>;
   createContent: (title: string) => Promise<{ id: string; folderPath: string }>;
   markReadyToRecord: (id: string) => Promise<ContentDetail>;
+  bindProductionProject: (id: string, path: string | null) => Promise<ContentDetail>;
+  openProductionProjectFolder: (id: string) => Promise<ContentDetail>;
+  waitForExport: (id: string) => Promise<ContentDetail>;
+  cancelWaitForExport: (id: string) => Promise<ContentDetail>;
   bindStudio: (id: string, path: string) => Promise<ContentDetail>;
   openStudio: (id: string) => Promise<ContentDetail>;
   setPublish: (id: string, platform: PublishPlatform, status: PublishMark, url?: string) => Promise<ContentDetail>;
@@ -109,6 +116,7 @@ export interface CreatorViewFace {
 }
 
 export interface MuziViewFace {
+  accountManagement?: VideoAccountFace;
   ready: () => boolean;
   listProjects: (query?: string, includeArchived?: boolean, atlasLocator?: string) => Promise<MuziProjectListResult>;
   getProject: (id: string) => Promise<MuziProjectDetail>;
@@ -134,12 +142,14 @@ export interface MuziViewFace {
     publishedAt?: string;
   }) => Promise<MuziProjectDetail>;
   getVideoPublishCapabilities: () => Promise<VideoPublishCapabilitiesResult>;
+  publishFlow?: PublishFlowFace;
   beginVideoAcceptance: (request: VideoAcceptanceBeginRequest) => Promise<VideoAcceptanceSessionResult>;
   finalizeVideoAcceptance: (request: VideoAcceptanceFinalizeRequest) => Promise<VideoAcceptanceFinalizeResult>;
   prepareVideoPublish: (request: VideoPublishPrepareRequest) => Promise<VideoPublishTaskResult>;
   commitVideoPublish: (request: VideoPublishCommitRequest) => Promise<VideoPublishTaskResult>;
   getVideoPublishStatus: (id: string, taskId?: string) => Promise<VideoPublishStatusResult>;
   syncVideoMetrics: (request: VideoMetricsSyncRequest) => Promise<VideoMetricsSyncResult>;
+  deleteProject: (id: string, expectedRevision: number) => Promise<{ deleted: boolean }>;
   archiveProject: (id: string, expectedRevision: number) => Promise<MuziProjectDetail>;
   getKnowledgeStatus: () => Promise<KnowledgeStatus>;
   getKnowledgeHome: () => Promise<KnowledgeHomeResult>;
@@ -154,6 +164,7 @@ export interface MuziViewFace {
 }
 
 export interface TrellisViewFace {
+  github?: (request: import("../trellisGithubSchemas.ts").GithubRequest) => Promise<import("../trellisGithubSchemas.ts").GithubResult>;
   ready: () => boolean;
   listProjects: () => Promise<TrellisProjectListResult>;
   getProject: (projectId: TrellisProjectId) => Promise<TrellisProjectDetail>;
@@ -181,6 +192,7 @@ export interface InspirationViewFace {
   setTaskState: (request: SetInspirationTaskStateRequest) => Promise<InspirationTask>;
   runTaskNow: (taskId: InspirationTask["id"], expectedRevision: number) => Promise<InspirationRun>;
   markRead: (runId: InspirationRun["id"], expectedRevision: number) => Promise<InspirationRun>;
+  deleteRecord: (request: GetInspirationRequest & { expectedRevision: number; confirmed: boolean }) => Promise<{ deleted: boolean }>;
   archive: (id: InspirationItem["id"], expectedRevision: number) => Promise<ArchiveInspirationResult>;
   openReportInObsidian: (runId: InspirationRun["id"]) => Promise<void>;
   serializeReference: (request: SerializeInspirationReferenceRequest) => Promise<InspirationReference>;

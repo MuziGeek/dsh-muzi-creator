@@ -1,5 +1,5 @@
 import { constants, existsSync } from "node:fs";
-import { access, stat } from "node:fs/promises";
+import { access, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 
@@ -59,18 +59,50 @@ async function libraryCapability(path: string): Promise<CreatorCapability> {
 async function screenStudioCapability(
   platform: NodeJS.Platform,
   home: string,
+  editingSkill: CreatorCapability,
 ): Promise<CreatorCapability> {
   if (platform !== "darwin") {
-    return capability("unsupported", false, "Screen Studio 仅支持 macOS；录制绑定和自动剪辑不可用，其他内容管理能力仍可使用。");
+    return capability("unsupported", false, "Screen Studio 专属自动剪辑仅支持 macOS；可继续绑定任意制作工程、打开所在目录并等待 MP4/MOV 成片。");
   }
   const candidates = [join(home, "Applications", "Screen Studio.app")];
   if (home === homedir()) candidates.unshift("/Applications/Screen Studio.app");
   for (const path of candidates) {
-    if (await access(path).then(() => true, () => false)) {
-      return capability("ready", false, "已发现 Screen Studio，可绑定工程和自动剪辑。", path);
+    const app = await stat(path).catch(() => undefined);
+    if (app?.isDirectory() && await appRuntimeAvailable(path, platform)) {
+      if (editingSkill.state === "ready") {
+        return capability("ready", false, "已发现 Screen Studio 及 screen-studio-editor，可使用专属自动剪辑。", path);
+      }
+      return capability("missing", false, "已发现 Screen Studio，但 screen-studio-editor 的 SKILL.md 入口不可用；专属自动剪辑暂不可用。", path);
     }
   }
-  return capability("missing", false, "未发现 Screen Studio；绑定工程、自动剪辑（screen-studio-editor）不可用。");
+  return capability("missing", false, "未发现可执行的 Screen Studio；专属自动剪辑暂不可用。可继续使用任意制作工具。");
+}
+
+async function appRuntimeAvailable(path: string, platform: NodeJS.Platform): Promise<boolean> {
+  const runtimeDir = join(path, "Contents", "MacOS");
+  const entries = await readdir(runtimeDir, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (entry.isFile() && await executableFile(join(runtimeDir, entry.name), platform)) return true;
+  }
+  return false;
+}
+
+async function executableFile(path: string, platform: NodeJS.Platform): Promise<boolean> {
+  const info = await stat(path).catch(() => undefined);
+  if (info === undefined || !info.isFile()) return false;
+  const mode = platform === "win32" ? constants.F_OK : constants.X_OK;
+  return access(path, mode).then(() => true, () => false);
+}
+
+async function interpreterAvailable(
+  python: string,
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+  home: string,
+): Promise<boolean> {
+  if (await executableFile(python, platform)) return true;
+  if (python.includes("/") || python.includes("\\")) return false;
+  return (await findExecutable(python, env, platform, home)) !== undefined;
 }
 
 async function subtitleCapability(
@@ -82,29 +114,49 @@ async function subtitleCapability(
     return capability(
       "missing",
       false,
-      `未发现 oil-subtitle；执行 ${subtitleInstallCommand(path)} 后重试。`,
+      `未发现 oil-subtitle；执行 ${subtitleInstallCommand(path)} 后重试。${platform === "win32" ? " Windows 请在 Git Bash 或其他 bash 环境运行上游 setup.sh。" : ""}`,
       path,
     );
   }
   try {
     const resolved = await resolveSubtitleSkill(path, platform);
+    if (!await executableFile(resolved.python, platform)) {
+      return capability(
+        "missing",
+        false,
+        `已发现 oil-subtitle，但虚拟环境解释器不可执行；${setupInstruction(path, platform)} 字幕生成和预览暂不可用。`,
+        path,
+      );
+    }
     return capability("ready", false, "已发现字幕工作流。", resolved.root);
   } catch {
     return capability(
       "missing",
       false,
-      `已发现 oil-subtitle 目录，但尚未完成 setup.sh；执行 bash "${join(path, "setup.sh")}" 后重试。字幕生成和预览暂不可用。`,
+      `已发现 oil-subtitle 目录，但尚未完成 setup.sh；${setupInstruction(path, platform)} 字幕生成和预览暂不可用。`,
       path,
     );
   }
 }
 
+function setupInstruction(path: string, platform: NodeJS.Platform): string {
+  const command = `执行 bash "${join(path, "setup.sh")}" 后重试。`;
+  return platform === "win32"
+    ? `请在 Git Bash 或其他 bash 环境${command}`
+    : command;
+}
+
 async function coverCapability(
   path: string,
   platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+  home: string,
 ): Promise<CreatorCapability> {
   try {
     const resolved = await resolveCoverSkill(path, platform);
+    if (!await interpreterAvailable(resolved.python, platform, env, home)) {
+      return capability("missing", false, "已发现 oil-cover，但未找到可执行的 Python 解释器；封面生成暂不可用。", path);
+    }
     return capability("ready", false, "已发现封面工作流。", resolved.root);
   } catch {
     return capability("missing", false, "未发现 oil-cover；封面生成不可用。", path);
@@ -117,14 +169,18 @@ function credentialCapability(secret: CreatorSecrets[keyof CreatorSecrets], labe
     : capability("missing", false, `${label}凭据未配置。`);
 }
 
-function skillCapability(
+async function skillCapability(
   findSkillDir: (skillName: string) => string | undefined,
   skillName: string,
-): CreatorCapability {
+): Promise<CreatorCapability> {
   const found = findSkillDir(skillName);
-  return found === undefined
-    ? capability("missing", false, `未发现 ${skillName}。`)
-    : capability("ready", false, `已发现 ${skillName}。`, found);
+  if (found === undefined) return capability("missing", false, `未发现 ${skillName}。`);
+  const entryPath = join(found, "SKILL.md");
+  const entry = await stat(entryPath).catch(() => undefined);
+  const readable = entry?.isFile() && await access(entryPath, constants.R_OK).then(() => true, () => false);
+  return readable
+    ? capability("ready", false, `已发现 ${skillName}。`, found)
+    : capability("missing", false, `已发现 ${skillName} 目录，但缺少可读取的 SKILL.md 入口。`, found);
 }
 
 export async function findExecutable(
@@ -137,7 +193,6 @@ export async function findExecutable(
   const extensions = platform === "win32"
     ? ["", ...(env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";").filter(Boolean)]
     : [""];
-  const mode = platform === "win32" ? constants.F_OK : constants.X_OK;
   const directories = [
     ...pathValue.split(delimiter).filter(Boolean),
     ...extraBinDirs(platform, home, env),
@@ -148,7 +203,7 @@ export async function findExecutable(
         ? `${command}${extension}`
         : command;
       const path = join(directory, fileName);
-      if (await access(path, mode).then(() => true, () => false)) return path;
+      if (await executableFile(path, platform)) return path;
     }
   }
   return undefined;
@@ -190,7 +245,7 @@ function patchrightCapability(found: string | undefined): CreatorCapability {
   return capability("ready", false, "已发现 Google Chrome；Patchright 使用独立账号目录，真实发布和数据同步仍需逐平台验收及当次批准。", found);
 }
 
-function recommendationsOf(capabilities: CreatorCapabilities): string[] {
+function recommendationsOf(capabilities: CreatorCapabilities, platform: NodeJS.Platform): string[] {
   const recommendations: string[] = [];
   if (capabilities.library.state !== "ready") recommendations.push("先选择一个可读写的内容目录。");
   if (capabilities.screenStudio.state === "missing") recommendations.push("需要录屏和自动剪辑时再安装 Screen Studio（screen.studio，仅 macOS）。");
@@ -198,10 +253,10 @@ function recommendationsOf(capabilities: CreatorCapabilities): string[] {
     const installedPath = capabilities.subtitleSkill.path;
     recommendations.push(
       capabilities.subtitleSkill.detail.includes("尚未完成 setup.sh") && installedPath !== undefined
-        ? `字幕：bash "${join(installedPath, "setup.sh")}"`
+        ? `字幕：bash "${join(installedPath, "setup.sh")}"${platform === "win32" ? "（Windows 请在 Git Bash 或其他 bash 环境运行）" : ""}`
         : installedPath === undefined
-          ? "字幕：git clone https://github.com/oil-oil/oil-subtitle ~/.agents/skills/oil-subtitle && bash ~/.agents/skills/oil-subtitle/setup.sh"
-          : `字幕：${subtitleInstallCommand(installedPath)}`,
+          ? `字幕：git clone https://github.com/oil-oil/oil-subtitle ~/.agents/skills/oil-subtitle && bash ~/.agents/skills/oil-subtitle/setup.sh${platform === "win32" ? "（Windows 请在 Git Bash 或其他 bash 环境运行 setup.sh）" : ""}`
+          : `字幕：${subtitleInstallCommand(installedPath)}${platform === "win32" ? "（Windows 请在 Git Bash 或其他 bash 环境运行 setup.sh）" : ""}`,
     );
   }
   if (capabilities.subtitleCredential.state !== "ready") recommendations.push("字幕 Key：到百炼控制台（https://bailian.console.aliyun.com）申请 DASHSCOPE_API_KEY，在设置页填写。");
@@ -210,7 +265,7 @@ function recommendationsOf(capabilities: CreatorCapabilities): string[] {
   if (capabilities.publishSync.state !== "ready") {
     recommendations.push("自动发布和数据回收：安装 Google Chrome，或通过 VIDEO_PUBLISHER_CHROME 指定 chrome.exe。");
   }
-  if (capabilities.editingSkill.state !== "ready") recommendations.push("自动剪辑：git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor");
+  if (capabilities.editingSkill.state === "missing") recommendations.push("自动剪辑：git clone https://github.com/oil-oil/screen-studio-editor ~/.agents/skills/screen-studio-editor");
   if (capabilities.publishSkill.state !== "ready") recommendations.push("自动发布：git clone https://github.com/oil-oil/video-publisher-skill ~/.agents/skills/video-publisher");
   if (capabilities.articleSkill.state !== "ready") recommendations.push("公众号图文：git clone https://github.com/oil-oil/oil-video-article ~/.agents/skills/oil-video-article");
   return recommendations;
@@ -223,23 +278,37 @@ export async function inspectCreatorSetup(
   const env = options.env ?? process.env;
   const home = options.home ?? homedir();
   const findSkillDir = options.findSkillDir ?? ((name: string) => defaultFindSkillDir(name, home));
+  const discoveredEditingSkill = await skillCapability(findSkillDir, "screen-studio-editor");
+  const screenStudio = await screenStudioCapability(platform, home, discoveredEditingSkill);
+  const editingSkill = platform !== "darwin"
+    ? capability("unsupported", false, "screen-studio-editor 仅可与 macOS 上可执行的 Screen Studio 配合使用；当前系统不提供该专属自动剪辑。")
+    : screenStudio.state === "ready"
+      ? discoveredEditingSkill
+      : capability(
+        "missing",
+        false,
+        discoveredEditingSkill.state === "ready"
+          ? "已发现 screen-studio-editor，但可执行的 Screen Studio 尚不可用；专属自动剪辑暂不可用。"
+          : discoveredEditingSkill.detail,
+        discoveredEditingSkill.path,
+      );
   const capabilities: CreatorCapabilities = {
     library: await libraryCapability(options.libraryRoot),
-    screenStudio: await screenStudioCapability(platform, home),
+    screenStudio,
     subtitleSkill: await subtitleCapability(options.subtitleSkillDir, platform),
     subtitleCredential: credentialCapability(options.settings.secrets.subtitle, "字幕"),
-    coverSkill: await coverCapability(options.coverSkillDir, platform),
+    coverSkill: await coverCapability(options.coverSkillDir, platform, env, home),
     coverCredential: credentialCapability(options.settings.secrets.cover, "封面"),
     publishSync: patchrightCapability(await findChrome(platform, env, home)),
-    editingSkill: skillCapability(findSkillDir, "screen-studio-editor"),
-    publishSkill: skillCapability(findSkillDir, "video-publisher"),
-    articleSkill: skillCapability(findSkillDir, "oil-video-article"),
+    editingSkill,
+    publishSkill: await skillCapability(findSkillDir, "video-publisher"),
+    articleSkill: await skillCapability(findSkillDir, "oil-video-article"),
   };
   return {
     platform,
     dataDir: options.dataDir,
     settings: options.settings,
     capabilities,
-    recommendations: recommendationsOf(capabilities),
+    recommendations: recommendationsOf(capabilities, platform),
   };
 }

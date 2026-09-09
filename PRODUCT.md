@@ -20,7 +20,7 @@ The workbench connects read-only personal knowledge, repository-backed project p
 
 ## Operating Context
 
-The plugin runs inside the DSH web client. It reads Creator Studio data, Muzi Atlas, configured Git and Trellis projects, and the public AIHOT feed. Sessions restore the complete official Agent surface; Hot, Inspiration, Content, Knowledge and Projects share one central workbench root with independent remembered selections. Inspiration research uses visible dedicated Agent sessions and writes only structured, source-linked reports to the configured Creator Studio inbox.
+The plugin runs inside the DSH web client. It reads Creator Studio data, Muzi Atlas, configured Git and Trellis projects, and the public AIHOT feed. Sessions restore the complete official Agent surface; Hot, Inspiration, Content, Knowledge and Projects share one central workbench root with independent selections restored on page refresh; activating a feature entry opens its overview. Inspiration research uses visible dedicated Agent sessions and writes only structured, source-linked reports to the configured Creator Studio inbox.
 
 ## Capabilities and Constraints
 
@@ -33,6 +33,8 @@ The plugin runs inside the DSH web client. It reads Creator Studio data, Muzi At
 - The Agent can continue running while another feature is open; the Sessions entry reports pending or running counts and restores the official Agent surface without creating, sending, stopping or switching a session.
 - Feature navigation never uses an overlay Inspector or the official details column. Missing restored objects return to their feature overview.
 - Remote source failures must not block conversations, content, knowledge, or project views.
+
+- Video production accepts local project file or directory references and MP4/MOV exports from the user's chosen recorder or editor. Screen Studio is an optional macOS adapter; project references never execute or modify project files.
 
 ## Brand Commitments
 

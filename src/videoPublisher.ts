@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { statSync } from "node:fs";
 import { mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
 import { pickPublishPackage } from "./artifacts.ts";
 import { cacheIsFresh, loadCollectCache, saveCollectCache } from "./collectCache.ts";
@@ -178,7 +178,7 @@ async function runPublisher(skillDir: string, command: "prepare" | "commit" | "s
   if (info === undefined || !info.isFile()) throw new Error(`video-publisher Windows runtime is missing: ${script}`);
   return new Promise((resolvePromise, reject) => {
     if (signal.aborted) { reject(signal.reason ?? new Error("aborted")); return; }
-    const child = spawn(process.execPath, [script, command], { stdio: ["pipe", "pipe", "pipe"], env: process.env });
+    const child = spawn(process.execPath, [script, command], { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" } });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk: Buffer | string) => { stdout += String(chunk); });
@@ -213,7 +213,7 @@ async function readPublisherCapabilities(skillDir: string, signal: AbortSignal):
   try {
     const raw = await new Promise<unknown>((resolvePromise, reject) => {
       if (signal.aborted) { reject(signal.reason ?? new Error("aborted")); return; }
-      const child = spawn(process.execPath, [script, "capabilities"], { stdio: ["ignore", "pipe", "pipe"], env: process.env });
+      const child = spawn(process.execPath, [script, "capabilities"], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" } });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (chunk: Buffer | string) => { stdout += String(chunk); });
@@ -516,6 +516,24 @@ export class VideoPublisherService {
     return { root, packagePath, manifestPath: join(root, "project.yml") };
   }
 
+  /** Display the selected package's material filenames without exposing browser credentials. */
+  async preparationSummary(id: string, requested: string | undefined, platform: MuziVideoPlatform): Promise<{ title: string; materials: string[] }> {
+    const paths = await this.packagePath(id, requested);
+    const value: unknown = JSON.parse(await readFile(paths.packagePath, "utf8"));
+    if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("发布素材清单格式无效");
+    const pkg = value as Record<string, unknown>;
+    const cover = typeof pkg.cover === "object" && pkg.cover !== null ? pkg.cover as Record<string, unknown> : {};
+    const names: unknown[] = [pkg.videoPath];
+    if (cover.uploadCustomCover === true) {
+      if (platform !== "bilibili") names.push(cover.vertical3x4Path);
+      if (platform !== "xiaohongshu") names.push(cover.horizontal4x3Path);
+    }
+    const titles = typeof pkg.platformTitle === "object" && pkg.platformTitle !== null ? pkg.platformTitle as Record<string, unknown> : {};
+    const title = titles[platform === "wechat" ? "wechat_channels" : platform] || pkg.title;
+    if (typeof title !== "string" || !title.trim()) throw new Error("发布素材缺少标题");
+    return { title, materials: names.filter((item): item is string => typeof item === "string" && item.trim() !== "").map(item => basename(item)) };
+  }
+
   async prepare(request: VideoPublishPrepareRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
     signal.throwIfAborted();
     if (request.confirmed !== true) throw new Error("current-run approval is required before preparing external platform pages");
@@ -543,7 +561,7 @@ export class VideoPublisherService {
     return readPublisherCapabilities(this.skillDir, signal);
   }
 
-  async commit(request: VideoPublishCommitRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
+  async commit(request: VideoPublishCommitRequest, signal: AbortSignal, options: { recordPublication?: boolean } = {}): Promise<VideoPublishTaskResult> {
     signal.throwIfAborted();
     if (request.confirmed !== true) throw new Error("current-run final submission approval is required");
     const before = await this.muzi.getProject({ id: request.id });
@@ -563,7 +581,7 @@ export class VideoPublisherService {
     // A controlled acceptance remains bound to the original project revision
     // until finalize-acceptance verifies and durably records the evidence.
     // Project publication facts are written only after that finalization.
-    if (request.acceptanceSessionId === undefined && row.status === "SCHEDULE_CONFIRMED") {
+    if (options.recordPublication !== false && request.acceptanceSessionId === undefined && row.status === "SCHEDULE_CONFIRMED") {
       await this.muzi.patchPublicationStates(request.id, request.expectedRevision, {
         [request.platform]: {
           status: "platform_draft",
@@ -574,7 +592,7 @@ export class VideoPublisherService {
           source: "publisher",
         },
       });
-    } else if (request.acceptanceSessionId === undefined && row.status === "PUBLISHED_CONFIRMED") {
+    } else if (options.recordPublication !== false && request.acceptanceSessionId === undefined && row.status === "PUBLISHED_CONFIRMED") {
       await this.muzi.patchPublicationStates(request.id, request.expectedRevision, {
         [request.platform]: {
           status: "published",
@@ -610,7 +628,7 @@ export class VideoPublisherService {
     return mapAcceptanceSession(raw);
   }
 
-  async finalizeAcceptance(request: VideoAcceptanceFinalizeRequest, signal: AbortSignal): Promise<VideoAcceptanceFinalizeResult> {
+  async finalizeAcceptance(request: VideoAcceptanceFinalizeRequest, signal: AbortSignal, options: { recordPublication?: boolean } = {}): Promise<VideoAcceptanceFinalizeResult> {
     signal.throwIfAborted();
     if (request.confirmed !== true) throw new Error("current-run user review confirmation is required before finalizing acceptance");
     const project = await this.muzi.getProject({ id: request.id });
@@ -628,7 +646,7 @@ export class VideoPublisherService {
       confirmed: true,
     }, signal);
     const result = mapAcceptanceFinalize(raw);
-    if (request.capability === "publish_now" || request.capability === "schedule") {
+    if (options.recordPublication !== false && (request.capability === "publish_now" || request.capability === "schedule")) {
       if (request.taskId === undefined) throw new Error("finalized publish acceptance is missing its task id");
       const status = await this.status({ id: request.id, taskId: request.taskId }, signal);
       const row = status.task?.platforms[request.platform];

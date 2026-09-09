@@ -57,7 +57,7 @@ describe("srtToSegments", () => {
 
 describe("uniqueSubtitledPath", () => {
   it("does not overwrite an existing burn", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-burn-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-burn-"));
     await writeFile(join(folder, "demo_subtitled.mp4"), "x");
     expect(await uniqueSubtitledPath(folder, "demo")).toBe(join(folder, "demo_subtitled-2.mp4"));
   });
@@ -65,7 +65,7 @@ describe("uniqueSubtitledPath", () => {
 
 describe("pickBurnLaunch", () => {
   it("burns a reviewed srt as-is", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-srt-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-srt-"));
     const video = join(folder, "demo.mp4");
     const srt = join(folder, "demo.srt");
     await writeFile(video, "v");
@@ -79,7 +79,7 @@ describe("pickBurnLaunch", () => {
   });
 
   it("uses a newer transcript instead of an older srt", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-tr-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-tr-"));
     const work = join(folder, "demo.subtitle-work");
     await mkdir(work);
     const video = join(folder, "demo.mp4");
@@ -101,7 +101,7 @@ describe("pickBurnLaunch", () => {
 
 describe("pickPreviewLaunch", () => {
   it("builds a transcript from srt when the work dir is empty", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-prev-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-prev-"));
     const video = join(folder, "demo.mp4");
     const srt = join(folder, "demo.srt");
     await writeFile(video, "v");
@@ -117,7 +117,7 @@ describe("pickPreviewLaunch", () => {
 
 describe("resolveSubtitleSkill", () => {
   it("uses the Windows venv python when present", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-subtitle-win-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-subtitle-win-"));
     await mkdir(join(root, ".venv", "Scripts"), { recursive: true });
     await mkdir(join(root, "scripts"), { recursive: true });
     await writeFile(join(root, "setup.sh"), "#!/bin/bash\n");
@@ -133,7 +133,7 @@ describe("resolveSubtitleSkill", () => {
   });
 
   it("installs into the configured path when that directory is missing", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-subtitle-custom-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-subtitle-custom-"));
     const configured = join(root, "custom subtitle");
 
     await expect(resolveSubtitleSkill(configured)).rejects.toThrow(
@@ -148,7 +148,7 @@ describe("spawnPython", () => {
     zen?: string;
     path?: string;
   }> {
-    const folder = await mkdtemp(join(tmpdir(), "oil-spawn-env-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-spawn-env-"));
     const output = join(folder, "env.json");
     const script = `require("node:fs").writeFileSync(${JSON.stringify(output)}, JSON.stringify({ dash: process.env.DASHSCOPE_API_KEY, zen: process.env.ZENMUX_API_KEY, path: process.env.PATH }));`;
     const child = spawnPython(process.execPath, "-e", [script], extraEnv);

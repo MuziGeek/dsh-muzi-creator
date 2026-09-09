@@ -9,6 +9,8 @@ import { InspirationStore } from "./inspirationStore.ts";
 import type {
   ArchiveInspirationRequest,
   ArchiveInspirationResult,
+  DeleteInspirationRequest,
+  DeleteInspirationResult,
   GetInspirationRequest,
   InspirationDetail,
   InspirationEvidenceNote,
@@ -391,12 +393,13 @@ export class InspirationService {
     this.globalGuardDisposer = typeof disposer === "function" ? disposer : undefined;
     const index = await this.store.read();
     for (const owner of [...Object.values(index.items), ...Object.values(index.tasks)]) {
+      if (owner.deleted) continue;
       if (owner.sessionId === null || runtime.sessionController.resolve === undefined) continue;
       const resumed = await runtime.sessionController.resolve(owner.sessionId);
       if (resumed !== null) this.rememberManagedSession({ sessionId: resumed.id, agentId: resumed.agentId });
     }
     const queued = Object.values(index.runs)
-      .filter((run) => run.status === "queued")
+      .filter((run) => run.status === "queued" && !run.deleted && !this.ownerDeleted(index, run))
       .sort((left, right) => left.queuedAt.localeCompare(right.queuedAt));
     for (const run of queued.filter((candidate) => candidate.ownerKind === "item")) {
       if (!this.queue.includes(run.id)) this.queue.push(run.id);
@@ -438,10 +441,12 @@ export class InspirationService {
     const query = request.query?.trim().toLowerCase() ?? "";
     const match = (value: string) => query === "" || value.toLowerCase().includes(query);
     const items = Object.values(index.items)
-      .filter((item) => (request.includeArchived === true || !item.archived) && match(`${item.spec.topic} ${item.spec.objective}`));
+      .filter((item) => !item.deleted && (request.includeArchived === true || !item.archived) && match(`${item.spec.topic} ${item.spec.objective}`));
     const tasks = Object.values(index.tasks)
-      .filter((task) => (request.includeArchived === true || task.state !== "archived") && match(`${task.name} ${task.spec.topic} ${task.spec.objective}`));
-    const allRuns = Object.values(index.runs).sort((left, right) => right.queuedAt.localeCompare(left.queuedAt));
+      .filter((task) => !task.deleted && (request.includeArchived === true || task.state !== "archived") && match(`${task.name} ${task.spec.topic} ${task.spec.objective}`));
+    const allRuns = Object.values(index.runs)
+      .filter((run) => !run.deleted && !this.ownerDeleted(index, run))
+      .sort((left, right) => right.queuedAt.localeCompare(left.queuedAt));
     const recentRuns = allRuns.slice(0, 100);
     return {
       schemaVersion: 1,
@@ -466,13 +471,17 @@ export class InspirationService {
     const index = await this.store.read();
     const owner = request.kind === "item" ? index.items[request.id] : index.tasks[request.id];
     if (owner === undefined) throw new Error("找不到灵感研究记录");
+    if (owner.deleted) throw new Error("灵感研究记录已删除");
     const run = request.runId === undefined
-      ? (owner.latestRunId === null ? null : index.runs[owner.latestRunId] ?? null)
+      ? Object.values(index.runs)
+        .filter((candidate) => candidate.ownerId === owner.id && candidate.ownerKind === request.kind && !candidate.deleted)
+        .sort((left, right) => right.queuedAt.localeCompare(left.queuedAt))[0] ?? null
       : index.runs[request.runId] ?? null;
-    if (run !== null && run.ownerId !== owner.id) throw new Error("研究运行不属于该记录");
+    if (run !== null && (run.ownerId !== owner.id || run.ownerKind !== request.kind)) throw new Error("研究运行不属于该记录");
+    if (run?.deleted) throw new Error("研究运行已删除");
     const loaded = run === null ? { report: null, integrity: "unavailable" as const } : await this.loadReport(run);
     const previousRuns = Object.values(index.runs)
-      .filter((candidate) => candidate.ownerId === owner.id && candidate.id !== run?.id)
+      .filter((candidate) => candidate.ownerId === owner.id && candidate.ownerKind === request.kind && candidate.id !== run?.id && !candidate.deleted)
       .sort((left, right) => right.queuedAt.localeCompare(left.queuedAt));
     return { schemaVersion: 1, owner: copy(owner), run: run === null ? null : copy(run), report: loaded.report, reportIntegrity: loaded.integrity, previousRuns: copy(previousRuns) };
   }
@@ -481,12 +490,13 @@ export class InspirationService {
     return this.store.mutate((index) => {
       const now = this.now().toISOString();
       if (request.id === undefined) {
-        const item: InspirationItem = { id: id<InspirationId>(), revision: 0, spec: normalizeSpec(request.spec), archived: false, sessionId: null, latestRunId: null, createdAt: now, updatedAt: now };
+        const item: InspirationItem = { id: id<InspirationId>(), revision: 0, spec: normalizeSpec(request.spec), archived: false, deleted: false, sessionId: null, latestRunId: null, createdAt: now, updatedAt: now };
         index.items[item.id] = item;
         return copy(item);
       }
       const item = index.items[request.id];
       if (item === undefined) throw new Error("找不到灵感草稿");
+      if (item.deleted) throw new Error("灵感草稿已删除");
       if (request.expectedRevision === undefined) throw new Error("更新草稿需要 expectedRevision");
       assertRevision(item.revision, request.expectedRevision, "灵感草稿");
       item.spec = normalizeSpec(request.spec); item.revision += 1; item.updatedAt = now;
@@ -536,6 +546,7 @@ export class InspirationService {
     return this.store.mutate((index) => {
       const run = index.runs[request.runId];
       if (run === undefined) throw new Error("找不到研究运行");
+      if (run.deleted || this.ownerDeleted(index, run)) throw new Error("研究运行已删除");
       assertRevision(run.revision, request.expectedRevision, "研究运行");
       run.unread = false; run.revision += 1;
       return copy(run);
@@ -549,6 +560,42 @@ export class InspirationService {
       assertRevision(item.revision, request.expectedRevision, "灵感草稿");
       item.archived = true; item.revision += 1; item.updatedAt = this.now().toISOString();
       return copy(item);
+    });
+  }
+
+  /** Soft-delete one report card, or an owner and all of its cards, without deleting source records. */
+  async deleteInspiration(request: DeleteInspirationRequest): Promise<DeleteInspirationResult> {
+    if (!request.confirmed) throw new Error("删除前需要确认");
+    return this.store.mutate((index) => {
+      const owner = request.kind === "item" ? index.items[request.id] : index.tasks[request.id];
+      if (owner === undefined) throw new Error("找不到灵感研究记录");
+      if (request.runId !== undefined) {
+        const run = index.runs[request.runId];
+        if (run === undefined || run.ownerId !== owner.id || run.ownerKind !== request.kind) throw new Error("研究运行不属于该记录");
+        assertRevision(run.revision, request.expectedRevision, "研究运行");
+        if (run.deleted) return { deleted: true };
+        if (run.status === "queued" || run.status === "running") throw new Error("运行中的研究不能删除");
+        run.deleted = true;
+        const visible = Object.values(index.runs)
+          .filter((candidate) => candidate.ownerId === owner.id && candidate.ownerKind === request.kind && !candidate.deleted)
+          .sort((left, right) => right.queuedAt.localeCompare(left.queuedAt));
+        const now = this.now().toISOString();
+        owner.latestRunId = visible[0]?.id ?? null;
+        owner.revision += 1;
+        owner.updatedAt = now;
+        if (visible.length === 0) owner.deleted = true;
+        return { deleted: true };
+      }
+      assertRevision(owner.revision, request.expectedRevision, "灵感研究记录");
+      if (owner.deleted) return { deleted: true };
+      const ownedRuns = Object.values(index.runs).filter((run) => run.ownerId === owner.id && run.ownerKind === request.kind);
+      if (ownedRuns.some((run) => run.status === "queued" || run.status === "running")) throw new Error("运行中的研究不能删除");
+      owner.deleted = true;
+      owner.latestRunId = null;
+      owner.revision += 1;
+      owner.updatedAt = this.now().toISOString();
+      for (const run of ownedRuns) run.deleted = true;
+      return { deleted: true };
     });
   }
 
@@ -583,6 +630,7 @@ export class InspirationService {
     return this.store.mutate(async (index) => {
       const run = index.runs[validated.runId];
       if (run === undefined) throw new Error("找不到研究运行");
+      if (run.deleted || this.ownerDeleted(index, run)) throw new Error("研究运行已删除");
       const managed = run.sessionId === null ? undefined : this.managedSessions.get(run.sessionId);
       const boundAgentId = managed?.agentId ?? run.sessionId;
       if (agentId === undefined || boundAgentId === null || boundAgentId !== agentId) {
@@ -635,13 +683,13 @@ export class InspirationService {
     const run = await this.store.mutate((index) => {
       const owner = index.items[ownerId];
       if (owner === undefined) throw new Error("找不到灵感研究所有者");
-      if (owner.archived) return null;
-      const duplicate = Object.values(index.runs).find((candidate) => candidate.ownerId === ownerId && (candidate.status === "queued" || candidate.status === "running"));
+      if (owner.archived || owner.deleted) return null;
+      const duplicate = Object.values(index.runs).find((candidate) => candidate.ownerId === ownerId && candidate.ownerKind === ownerKind && !candidate.deleted && (candidate.status === "queued" || candidate.status === "running"));
       if (duplicate !== undefined) {
         return copy(duplicate);
       }
       const now = this.now().toISOString();
-      const created: InspirationRun = { id: id<InspirationRunId>(), revision: 0, ownerKind, ownerId, trigger, status: "queued", spec: copy(owner.spec), ...(timeWindow === undefined ? {} : { timeWindow }), scheduledFor: null, queuedAt: now, startedAt: null, finishedAt: null, sessionId: null, reportPath: null, reportSha256: null, unread: false, error: null };
+      const created: InspirationRun = { id: id<InspirationRunId>(), revision: 0, ownerKind, ownerId, trigger, status: "queued", deleted: false, spec: copy(owner.spec), ...(timeWindow === undefined ? {} : { timeWindow }), scheduledFor: null, queuedAt: now, startedAt: null, finishedAt: null, sessionId: null, reportPath: null, reportSha256: null, unread: false, error: null };
       index.runs[created.id] = created;
       owner.latestRunId = created.id; owner.revision += 1; owner.updatedAt = now;
       return copy(created);
@@ -671,7 +719,7 @@ export class InspirationService {
   private async execute(runId: InspirationRunId): Promise<void> {
     let run = await this.store.mutate((index) => {
       const current = index.runs[runId];
-      if (current === undefined || current.status !== "queued") return null;
+      if (current === undefined || current.deleted || this.ownerDeleted(index, current) || current.status !== "queued") return null;
       current.status = "running"; current.startedAt = this.now().toISOString(); current.revision += 1;
       return copy(current);
     });
@@ -680,7 +728,7 @@ export class InspirationService {
       const session = await this.ensureSession(run);
       run = await this.store.mutate((index) => {
         const current = index.runs[runId]!;
-        if (current.status !== "running") return copy(current);
+        if (current.deleted || this.ownerDeleted(index, current) || current.status !== "running") return copy(current);
         current.sessionId = session.sessionId; current.revision += 1;
         const owner = current.ownerKind === "item" ? index.items[current.ownerId] : index.tasks[current.ownerId];
         if (owner !== undefined && owner.sessionId !== session.sessionId) { owner.sessionId = session.sessionId; owner.revision += 1; owner.updatedAt = this.now().toISOString(); }
@@ -694,12 +742,12 @@ export class InspirationService {
       await this.runtime.sessionController.waitForIdle?.(session.sessionId);
       await this.store.mutate((index) => {
         const current = index.runs[runId]!;
-        if (current.status === "running") { current.status = "needs_attention"; current.finishedAt = this.now().toISOString(); current.error = { code: "REPORT_MISSING", message: "Agent became idle without submitting a structured report." }; current.revision += 1; }
+        if (!current.deleted && !this.ownerDeleted(index, current) && current.status === "running") { current.status = "needs_attention"; current.finishedAt = this.now().toISOString(); current.error = { code: "REPORT_MISSING", message: "Agent became idle without submitting a structured report." }; current.revision += 1; }
       });
     } catch (error) {
       await this.store.mutate((index) => {
         const current = index.runs[runId];
-        if (current === undefined || current.status !== "running") return;
+        if (current === undefined || current.deleted || this.ownerDeleted(index, current) || current.status !== "running") return;
         current.status = "failed"; current.finishedAt = this.now().toISOString(); current.error = { code: "SESSION_FAILURE", message: error instanceof Error ? error.message : String(error) }; current.revision += 1;
       });
       this.runtime?.logger?.error?.(`灵感研究 ${runId} 执行失败：${String(error)}`);
@@ -710,6 +758,7 @@ export class InspirationService {
     if (this.runtime === undefined) throw new Error("灵感研究运行时尚未连接");
     const index = await this.store.read();
     const owner = run.ownerKind === "item" ? index.items[run.ownerId] : index.tasks[run.ownerId];
+    if (owner?.deleted) throw new Error("灵感研究记录已删除");
     if (owner?.sessionId !== null && owner !== undefined) {
       const existing = this.managedSessions.get(owner.sessionId);
       if (existing !== undefined) return existing;
@@ -793,17 +842,26 @@ export class InspirationService {
   private async item(itemId: InspirationId): Promise<InspirationItem> {
     const item = (await this.store.read()).items[itemId];
     if (item === undefined) throw new Error("找不到灵感草稿");
+    if (item.deleted) throw new Error("灵感草稿已删除");
     return copy(item);
   }
 
   private async run(runId: InspirationRunId): Promise<InspirationRun> {
     const run = (await this.store.read()).runs[runId];
     if (run === undefined) throw new Error("找不到研究运行");
+    if (run.deleted) throw new Error("研究运行已删除");
     return copy(run);
   }
 
+  private ownerDeleted(index: { items: Record<string, InspirationItem>; tasks: Record<string, InspirationTask> }, run: InspirationRun): boolean {
+    const owner = run.ownerKind === "item" ? index.items[run.ownerId] : index.tasks[run.ownerId];
+    return owner === undefined || owner.deleted;
+  }
+
   private async running(runId: InspirationRunId): Promise<boolean> {
-    return (await this.store.read()).runs[runId]?.status === "running";
+    const index = await this.store.read();
+    const run = index.runs[runId];
+    return run !== undefined && !run.deleted && !this.ownerDeleted(index, run) && run.status === "running";
   }
 
   private async loadReport(run: InspirationRun): Promise<{ report: InspirationReport | null; integrity: InspirationDetail["reportIntegrity"] }> {

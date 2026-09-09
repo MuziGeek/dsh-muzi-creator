@@ -146,6 +146,8 @@ describe("Daily Hot client model", () => {
 
   it("keeps Chinese and English locale keys paired", () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort());
+    expect(zh["hot.refresh"]).toBe("刷新");
+    expect(en["hot.refresh"]).toBe("Refresh");
     expect(zh["tab.hot"]).toBe("热点");
     expect(en["tab.hot"]).toBe("Hot");
     expect(zh["hot.sources.showMore"]).toBe("查看其余");
@@ -156,7 +158,7 @@ describe("Daily Hot client model", () => {
 describe("Daily Hot UI contract", () => {
   it("places Hot second and wires accessible list and disclosure behavior", async () => {
     const [sidebar, panel] = await Promise.all([
-      readFile(new URL("../src/client/sidebar/OilSidebarRoot.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/client/sidebar/MzSidebarRoot.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/client/sidebar/DailyHotPanel.tsx", import.meta.url), "utf8"),
     ]);
     const sessions = sidebar.indexOf('data-sidebar-tab="sessions"');
@@ -168,7 +170,7 @@ describe("Daily Hot UI contract", () => {
     expect(hot).toBeLessThan(content);
     expect(content).toBeLessThan(knowledge);
     expect(knowledge).toBeLessThan(projects);
-    expect(sidebar).toContain('<IslandIcon name="icon-miles"');
+    expect(sidebar).toContain('<WorkbenchIcon name="hotspots"');
     expect(sidebar).not.toContain("IconLightOutline16");
     expect(sidebar).not.toContain('if (tab !== "hot") selectDailyHotItem(null)');
     expect(sidebar).toContain("setSidebarTab(tab)");
@@ -208,7 +210,7 @@ describe("Daily Hot UI contract", () => {
     expect(css).toContain("grid-template-columns: minmax(0, 1fr) 288px");
     expect(css).not.toContain("col-resize");
     expect(css).not.toContain("[data-surface=\"daily-hot-inspector\"].full");
-    expect(css).not.toContain("--oil-sidebar-width");
+    expect(css).not.toContain("--mz-sidebar-width");
     expect(css).not.toContain("!important");
     expect(css).toContain("overflow: auto");
     expect(client).toContain('ctx.slots.inject("conversation"');

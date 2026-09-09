@@ -1,9 +1,11 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { type ChangeEvent, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  IslandInput,
   IslandSelect,
   IslandSelectableCard,
   IslandState,
@@ -21,6 +23,55 @@ describe("Island control adapters", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it("preserves labelled controlled input, clear and disabled behavior through the styled shell", async () => {
+    const user = userEvent.setup();
+    function Field() {
+      const [value, setValue] = useState("第一版");
+      return <IslandInput className="featureSearch" id="controlled-search" name="search" aria-label="搜索内容" value={value}
+        allowClear onClear={() => { setValue(""); }} onChange={(event: ChangeEvent<HTMLInputElement>) => { setValue(event.target.value); }} />;
+    }
+    const { rerender } = render(<Field />);
+    const input = screen.getByRole("textbox", { name: "搜索内容" }) as HTMLInputElement;
+    expect(input.id).toBe("controlled-search");
+    expect(input.name).toBe("search");
+    expect(input.parentElement?.classList.contains("islandInput")).toBe(true);
+    expect(input.parentElement?.classList.contains("featureSearch")).toBe(true);
+    await user.type(input, "补充");
+    expect(input.value).toBe("第一版补充");
+    await user.click(screen.getByRole("button", { name: "清除" }));
+    expect(input.value).toBe("");
+    rerender(<IslandInput aria-label="搜索内容" value="锁定" disabled allowClear onChange={vi.fn()} />);
+    expect((screen.getByRole("textbox") as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "清除" })).toBeNull();
+  });
+
+  it("keeps password and date input types and exposes validation state on the input shell", () => {
+    const { rerender } = render(<IslandInput type="password" aria-label="密钥" status="error" value="" onChange={vi.fn()} />);
+    const password = screen.getByLabelText("密钥") as HTMLInputElement;
+    expect(password.type).toBe("password");
+    expect(password.getAttribute("aria-invalid")).toBe("true");
+    expect(password.parentElement?.classList.contains("is-error")).toBe(true);
+    rerender(<IslandInput type="datetime-local" aria-label="计划时间" status="warning" value="2026-09-08T20:00" onChange={vi.fn()} />);
+    const date = screen.getByLabelText("计划时间") as HTMLInputElement;
+    expect(date.type).toBe("datetime-local");
+    expect(date.value).toBe("2026-09-08T20:00");
+    expect(date.parentElement?.classList.contains("is-warning")).toBe(true);
+  });
+
+  it("retains select keyboard navigation and restores focus after selecting or closing", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<IslandSelect aria-label="渠道" value="a" onChange={onChange} options={[{ key: "a", label: "博客" }, { key: "b", label: "视频" }]} />);
+    const trigger = screen.getByRole("combobox", { name: "渠道" });
+    trigger.focus();
+    await user.keyboard("{Enter}{End}{Enter}");
+    expect(onChange).toHaveBeenCalledWith("b");
+    expect(document.activeElement).toBe(trigger);
+    await user.keyboard("{Enter}{Escape}");
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(trigger);
   });
 
   it("activates selectable cards with Enter and Space", async () => {

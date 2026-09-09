@@ -1,8 +1,8 @@
 // Windows Patchright collector. Run: node scripts/collect-publish.mjs
-// Optional: OIL_COLLECT_PLATFORMS, OIL_COLLECT_TARGETS, OIL_COLLECT_SPACE,
-// OIL_COLLECT_KEEP, OIL_COLLECT_CLEANUP_STALE, OIL_COLLECT_CLEANUP_NAMES,
-// OIL_COLLECT_CLEANUP_PREFIXES, OIL_COLLECT_MAX_PAGES, OIL_COLLECT_XHS_SCROLL,
-// OIL_COLLECT_ACCOUNTS, OIL_COLLECT_METRICS_GRANTS.
+// Optional: MZ_COLLECT_PLATFORMS, MZ_COLLECT_TARGETS, MZ_COLLECT_SPACE,
+// MZ_COLLECT_KEEP, MZ_COLLECT_CLEANUP_STALE, MZ_COLLECT_CLEANUP_NAMES,
+// MZ_COLLECT_CLEANUP_PREFIXES, MZ_COLLECT_MAX_PAGES, MZ_COLLECT_XHS_SCROLL,
+// MZ_COLLECT_ACCOUNTS, MZ_COLLECT_METRICS_GRANTS.
 // Login state is isolated by platform/account under ~/.video-publisher/chrome-profiles.
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -16,7 +16,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const platformKey = (platform) => platform === "wechat" ? "wechat_channels" : platform;
 const accountProfiles = (() => {
   try {
-    const value = JSON.parse(process.env.OIL_COLLECT_ACCOUNTS || "{}");
+    const value = JSON.parse(process.env.MZ_COLLECT_ACCOUNTS || "{}");
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   } catch {
     return {};
@@ -24,7 +24,7 @@ const accountProfiles = (() => {
 })();
 const metricsGrants = (() => {
   try {
-    const value = JSON.parse(process.env.OIL_COLLECT_METRICS_GRANTS || "{}");
+    const value = JSON.parse(process.env.MZ_COLLECT_METRICS_GRANTS || "{}");
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   } catch {
     return {};
@@ -212,11 +212,11 @@ function envText(name, fallback) {
   return value === undefined || value === "" ? fallback : value;
 }
 
-const MAX_PAGES = Math.max(1, Number(envText("OIL_COLLECT_MAX_PAGES", "80")) || 80);
-const XHS_SCROLL_STEPS = Math.max(1, Number(envText("OIL_COLLECT_XHS_SCROLL", "80")) || 80);
+const MAX_PAGES = Math.max(1, Number(envText("MZ_COLLECT_MAX_PAGES", "80")) || 80);
+const XHS_SCROLL_STEPS = Math.max(1, Number(envText("MZ_COLLECT_XHS_SCROLL", "80")) || 80);
 
 const wanted = String(
-  typeof OIL_COLLECT_PLATFORMS === "string" ? OIL_COLLECT_PLATFORMS : (process.env.OIL_COLLECT_PLATFORMS ?? ""),
+  typeof MZ_COLLECT_PLATFORMS === "string" ? MZ_COLLECT_PLATFORMS : (process.env.MZ_COLLECT_PLATFORMS ?? ""),
 )
   .split(",")
   .map((item) => item.trim())
@@ -235,7 +235,7 @@ function parseTargets(raw) {
 }
 
 const targets = parseTargets(
-  typeof OIL_COLLECT_TARGETS !== "undefined" ? OIL_COLLECT_TARGETS : process.env.OIL_COLLECT_TARGETS,
+  typeof MZ_COLLECT_TARGETS !== "undefined" ? MZ_COLLECT_TARGETS : process.env.MZ_COLLECT_TARGETS,
 );
 
 function hitsStrongTarget(item) {
@@ -258,11 +258,11 @@ function foundTargets(items) {
 }
 
 const HOOK = `(() => {
-  if (window.__oilCollectHook) return;
-  window.__oilCollectHook = true;
-  window.__OIL_COLLECT__ = [];
+  if (window.__mzCollectHook) return;
+  window.__mzCollectHook = true;
+  window.__MZ_COLLECT__ = [];
   const push = (url, text) => {
-    window.__OIL_COLLECT__.push({ url: String(url), text: String(text || "").slice(0, 900000) });
+    window.__MZ_COLLECT__.push({ url: String(url), text: String(text || "").slice(0, 900000) });
   };
   const origFetch = window.fetch;
   window.fetch = async function (...args) {
@@ -277,12 +277,12 @@ const HOOK = `(() => {
   const origOpen = XMLHttpRequest.prototype.open;
   const origSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    this.__oilUrl = url;
+    this.__mzUrl = url;
     return origOpen.call(this, method, url, ...rest);
   };
   XMLHttpRequest.prototype.send = function (...args) {
     this.addEventListener("load", function () {
-      try { push(this.__oilUrl, this.responseText); } catch {}
+      try { push(this.__mzUrl, this.responseText); } catch {}
     });
     return origSend.apply(this, args);
   };
@@ -403,7 +403,7 @@ function pageLooksLoggedOut(text, href) {
 
 async function xhsState() {
   return js(String.raw`(() => {
-    const rows = window.__OIL_COLLECT__ || [];
+    const rows = window.__MZ_COLLECT__ || [];
     const byId = new Map();
     let total = 0;
     for (const row of rows) {
@@ -525,7 +525,7 @@ async function collectDouyin() {
   const started = Date.now();
   while (Date.now() - started < 12_000) {
     const hooked = await js(String.raw`(() => {
-      const rows = (window.__OIL_COLLECT__ || []).filter((row) => String(row.url).includes("/work_list"));
+      const rows = (window.__MZ_COLLECT__ || []).filter((row) => String(row.url).includes("/work_list"));
       const text = (document.body && document.body.innerText) || "";
       const login = /登录|掃碼|扫码登录|请先登录|尚未登录/.test(text)
         && !/作品管理|笔记管理|已发布|稿件管理|发表记录|视频管理|内容管理/.test(text);
@@ -610,11 +610,11 @@ function csvNames(raw) {
     .filter(Boolean);
 }
 
-const keepSpace = envText("OIL_COLLECT_KEEP", "0") === "1";
-const cleanupStale = envText("OIL_COLLECT_CLEANUP_STALE", "1") !== "0";
-const spaceName = envText("OIL_COLLECT_SPACE", "") || `oil-collect-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-const leftoverNames = new Set(["oil-collect-publish", ...csvNames(envText("OIL_COLLECT_CLEANUP_NAMES", ""))]);
-const leftoverPrefixes = csvNames(envText("OIL_COLLECT_CLEANUP_PREFIXES", ""));
+const keepSpace = envText("MZ_COLLECT_KEEP", "0") === "1";
+const cleanupStale = envText("MZ_COLLECT_CLEANUP_STALE", "1") !== "0";
+const spaceName = envText("MZ_COLLECT_SPACE", "") || `mz-collect-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const leftoverNames = new Set(["oil-collect-publish", ...csvNames(envText("MZ_COLLECT_CLEANUP_NAMES", ""))]);
+const leftoverPrefixes = csvNames(envText("MZ_COLLECT_CLEANUP_PREFIXES", ""));
 const task = await useOrCreateTaskSpace(spaceName);
 const collected = [];
 let spaceClosed = keepSpace;

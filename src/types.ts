@@ -90,6 +90,7 @@ export interface ContentSummary {
   subtitles: ContentSubtitles;
   hasPublishPackage: boolean;
   hasArticle: boolean;
+  productionProjectPath?: string;
   studioPath?: string;
   waitingForExport: boolean;
   exportTimedOut?: boolean;
@@ -242,6 +243,11 @@ export interface BindStudioRequest {
   path: string;
 }
 
+export interface BindProductionProjectRequest {
+  id: string;
+  path: string | null;
+}
+
 export interface WaitExportRequest {
   id: string;
   timeoutMs?: number;
@@ -250,6 +256,7 @@ export interface WaitExportRequest {
 export interface OverlayItem {
   title?: string;
   readyToRecord?: boolean;
+  productionProjectPath?: string | null;
   studioPath?: string;
   waitingForExport?: boolean;
   exportTimedOut?: boolean;

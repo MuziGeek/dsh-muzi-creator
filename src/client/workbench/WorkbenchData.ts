@@ -40,6 +40,12 @@ export class ReadonlyResource<T> {
     for (const listener of this.listeners) listener();
   }
 
+  /** Refresh after any older request has settled, so mutations cannot reuse a stale read. */
+  async refreshAfterMutation(): Promise<T> {
+    if (this.inFlight !== null) await this.inFlight.catch(() => undefined);
+    return this.load(true);
+  }
+
   /** Read once, or force a refresh while retaining the last successful value. */
   load(force = false): Promise<T> {
     if (!force && this.snapshot.data !== null) return Promise.resolve(this.snapshot.data);

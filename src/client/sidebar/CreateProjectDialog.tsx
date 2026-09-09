@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
 import { useEffect, useRef, type ChangeEvent, type FormEvent } from "react";
 import type { MuziPrimaryDocument } from "../../muziTypes.ts";
 import { IslandButton, IslandInput, IslandModal, IslandRadio } from "../ui/IslandControls.tsx";
@@ -56,7 +57,7 @@ export function CreateProjectDialog({
       footer={(
         <div className="muziCreateActions">
           <IslandButton type="default" disabled={submitting} onClick={onCancel}>取消</IslandButton>
-          <IslandButton type="primary" htmlType="submit" form="muzi-create-project-form" disabled={!valid || submitting} loading={submitting}>
+          <IslandButton icon={<WorkbenchIcon name="add" />} type="primary" htmlType="submit" form="muzi-create-project-form" disabled={!valid || submitting} loading={submitting}>
             {submitting ? "正在创建…" : "创建内容"}
           </IslandButton>
         </div>

@@ -9,8 +9,7 @@
   opacity: 0.62;
 }
 
-.islandSelectableCard:focus-visible,
-.islandTextarea:focus-visible {
+.islandSelectableCard:focus-visible {
   outline: 2px solid var(--muzi-island-focus, var(--animal-warning-color));
   outline-offset: 2px;
 }
@@ -29,8 +28,113 @@
   line-height: 1.6;
 }
 
-.islandTextarea::placeholder {
-  color: var(--animal-text-color-placeholder);
+.islandField {
+  --island-field-focus: color-mix(in srgb, var(--animal-primary-color-active) 60%, var(--animal-text-color));
+  --island-field-placeholder: color-mix(in srgb, var(--animal-text-color) 90%, var(--animal-bg-color));
+}
+
+.islandInput.is-error,
+.islandTextarea[aria-invalid="true"] {
+  --island-field-focus: var(--animal-error-color-active);
+  border-color: var(--island-field-focus);
+}
+
+.islandInput.is-warning {
+  --island-field-focus: color-mix(in srgb, var(--animal-warning-color-active) 60%, var(--animal-text-color));
+  border-color: var(--island-field-focus);
+}
+
+.islandField.islandInput,
+.islandField.islandTextarea,
+.islandField.islandSelect [role="combobox"] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--animal-border-color-light);
+  background: var(--animal-bg-color);
+  color: var(--animal-text-color);
+  caret-color: var(--animal-text-color);
+  box-shadow: none;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.islandField.islandInput.is-error,
+.islandField.islandInput.is-warning,
+.islandField.islandTextarea[aria-invalid="true"] {
+  border-color: var(--island-field-focus);
+}
+
+.islandField.islandInput:hover,
+.islandField.islandSelect [role="combobox"]:hover {
+  box-shadow: none;
+}
+
+.islandField.islandInput:focus-within:not(.is-disabled),
+.islandField.islandTextarea:focus,
+.islandField.islandSelect [role="combobox"]:focus:not([aria-disabled="true"]) {
+  outline: 2px solid var(--island-field-focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.islandField.islandInput > input,
+.islandField.islandInput > input:focus {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  caret-color: inherit;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+.islandField.islandInput > input::placeholder,
+.islandField.islandTextarea::placeholder {
+  color: var(--island-field-placeholder);
+  opacity: 1;
+}
+
+.islandField.islandInput > button:focus-visible {
+  outline: none;
+  background: var(--animal-primary-color-bg);
+  color: var(--animal-text-color);
+}
+
+.islandField.is-disabled,
+.islandField.islandTextarea:disabled,
+.islandField.islandSelect [role="combobox"][aria-disabled="true"] {
+  background: var(--animal-bg-color-disabled);
+  cursor: not-allowed;
+}
+
+.islandField.islandTextarea:disabled {
+  opacity: 0.62;
+}
+
+.islandSelect {
+  display: contents;
+}
+
+.islandField.islandSelect [role="combobox"] {
+  border-radius: 999px;
+}
+
+.islandSelect > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.islandField.islandSelect [role="combobox"] > span {
+  color: inherit;
+}
+
+.islandField.islandSelect [role="combobox"] > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .islandSelectUnavailable {
@@ -74,7 +178,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .islandSelectableCard,
-  .islandTextarea {
+  .islandField,
+  .islandField.islandSelect [role="combobox"] {
     transition: none;
   }
 }

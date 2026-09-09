@@ -12,6 +12,7 @@
   min-width: 0;
   min-height: 44px;
   flex: none;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
@@ -23,23 +24,20 @@
 [data-plugin="dsh-muzi-creator"] .muziSectionLabel {
   display: inline-flex;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 0;
   align-items: center;
   gap: 7px;
   overflow: hidden;
   white-space: nowrap;
   font-weight: 650;
+  line-height: 1.5;
+  padding-block: 2px;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSectionLabel > span:first-child {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-[data-plugin="dsh-muzi-creator"] .muziSectionCount {
-  flex: none;
-  font-variant-numeric: tabular-nums;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSectionLabel.hidden,
@@ -77,6 +75,8 @@
   display: none;
   min-width: 0;
   flex: 1;
+  box-sizing: border-box;
+  background: var(--muzi-island-paper);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziSearch.expanded .muziSearchInput {
@@ -86,7 +86,9 @@
 [data-plugin="dsh-muzi-creator"] .muziSearchButton,
 [data-plugin="dsh-muzi-creator"] .muziHeaderIcon,
 [data-plugin="dsh-muzi-creator"] .muziClearButton {
+  height: 36px;
   min-height: 36px;
+  padding-block: 0;
   flex: none;
   white-space: nowrap;
 }
@@ -97,6 +99,12 @@
   flex: none;
   align-items: center;
   gap: 2px;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziSearchButtonIconOnly {
+  width: 36px;
+  min-height: 36px;
+  padding-inline: 0;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziViewDisclosure {
@@ -236,7 +244,7 @@
   background: var(--animal-bg-color-secondary);
 }
 
-[data-plugin="dsh-muzi-creator"] .muziContentCover img {
+[data-plugin="dsh-muzi-creator"] .muziContentCover img:not(.muziWorkbenchIcon) {
   width: 100%;
   height: 100%;
   object-fit: cover;

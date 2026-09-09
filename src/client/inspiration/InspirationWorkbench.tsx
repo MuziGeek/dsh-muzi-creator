@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
 import {
   useCallback,
   useEffect,
@@ -30,6 +31,7 @@ import {
 import type { ReadonlyResource } from "../workbench/WorkbenchData.ts";
 import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
 import { inspirationZh } from "./copy.ts";
+import { layoutSummary } from "./summaryLayout.ts";
 import "./Inspiration.css";
 
 type Translator = (key: string) => string;
@@ -327,7 +329,7 @@ export function InspirationWorkbench({
               title={text(t, "error")}
               message={detailError}
               action={
-                <IslandButton
+                <IslandButton icon={<WorkbenchIcon name="refresh" />}
                   onClick={() => retryDetail((attempt) => attempt + 1)}
                 >
                   {text(t, "retry")}
@@ -401,7 +403,7 @@ export function InspirationWorkbench({
       </label>
       {mode === "trend" && (
         <fieldset className="inspirationRange">
-          <legend>{text(t, "range")}</legend>
+          <legend className="muziIconLabel"><WorkbenchIcon name="calendar" />{text(t, "range")}</legend>
           <IslandSelect
             value={rangeKind}
             onChange={(value: string) => {
@@ -442,6 +444,7 @@ export function InspirationWorkbench({
       <div className="inspirationCaptureActions">
         <IslandButton
           htmlType="submit"
+          icon={<WorkbenchIcon name={mode === "topic" ? "search" : "hotspots"} />}
           type="primary"
           loading={busy}
           disabled={busy || (mode === "topic" && !topic.trim())}
@@ -452,8 +455,8 @@ export function InspirationWorkbench({
     </form>
   );
   const tabItems: IslandTabItem[] = [
-    { key: "topic", label: text(t, "searchTopic"), children: searchForm },
-    { key: "trend", label: text(t, "hotspots"), children: searchForm },
+    { key: "topic", label: <span className="muziIconLabel"><WorkbenchIcon name="search" />{text(t, "searchTopic")}</span>, children: searchForm },
+    { key: "trend", label: <span className="muziIconLabel"><WorkbenchIcon name="hotspots" />{text(t, "hotspots")}</span>, children: searchForm },
   ];
   return (
     <div
@@ -482,7 +485,7 @@ export function InspirationWorkbench({
                 <IslandTag size="small" color="app-teal" variant="soft">
                   {statusText(t, run.status)}
                 </IslandTag>
-                <IslandButton
+                <IslandButton icon={<WorkbenchIcon name="stop" />}
                   type="text"
                   size="small"
                   disabled={busy}
@@ -511,7 +514,7 @@ export function InspirationWorkbench({
           title={text(t, "error")}
           message={error}
           action={
-            <IslandButton
+            <IslandButton icon={<WorkbenchIcon name="refresh" />}
               type="primary"
               onClick={() => {
                 void refresh().catch(() => undefined);
@@ -573,23 +576,25 @@ function DetailView({
   return (
     <>
       <header>
-        <div>
+        <div className="inspirationReportHeading">
           <h2 id="inspiration-detail-title" tabIndex={-1}>
             {title}
           </h2>
-          {run !== null && run !== undefined && (
-            <IslandTag size="small" color="app-teal" variant="soft">
-              {statusText(t, run.status)}
-            </IslandTag>
-          )}
+          <div className="inspirationReportMeta">
+            {run !== null && run !== undefined && (
+              <IslandTag size="small" color="app-teal" variant="soft">
+                {statusText(t, run.status)}
+              </IslandTag>
+            )}
+            {run?.timeWindow !== undefined && (
+              <p className="inspirationTimeWindow">
+                {text(t, "timeWindow")}：{formatTime(run.timeWindow.startAt)} –{" "}
+                {formatTime(run.timeWindow.endAt)}
+              </p>
+            )}
+          </div>
         </div>
       </header>
-      {run?.timeWindow !== undefined && (
-        <p className="inspirationTimeWindow">
-          {text(t, "timeWindow")}：{formatTime(run.timeWindow.startAt)} –{" "}
-          {formatTime(run.timeWindow.endAt)}
-        </p>
-      )}
       {integrity !== null && (
         <IslandState
           kind="error"
@@ -618,7 +623,8 @@ function DetailView({
         {run !== null &&
           run !== undefined &&
           (run.status === "running" || run.status === "queued") && (
-            <IslandButton
+            <IslandButton icon={<WorkbenchIcon name="stop" />}
+              size="small"
               type="default"
               disabled={busy}
               onClick={() => {
@@ -632,8 +638,9 @@ function DetailView({
           run !== undefined &&
           report !== null &&
           detail.reportIntegrity === "ok" && (
-            <IslandButton
-              type="primary"
+            <IslandButton icon={<WorkbenchIcon name="copy" />}
+              size="small"
+              type="default"
               disabled={busy}
               onClick={() => {
                 onCopy(run);
@@ -643,21 +650,22 @@ function DetailView({
             </IslandButton>
           )}
         <IslandButton
+              size="small"
           type="default"
           disabled={
             busy || run?.status === "running" || run?.status === "queued"
           }
+          icon={<WorkbenchIcon name="search" />}
           onClick={onRerun}
         >
           {text(t, "rerun")}
         </IslandButton>
-        <details className="inspirationMore">
-          <summary>{text(t, "more")}</summary>
-          <div>
             {run?.sessionId !== null && run?.sessionId !== undefined && (
               <IslandButton
+              size="small"
                 type="default"
                 disabled={busy}
+                icon={<WorkbenchIcon name="sessions" />}
                 onClick={() => {
                   openSession(run.sessionId!);
                 }}
@@ -670,8 +678,10 @@ function DetailView({
               report !== null &&
               detail.reportIntegrity === "ok" && (
                 <IslandButton
+              size="small"
                   type="default"
                   disabled={busy}
+                  icon={<WorkbenchIcon name="knowledge" />}
                   onClick={() => {
                     onOpenObsidian(run);
                   }}
@@ -684,8 +694,10 @@ function DetailView({
               report !== null &&
               detail.reportIntegrity === "ok" && (
                 <IslandButton
+              size="small"
                   type="default"
                   disabled={busy}
+                  icon={<WorkbenchIcon name="content" />}
                   onClick={() => {
                     onPromote(run, title);
                   }}
@@ -693,8 +705,9 @@ function DetailView({
                   {text(t, "promote")}
                 </IslandButton>
               )}
-          </div>
-          {detail.previousRuns.length > 0 && (
+      </div>
+      {detail.previousRuns.length > 0 && (
+        <div className="inspirationHistoryActions">
             <IslandSelect
               aria-label={text(t, "earlierReports")}
               placeholder={text(t, "earlierReports")}
@@ -710,9 +723,8 @@ function DetailView({
                 if (previous !== undefined) onOpenRun(previous);
               }}
             />
-          )}
-        </details>
-      </div>
+        </div>
+      )}
     </>
   );
 }
@@ -723,28 +735,47 @@ function ReportBody({
   report: NonNullable<InspirationDetail["report"]>;
   t: Translator;
 }) {
-  const sources = new Map(report.sources.map((source) => [source.id, source]));
+  const sources = new Map(
+    report.sources.map((source, index) => [source.id, { ...source, number: index + 1 }]),
+  );
   const hasMaterials =
     report.findings.length > 0 ||
     report.disagreements.length > 0 ||
     (report.sources.length > 0 && report.angles.length > 0);
   return (
     <article className="inspirationReport">
-      <section>
+      {report.partialReason !== null && (
+        <aside className="inspirationPartialReason">
+          <strong>{text(t, "partial")}</strong>
+          <p>{report.partialReason}</p>
+        </aside>
+      )}
+      <section className="inspirationSummary">
         <h3>{text(t, "summary")}</h3>
-        {report.partialReason !== null && (
-          <p className="inspirationPartialReason">{report.partialReason}</p>
-        )}
-        <p>{report.summary}</p>
+        <div className="inspirationSummaryContent">
+          {layoutSummary(report.summary).map((group, index) => (
+            <div className={group.title ? "inspirationSummaryGroup" : "inspirationSummaryIntro"} key={index}>
+              {group.title && <h4>{group.title}</h4>}
+              {group.paragraphs.map((paragraph, paragraphIndex) => (
+                <p key={paragraphIndex}>{paragraph}</p>
+              ))}
+            </div>
+          ))}
+        </div>
       </section>
       <section>
-        <h3>{text(t, "materials")}</h3>
+        <h3>{text(t, "findings")}</h3>
         {!hasMaterials && <p>{text(t, "noMaterials")}</p>}
-        <EvidenceList values={report.findings} sources={sources} />
+        <EvidenceList values={report.findings} sources={sources} t={t} />
         {report.disagreements.length > 0 && (
           <section>
             <h4>{text(t, "disagreements")}</h4>
-            <EvidenceList values={report.disagreements} sources={sources} />
+            <EvidenceList
+              values={report.disagreements}
+              sources={sources}
+              t={t}
+              showEvidence
+            />
           </section>
         )}
         {report.sources.length > 0 && report.angles.length > 0 && (
@@ -752,20 +783,23 @@ function ReportBody({
         )}
       </section>
       <section>
-        <h3>{text(t, "sources")}</h3>
+        <h3 className="muziIconLabel"><WorkbenchIcon name="sources" />{text(t, "sources")}</h3>
         {report.sources.length === 0 && <p>{text(t, "noSources")}</p>}
         <ol className="inspirationSources">
-          {report.sources.map((source) => (
+          {report.sources.map((source, index) => (
             <li key={source.id}>
-              <a href={source.url} target="_blank" rel="noreferrer">
-                {source.title}
-              </a>
-              <small>
-                {source.domain} · {text(t, "published")}：
-                {source.publishedAt === null
-                  ? text(t, "unknown")
-                  : formatTime(source.publishedAt)}
-              </small>
+              <span className="inspirationSourceNumber">[{index + 1}]</span>
+              <div className="inspirationSourceBody">
+                <a href={source.url} target="_blank" rel="noreferrer"><WorkbenchIcon name="external-link" />
+                  {source.title}
+                </a>
+                <small>
+                  {source.domain} · {text(t, "published")}：
+                  {source.publishedAt === null
+                    ? text(t, "unknown")
+                    : formatTime(source.publishedAt)}
+                </small>
+              </div>
             </li>
           ))}
         </ol>
@@ -776,21 +810,31 @@ function ReportBody({
 function EvidenceList({
   values,
   sources,
+  t,
+  showEvidence = false,
 }: {
   values: NonNullable<InspirationDetail["report"]>["findings"];
   sources: Map<
     string,
-    NonNullable<InspirationDetail["report"]>["sources"][number]
+    NonNullable<InspirationDetail["report"]>["sources"][number] & { number: number }
   >;
+  t: Translator;
+  showEvidence?: boolean;
 }) {
   if (values.length === 0) return null;
   return (
-    <ul>
+    <ol className="inspirationEvidenceList">
       {values.map((value, index) => (
         <li key={`${String(index)}-${value.text}`}>
-          <span>{value.text}</span>
+          <p className="inspirationReportText">{value.text}</p>
+          {showEvidence && (
+            <span className="inspirationEvidenceStatus">
+              {text(t, `evidence_${value.evidence}`)}
+            </span>
+          )}
           {value.sourceIds.length > 0 && (
             <span className="inspirationCitations">
+              <span>{text(t, "sources")}</span>
               {value.sourceIds.map((sourceId) => {
                 const source = sources.get(sourceId);
                 return source === undefined ? (
@@ -801,8 +845,10 @@ function EvidenceList({
                     href={source.url}
                     target="_blank"
                     rel="noreferrer"
+                    aria-label={`${text(t, "sources")} ${source.number}：${source.title}`}
+                    title={source.title}
                   >
-                    [{sourceId}]
+                    [{source.number}]
                   </a>
                 );
               })}
@@ -810,7 +856,7 @@ function EvidenceList({
           )}
         </li>
       ))}
-    </ul>
+    </ol>
   );
 }
 function TextList({ title, values }: { title: string; values: string[] }) {

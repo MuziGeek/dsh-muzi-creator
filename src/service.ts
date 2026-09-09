@@ -1,3 +1,8 @@
+import { runVideoAccounts } from "./videoAccounts.ts";
+import { recordVideoAccountTrace } from "./videoAccountDiagnostics.ts";
+import { addVideoAccountSchema, setVideoAccountEnabledSchema, videoAccountLoginSchema, videoConnectionRequestSchema, videoConnectionReopenSchema, type VideoConnectionRequest, type VideoConnectionReopen, type AddVideoAccount, type SetVideoAccountEnabled, type VideoAccountLogin, type VideoAccountManagement } from "./videoAccountSchemas.ts";
+import { PublishFlowService } from "./publishFlow.ts";
+import type { PublishFlowPrepare, PublishFlowAction } from "./publishFlowSchemas.ts";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
@@ -7,6 +12,10 @@ import type { Context } from "@deepseek-ai/cordis";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 
 import { isSubtitledVideoName, pathExists } from "./artifacts.ts";
+import {
+  openProductionProjectFolder as revealProductionProjectFolder,
+  resolveProductionProjectPath,
+} from "./productionProject.ts";
 import {
   countsOf,
   coverPathOf,
@@ -95,6 +104,8 @@ import { InspirationService } from "./inspirationService.ts";
 import type {
   ArchiveInspirationRequest,
   ArchiveInspirationResult,
+  DeleteInspirationRequest,
+  DeleteInspirationResult,
   GetInspirationRequest,
   InspirationDetail,
   InspirationItem,
@@ -116,6 +127,8 @@ import type {
 } from "./inspirationTypes.ts";
 import { MuziCreatorService } from "./muziService.ts";
 import { VideoPublisherService } from "./videoPublisher.ts";
+import { TrellisGithubService } from "./trellisGithubService.ts";
+import type { GithubRequest, GithubResult } from "./trellisGithubSchemas.ts";
 import { TrellisProjectService } from "./trellisService.ts";
 import type {
   ArchiveTrellisTaskRequest,
@@ -140,6 +153,7 @@ import type {
   MuziDocumentLocationRequest,
   MuziWorkspaceRevision,
   MuziArchiveRequest,
+  MuziDeleteResult,
   MuziDocumentSaveRequest,
   MuziProjectCreateRequest,
   MuziProjectDetail,
@@ -170,6 +184,7 @@ import type {
 import type { VideoPublishCapabilitiesResult } from "./videoCapabilities.ts";
 import type {
   BindStudioRequest,
+  BindProductionProjectRequest,
   BurnJob,
   ContentDetail,
   CoverThumbResult,
@@ -206,9 +221,9 @@ import type {
   WaitExportRequest,
 } from "./types.ts";
 
-export const OIL_CREATOR_SERVICE = "oilCreator";
+export const MZ_CREATOR_SERVICE = "mzCreator";
 
-export class OilCreatorService extends TypertRemoteService {
+export class MzCreatorService extends TypertRemoteService {
   // Gateway calls methods on a Cordis proxy; `#private` fields throw on that receiver.
   libraryRoot: string;
   readonly dataDir: string;
@@ -228,8 +243,13 @@ export class OilCreatorService extends TypertRemoteService {
   articles = new Map<string, { origin: string; root: string; close: () => void }>();
   readonly muzi: MuziCreatorService;
   readonly videoPublisher: VideoPublisherService;
+  readonly publishFlow: PublishFlowService;
+  readonly videoConnectionTimeoutMs: number;
+  readonly videoConnectionPollIntervalMs: number;
+  readonly videoAccountCapabilitiesTimeoutMs: number;
   readonly atlas: AtlasReadService;
   readonly trellis: TrellisProjectService;
+  readonly trellisGithub: TrellisGithubService;
   readonly dailyHot: DailyHotLoader;
   readonly inspiration: InspirationService;
   readonly externalActionsEnabled: boolean;
@@ -240,15 +260,21 @@ export class OilCreatorService extends TypertRemoteService {
     ctx: Context,
     config: Config,
   ) {
-    super(ctx, OIL_CREATOR_SERVICE);
+    super(ctx, MZ_CREATOR_SERVICE);
     this.libraryRoot = resolveUserPath(config.libraryRoot);
     this.dataDir = resolveUserPath(resolveDataDir(config));
     this.subtitleSkillDirConfig = config.subtitleSkillDir;
     this.coverSkillDirConfig = config.coverSkillDir;
     this.muzi = new MuziCreatorService(config);
     this.videoPublisher = new VideoPublisherService(config, this.dataDir, this.muzi);
+    this.videoConnectionTimeoutMs = config.videoConnectionTimeoutMs ?? 600_000;
+    this.videoConnectionPollIntervalMs = config.videoConnectionPollIntervalMs ?? 2000;
+    this.videoAccountCapabilitiesTimeoutMs = config.videoAccountCapabilitiesTimeoutMs ?? 5000;
+    this.publishFlow = new PublishFlowService(this.dataDir, this.muzi, this.videoPublisher, () => this.externalActionsEnabled);
+    ctx.effect(() => () => this.publishFlow.dispose());
     this.atlas = new AtlasReadService(config);
     this.trellis = new TrellisProjectService(ctx, config);
+    this.trellisGithub = new TrellisGithubService(ctx, this.dataDir, config);
     this.dailyHot = createDailyHotLoader();
     this.inspiration = new InspirationService({
       dataDir: this.dataDir,
@@ -260,11 +286,12 @@ export class OilCreatorService extends TypertRemoteService {
     this.obsidianExecutable = config.obsidianExecutable;
     void loadOverlay(this.dataDir).then((overlay) => { this.rememberOverlay(overlay); });
     ctx.effect(() => async () => {
+      this.trellisGithub.dispose();
       this.stopWatch();
       this.stopExportWaiters();
       this.inspiration.dispose();
       await this.stopServers();
-    }, "oil-creator: library watch");
+    }, "mz-creator: library watch");
   }
 
   async listMuziProjects(request: MuziProjectListRequest, signal: AbortSignal): Promise<MuziProjectListResult> {
@@ -307,14 +334,112 @@ export class OilCreatorService extends TypertRemoteService {
     return this.muzi.archiveProject(request);
   }
 
+  async deleteMuziProject(request: MuziArchiveRequest, signal: AbortSignal): Promise<MuziDeleteResult> {
+    signal.throwIfAborted();
+    return this.muzi.deleteProject(request);
+  }
+
   async getMuziWorkspaceRevision(_request: Record<string, never>, signal: AbortSignal): Promise<MuziWorkspaceRevision> {
     signal.throwIfAborted();
     const [creator, knowledge] = await Promise.all([this.muzi.revision(), this.atlas.revision()]);
-    return { creator, knowledge, trellis: this.trellis.trellisRevision };
+    return { creator, knowledge, trellis: this.trellis.trellisRevision + this.trellisGithub.currentRevision };
+  }
+
+  async manageTrellisGithub(request: GithubRequest, signal: AbortSignal): Promise<GithubResult> {
+    return this.trellisGithub.manage(request, signal);
   }
 
   async listTrellisProjects(_request: Record<string, never>, signal: AbortSignal): Promise<TrellisProjectListResult> {
-    return this.trellis.list(signal);
+    return await this.trellisGithub.mode() === "github" ? this.trellisGithub.list(signal) : this.trellis.list(signal);
+  }
+
+  /** Read registered accounts and historical login checks without opening a browser. */
+  async getVideoAccounts(_request: Record<string, never>, signal: AbortSignal): Promise<VideoAccountManagement> {
+    return this.accountResponse(await runVideoAccounts(this.videoPublisher.skillDir, "list", {}, signal), signal);
+  }
+
+  /** Start a connection; only verified platform identity can create the account. */
+  async addVideoAccount(request: AddVideoAccount, signal: AbortSignal): Promise<VideoAccountManagement> {
+    const input = addVideoAccountSchema.parse(request);
+    const registry = await runVideoAccounts(this.videoPublisher.skillDir, "start-connection", {
+      ...input, platform: input.platform === "wechat" ? "wechat_channels" : input.platform,
+      sourceDirectory: this.muzi.creatorRoot,
+      connectionTimeoutMs: this.videoConnectionTimeoutMs,
+    }, signal);
+    return this.accountResponse(registry, signal);
+  }
+
+  private async accountResponse(registry: Awaited<ReturnType<typeof runVideoAccounts>>, signal: AbortSignal): Promise<VideoAccountManagement> {
+    let capabilities: VideoPublishCapabilitiesResult;
+    try { capabilities = await this.videoPublisher.capabilities(AbortSignal.any([signal, AbortSignal.timeout(this.videoAccountCapabilitiesTimeoutMs)])); }
+    catch {
+      signal.throwIfAborted();
+      capabilities = { schema: "muzi.video-publisher.capabilities/1", generatedAt: new Date().toISOString(), accounts: [], unavailableReason: "发布能力暂不可用，请稍后重试；账号连接状态已保留。" };
+    }
+    signal.throwIfAborted();
+    recordVideoAccountTrace("response_returned", { connectionId: registry.connection?.connectionId ?? null, state: registry.connection?.state ?? null, accounts: registry.accounts.length, capabilitiesAvailable: capabilities.unavailableReason === null });
+    return { ...registry, capabilities, browserActionsEnabled: true, connectionPollIntervalMs: this.videoConnectionPollIntervalMs };
+  }
+
+  /** Inspect only the browser session opened by an explicitly requested connection. */
+  async pollVideoAccountConnection(request: VideoConnectionRequest, signal: AbortSignal): Promise<VideoAccountManagement> {
+    return this.accountResponse(await runVideoAccounts(this.videoPublisher.skillDir, "check-connection", videoConnectionRequestSchema.parse(request), signal), signal);
+  }
+  /** Cancel pending registration without changing any registered account. */
+  async cancelVideoAccountConnection(request: VideoConnectionRequest, signal: AbortSignal): Promise<VideoAccountManagement> {
+    return this.accountResponse(await runVideoAccounts(this.videoPublisher.skillDir, "cancel-connection", videoConnectionRequestSchema.parse(request), signal), signal);
+  }
+  /** Reopen the same pending profile after an explicit connection action. */
+  async reopenVideoAccountConnection(request: VideoConnectionReopen, signal: AbortSignal): Promise<VideoAccountManagement> {
+    return this.accountResponse(await runVideoAccounts(this.videoPublisher.skillDir, "reopen-connection", videoConnectionReopenSchema.parse(request), signal), signal);
+  }
+  /** Reconnect an existing account using its original browser profile. */
+  async reconnectVideoAccount(request: VideoAccountLogin, signal: AbortSignal): Promise<VideoAccountManagement> {
+    const input = videoAccountLoginSchema.parse(request);
+    return this.accountResponse(await runVideoAccounts(this.videoPublisher.skillDir, "reconnect", {
+      ...input, platform: input.platform === "wechat" ? "wechat_channels" : input.platform, connectionTimeoutMs: this.videoConnectionTimeoutMs,
+    }, signal), signal);
+  }
+
+  async getPublishFlow(request: { id: string }) { return this.publishFlow.get(request); }
+  async preparePublishFlow(request: PublishFlowPrepare, signal: AbortSignal) { return this.publishFlow.prepare(request, signal); }
+  async resumePublishFlow(request: PublishFlowAction, signal: AbortSignal) { return this.publishFlow.resume(request, signal); }
+  async invalidatePublishFlow(request: PublishFlowAction) { return this.publishFlow.invalidate(request); }
+  async commitPublishFlow(request: PublishFlowAction, signal: AbortSignal) { return this.publishFlow.commit(request, signal); }
+
+  /** Remove one account and its isolated login; publication history remains intact. */
+  async removeVideoAccount(request: VideoAccountLogin, signal: AbortSignal): Promise<VideoAccountManagement> {
+    const input = videoAccountLoginSchema.parse(request);
+    return this.accountResponse(await runVideoAccounts(this.videoPublisher.skillDir, "remove-account", {
+      ...input, platform: input.platform === "wechat" ? "wechat_channels" : input.platform,
+    }, signal), signal);
+  }
+
+  /** Change account availability while retaining its browser profile and evidence. */
+  async setVideoAccountEnabled(request: SetVideoAccountEnabled, signal: AbortSignal): Promise<VideoAccountManagement> {
+    const input = setVideoAccountEnabledSchema.parse(request);
+    await runVideoAccounts(this.videoPublisher.skillDir, "set-enabled", {
+      ...input, platform: input.platform === "wechat" ? "wechat_channels" : input.platform,
+    }, signal);
+    return this.getVideoAccounts({}, signal);
+  }
+
+  /** Open the selected account's isolated browser for manual login. */
+  async openVideoAccountLogin(request: VideoAccountLogin, signal: AbortSignal): Promise<VideoAccountManagement> {
+    return this.videoAccountBrowser("open-login", request, signal);
+  }
+
+  /** Read fresh creator-page identity; this never accepts publishing capabilities. */
+  async checkVideoAccountLogin(request: VideoAccountLogin, signal: AbortSignal): Promise<VideoAccountManagement> {
+    return this.videoAccountBrowser("check-login", request, signal);
+  }
+
+  private async videoAccountBrowser(command: "open-login" | "check-login", request: VideoAccountLogin, signal: AbortSignal): Promise<VideoAccountManagement> {
+    const input = videoAccountLoginSchema.parse(request);
+    await runVideoAccounts(this.videoPublisher.skillDir, command, {
+      ...input, platform: input.platform === "wechat" ? "wechat_channels" : input.platform,
+    }, signal);
+    return this.getVideoAccounts({}, signal);
   }
 
   private async requireVideoCapability(
@@ -343,15 +468,8 @@ export class OilCreatorService extends TypertRemoteService {
   }
 
   async prepareMuziVideoPublish(request: VideoPublishPrepareRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
-    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
-    if (request.acceptanceSessionId !== undefined) {
-      if (request.intents.length !== 1) throw new Error("验收会话只能准备一个平台和一项能力");
-      const intent = request.intents[0]!;
-      await this.requireRegisteredVideoAccount(intent.platform, intent.accountProfile, signal);
-    } else {
-      await Promise.all(request.intents.map((intent) => this.requireVideoCapability(intent.platform, intent.accountProfile, intent.mode, signal)));
-    }
-    return this.videoPublisher.prepare(request, signal);
+    void request; void signal;
+    throw new Error("请使用内容发布流程进行准备和最终提交");
   }
 
   async getMuziVideoPublishCapabilities(_request: Record<string, never>, signal: AbortSignal): Promise<VideoPublishCapabilitiesResult> {
@@ -361,25 +479,20 @@ export class OilCreatorService extends TypertRemoteService {
   }
 
   async beginMuziVideoAcceptance(request: VideoAcceptanceBeginRequest, signal: AbortSignal): Promise<VideoAcceptanceSessionResult> {
+    if (request.capability !== "metrics") throw new Error("发布能力验证由内容发布流程统一处理");
     if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
     return this.videoPublisher.beginAcceptance(request, signal);
   }
 
   async finalizeMuziVideoAcceptance(request: VideoAcceptanceFinalizeRequest, signal: AbortSignal): Promise<VideoAcceptanceFinalizeResult> {
+    if (request.capability !== "metrics") throw new Error("发布能力验证由内容发布流程统一处理");
     if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
     return this.videoPublisher.finalizeAcceptance(request, signal);
   }
 
   async commitMuziVideoPublish(request: VideoPublishCommitRequest, signal: AbortSignal): Promise<VideoPublishTaskResult> {
-    if (!this.externalActionsEnabled) throw new Error("Muzi Creator 外部同步与发布默认关闭。请先在插件配置中显式启用。");
-    const status = await this.videoPublisher.status({ id: request.id, taskId: request.taskId }, signal);
-    const accountProfile = status.task?.platforms[request.platform]?.accountProfile;
-    if (accountProfile === undefined) throw new Error("无法确认待提交平台的账号绑定");
-    const capability = status.task?.platforms[request.platform]?.mode;
-    if (capability !== "publish_now" && capability !== "schedule") throw new Error("仅准备任务不可进入最终提交");
-    if (request.acceptanceSessionId !== undefined) await this.requireRegisteredVideoAccount(request.platform, accountProfile, signal);
-    else await this.requireVideoCapability(request.platform, accountProfile, capability, signal);
-    return this.videoPublisher.commit(request, signal);
+    void request; void signal;
+    throw new Error("请使用内容发布流程进行准备和最终提交");
   }
 
   async getMuziVideoPublishStatus(request: VideoPublishStatusRequest, signal: AbortSignal): Promise<VideoPublishStatusResult> {
@@ -468,6 +581,11 @@ export class OilCreatorService extends TypertRemoteService {
     return this.inspiration.archiveInspiration(request);
   }
 
+  async deleteInspiration(request: DeleteInspirationRequest, signal: AbortSignal): Promise<DeleteInspirationResult> {
+    signal.throwIfAborted();
+    return this.inspiration.deleteInspiration(request);
+  }
+
   async openInspirationReportInObsidian(request: OpenInspirationReportRequest, signal: AbortSignal): Promise<{ opened: true }> {
     return this.inspiration.openInspirationReport(request, signal);
   }
@@ -478,13 +596,14 @@ export class OilCreatorService extends TypertRemoteService {
   }
 
   async getTrellisProject(request: GetTrellisProjectRequest, signal: AbortSignal): Promise<TrellisProjectDetail> {
-    return this.trellis.get(request, signal);
+    return request.projectId.startsWith("github_") ? this.trellisGithub.get(request.projectId, signal) : this.trellis.get(request, signal);
   }
 
   async prepareTrellisTaskArchive(
     request: PrepareTrellisTaskArchiveRequest,
     signal: AbortSignal,
   ): Promise<TrellisArchivePreview> {
+    if (request.projectId.startsWith("github_")) throw new Error("GitHub 任务为只读，请在项目中归档并推送后刷新");
     return this.trellis.prepareArchive(request, signal);
   }
 
@@ -999,6 +1118,24 @@ export class OilCreatorService extends TypertRemoteService {
     const studioPath = await resolveStudioPath(request.path);
     return this.patchItem(request.id, (item) => {
       item.studioPath = studioPath;
+      delete item.productionProjectPath;
+    }, signal);
+  }
+
+  async bindProductionProject(
+    request: BindProductionProjectRequest,
+    signal: AbortSignal,
+  ): Promise<ContentDetail> {
+    signal.throwIfAborted();
+    const productionProjectPath = request.path === null
+      ? undefined
+      : await resolveProductionProjectPath(request.path);
+    return this.patchItem(request.id, (item) => {
+      if (productionProjectPath === undefined) item.productionProjectPath = null;
+      else item.productionProjectPath = productionProjectPath;
+      // A deliberate cross-platform bind or unbind retires any overlay-only
+      // Screen Studio fallback. Disk discovery is deliberately not persisted.
+      delete item.studioPath;
     }, signal);
   }
 
@@ -1386,6 +1523,16 @@ export class OilCreatorService extends TypertRemoteService {
     return this.getContent({ id: request.id }, signal);
   }
 
+  async openProductionProjectFolder(request: IdRequest, signal: AbortSignal): Promise<ContentDetail> {
+    signal.throwIfAborted();
+    const item = await this.find(request.id);
+    if (item === undefined) throw new Error(`content not found: ${request.id}`);
+    const productionProjectPath = item.productionProjectPath ?? item.studioPath;
+    if (productionProjectPath === undefined) throw new Error("no production project bound");
+    await revealProductionProjectFolder(productionProjectPath);
+    return this.getContent({ id: request.id }, signal);
+  }
+
   async waitForExport(request: WaitExportRequest, signal: AbortSignal): Promise<ContentDetail> {
     signal.throwIfAborted();
     const item = await this.find(request.id);
@@ -1401,10 +1548,10 @@ export class OilCreatorService extends TypertRemoteService {
     const waiter = new AbortController();
     this.exportWaiters.set(request.id, waiter);
     const timeoutMs = request.timeoutMs ?? 7_200_000;
-    void waitForStableVideo(item.folderPath, timeoutMs, waiter.signal).then((found) => {
-      if (waiter.signal.aborted) return;
-      this.exportWaiters.delete(request.id);
-      return this.patchItem(request.id, (next) => {
+    void waitForStableVideo(item.folderPath, timeoutMs, waiter.signal).then(async (found) => {
+      if (this.exportWaiters.get(request.id) !== waiter || waiter.signal.aborted) return;
+      await this.patchItem(request.id, (next) => {
+        if (this.exportWaiters.get(request.id) !== waiter) return;
         if (found) {
           delete next.waitingForExport;
           delete next.exportTimedOut;
@@ -1413,10 +1560,22 @@ export class OilCreatorService extends TypertRemoteService {
         next.waitingForExport = true;
         next.exportTimedOut = true;
       }, new AbortController().signal);
+      if (this.exportWaiters.get(request.id) === waiter) this.exportWaiters.delete(request.id);
     }, () => {
-      this.exportWaiters.delete(request.id);
+      if (this.exportWaiters.get(request.id) === waiter) this.exportWaiters.delete(request.id);
     });
     return started;
+  }
+
+  async cancelWaitForExport(request: IdRequest, signal: AbortSignal): Promise<ContentDetail> {
+    signal.throwIfAborted();
+    const item = await this.find(request.id);
+    if (item === undefined) throw new Error(`content not found: ${request.id}`);
+    this.exportWaiters.get(request.id)?.abort();
+    this.exportWaiters.delete(request.id);
+    return this.patchItem(request.id, (next) => {
+      delete next.waitingForExport;
+    }, signal);
   }
 
   async find(id: string) {

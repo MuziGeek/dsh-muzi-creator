@@ -33,7 +33,7 @@ function item(folderPath: string, patch: Partial<ContentSummary> = {}): ContentS
 
 describe("pickTranscribeLaunch", () => {
   it("writes into the subtitle work directory", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-asr-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-asr-"));
     const video = join(folder, "demo.mp4");
     await writeFile(video, "v");
     const launch = await pickTranscribeLaunch(item(folder, { videoRaw: video }));
@@ -44,7 +44,7 @@ describe("pickTranscribeLaunch", () => {
 
 describe("pickSubtitleWorkflow", () => {
   it("chains transcribe, review, and prepare without burning", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-sub-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-sub-"));
     const video = join(folder, "demo.mp4");
     await writeFile(video, "v");
     const skill = "/tmp/oil-subtitle";
@@ -63,7 +63,7 @@ describe("pickSubtitleWorkflow", () => {
 
 describe("pickCoverLaunch", () => {
   it("passes title, output root, and optional subtitle", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-cover-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-cover-"));
     const video = join(folder, "demo.mp4");
     const srt = join(folder, "demo.srt");
     await writeFile(video, "v");
@@ -86,7 +86,7 @@ describe("pickCoverLaunch", () => {
   });
 
   it("uses an extracted cover title when provided", async () => {
-    const folder = await mkdtemp(join(tmpdir(), "oil-cover-"));
+    const folder = await mkdtemp(join(tmpdir(), "mz-cover-"));
     const video = join(folder, "demo.mp4");
     await writeFile(video, "v");
     const launch = await pickCoverLaunch(item(folder, { videoRaw: video }), "目前最强的本地工作台");

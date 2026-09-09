@@ -24,7 +24,9 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
       expect(selector.selector).toContain('body[data-muzi-host-skin="animal-island"]');
       if (selector.kind === "structural") {
         expect(selector.selector).toContain('[data-surface="session-browser"]');
-        expect(selector.selector).toContain('[data-slot="sidebar.workspaces"]');
+        if (selector.surface !== "session browser container") {
+          expect(selector.selector).toContain('[data-slot="sidebar.workspaces"]');
+        }
         expect(selector.selector).not.toContain("[aria-label=");
         expect(selector.selector).not.toMatch(/\.[A-Za-z0-9-]*_[A-Za-z0-9_-]{5,}/);
       } else if (!selector.surface.startsWith("narrow") && selector.surface !== "page") {
@@ -57,13 +59,14 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
               <div id="session-browser-header">
                 <span>Workspaces</span>
                 <div id="session-search-slot"><div id="session-browser-search"><button id="session-search" aria-expanded="false"><svg /></button><input id="session-search-input" type="text" tabindex="-1" /></div></div>
-                <div id="session-actions"><span id="session-view-menu"><button id="session-view"><svg /></button></span><button id="session-add"><svg /></button></div>
+                <div id="session-actions"><span id="session-view-menu"><button id="session-view"><svg /></button><span role="tooltip" id="workspace-tooltip">View options</span></span><button id="session-add"><svg /></button></div>
               </div>
               <div id="session-list"></div>
             </div>
           </div>
         </div>
         <textarea id="plugin-textarea"></textarea>
+        <span role="tooltip" id="plugin-tooltip">Plugin hint</span>
       </section>
       <section data-plugin="dsh-muzi-creator" data-surface="sidebar" class="collapsed" id="plugin-rail">
         <div data-surface="session-browser">
@@ -90,6 +93,11 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
     expect(select("tooltip")?.id).toBe("host-tooltip");
     expect(select("aside")?.id).toBe("host-aside");
     expect(select("session browser")?.id).toBe("session-browser-root");
+    expect(select("session browser title")?.textContent).toBe("Workspaces");
+    expect(select("session browser container")?.getAttribute("data-surface")).toBe("session-browser");
+
+    expect(document.querySelectorAll(selectorBySurface.get("session browser tooltips")!)).toHaveLength(1);
+    expect(select("session browser tooltips")?.id).toBe("workspace-tooltip");
     expect(select("session browser actions")?.id).toBe("session-actions");
     expect(select("session browser controls")?.id).toBe("session-search");
     expect(select("session browser icons")?.tagName).toBe("svg");
@@ -148,7 +156,7 @@ describe("DSH Desktop 2.0.4 host skin compatibility", () => {
     const [css, layoutClient, sidebarSource] = await Promise.all([
       readFile(cssPath, "utf8"),
       readFile(layoutClientPath, "utf8"),
-      readFile(resolve(process.cwd(), "src/client/sidebar/OilSidebarRoot.tsx"), "utf8"),
+      readFile(resolve(process.cwd(), "src/client/sidebar/MzSidebarRoot.tsx"), "utf8"),
     ]);
     const compact = (value: string) => value.replace(/\s+/g, " ").trim();
     const compactCss = compact(css);

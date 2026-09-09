@@ -21,7 +21,7 @@ function settings(libraryRoot: string, configured = true): LibrarySettings {
 
 describe("creator setup inspection", () => {
   it("reports discovered optional capabilities without mutating the workspace", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-capabilities-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-capabilities-"));
     const libraryRoot = join(root, "library");
     const subtitleRoot = join(root, "oil-subtitle");
     const coverRoot = join(root, "oil-cover");
@@ -30,8 +30,12 @@ describe("creator setup inspection", () => {
       mkdir(libraryRoot, { recursive: true }),
       mkdir(join(subtitleRoot, ".venv", "bin"), { recursive: true }),
       mkdir(join(subtitleRoot, "scripts"), { recursive: true }),
+      mkdir(join(coverRoot, ".venv", "bin"), { recursive: true }),
       mkdir(join(coverRoot, "scripts"), { recursive: true }),
       mkdir(bin, { recursive: true }),
+      mkdir(join(root, "skills", "screen-studio-editor"), { recursive: true }),
+      mkdir(join(root, "skills", "video-publisher"), { recursive: true }),
+      mkdir(join(root, "skills", "oil-video-article"), { recursive: true }),
     ]);
     await writeFile(join(subtitleRoot, "setup.sh"), "#!/bin/bash\n");
     const files = [
@@ -40,11 +44,19 @@ describe("creator setup inspection", () => {
       join(subtitleRoot, "scripts", "burn_subtitles.py"),
       join(subtitleRoot, "scripts", "prepare_subtitles.py"),
       join(subtitleRoot, "scripts", "review_subtitles.py"),
+      join(coverRoot, ".venv", "bin", "python3"),
       join(coverRoot, "scripts", "generate_oil_cover.py"),
       join(bin, "chrome"),
+      join(root, "skills", "screen-studio-editor", "SKILL.md"),
+      join(root, "skills", "video-publisher", "SKILL.md"),
+      join(root, "skills", "oil-video-article", "SKILL.md"),
     ];
     await Promise.all(files.map((path) => writeFile(path, "")));
-    await chmod(join(bin, "chrome"), 0o755);
+    await Promise.all([
+      chmod(join(subtitleRoot, ".venv", "bin", "python3"), 0o755),
+      chmod(join(coverRoot, ".venv", "bin", "python3"), 0o755),
+      chmod(join(bin, "chrome"), 0o755),
+    ]);
 
     const result = await inspectCreatorSetup({
       libraryRoot,
@@ -62,15 +74,14 @@ describe("creator setup inspection", () => {
     expect(result.capabilities.coverSkill.state).toBe("ready");
     expect(result.capabilities.publishSync.path).toBe(join(bin, "chrome"));
     expect(result.capabilities.screenStudio.state).toBe("unsupported");
-    expect(result.capabilities.editingSkill.state).toBe("ready");
-    expect(result.capabilities.editingSkill.path).toBe(join(root, "skills", "screen-studio-editor"));
+    expect(result.capabilities.editingSkill.state).toBe("unsupported");
     expect(result.capabilities.publishSkill.state).toBe("ready");
     expect(result.capabilities.articleSkill.state).toBe("ready");
     expect(result.recommendations).toEqual([]);
   });
 
   it("explains missing optional dependencies instead of failing the whole plugin", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-capabilities-missing-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-capabilities-missing-"));
     const result = await inspectCreatorSetup({
       libraryRoot: join(root, "missing-library"),
       dataDir: join(root, "data"),
@@ -90,14 +101,14 @@ describe("creator setup inspection", () => {
     );
     expect(result.capabilities.coverCredential.state).toBe("missing");
     expect(result.capabilities.publishSync.state).toBe("missing");
-    expect(result.capabilities.editingSkill.state).toBe("missing");
+    expect(result.capabilities.editingSkill.state).toBe("unsupported");
     expect(result.capabilities.publishSkill.state).toBe("missing");
     expect(result.capabilities.articleSkill.state).toBe("missing");
     expect(result.recommendations.length).toBeGreaterThan(3);
   });
 
   it("distinguishes a cloned subtitle directory that still needs setup", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-capabilities-unsetup-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-capabilities-unsetup-"));
     const subtitleRoot = join(root, "oil-subtitle");
     await mkdir(subtitleRoot, { recursive: true });
     await writeFile(join(subtitleRoot, "setup.sh"), "#!/bin/bash\n");
@@ -129,7 +140,7 @@ describe("findExecutable", () => {
   });
 
   it("finds Windows executables via Path and PATHEXT", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-win-bin-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-win-bin-"));
     const exe = join(root, "ego-browser.EXE");
     await writeFile(exe, "");
     expect(await findExecutable("ego-browser", {
@@ -139,7 +150,7 @@ describe("findExecutable", () => {
   });
 
   it("looks in user bin dirs even when they are not on PATH", async () => {
-    const home = await mkdtemp(join(tmpdir(), "oil-home-bin-"));
+    const home = await mkdtemp(join(tmpdir(), "mz-home-bin-"));
     const bin = join(home, ".local", "bin");
     await mkdir(bin, { recursive: true });
     const cli = join(bin, "ego-browser");
@@ -151,7 +162,7 @@ describe("findExecutable", () => {
 
 describe("defaultFindSkillDir", () => {
   it("requires SKILL.md and searches grok skills", async () => {
-    const home = await mkdtemp(join(tmpdir(), "oil-skill-home-"));
+    const home = await mkdtemp(join(tmpdir(), "mz-skill-home-"));
     const empty = join(home, ".claude", "skills", "video-publisher");
     const grok = join(home, ".grok", "skills", "video-publisher");
     await mkdir(empty, { recursive: true });
@@ -163,7 +174,7 @@ describe("defaultFindSkillDir", () => {
 
 describe("inspectCreatorSetup windows and mac paths", () => {
   it("accepts a Windows subtitle venv and does not claim Screen Studio", async () => {
-    const root = await mkdtemp(join(tmpdir(), "oil-win-setup-"));
+    const root = await mkdtemp(join(tmpdir(), "mz-win-setup-"));
     const libraryRoot = join(root, "library");
     const subtitleRoot = join(root, "oil-subtitle");
     const coverRoot = join(root, "oil-cover");
@@ -172,6 +183,7 @@ describe("inspectCreatorSetup windows and mac paths", () => {
       mkdir(libraryRoot, { recursive: true }),
       mkdir(join(subtitleRoot, ".venv", "Scripts"), { recursive: true }),
       mkdir(join(subtitleRoot, "scripts"), { recursive: true }),
+      mkdir(join(coverRoot, ".venv", "Scripts"), { recursive: true }),
       mkdir(join(coverRoot, "scripts"), { recursive: true }),
       mkdir(bin, { recursive: true }),
     ]);
@@ -182,6 +194,7 @@ describe("inspectCreatorSetup windows and mac paths", () => {
       writeFile(join(subtitleRoot, "scripts", "burn_subtitles.py"), ""),
       writeFile(join(subtitleRoot, "scripts", "prepare_subtitles.py"), ""),
       writeFile(join(subtitleRoot, "scripts", "review_subtitles.py"), ""),
+      writeFile(join(coverRoot, ".venv", "Scripts", "python.exe"), ""),
       writeFile(join(coverRoot, "scripts", "generate_oil_cover.py"), ""),
       writeFile(join(bin, "chrome.exe"), ""),
     ]);
@@ -205,7 +218,7 @@ describe("inspectCreatorSetup windows and mac paths", () => {
   });
 
   it("does not treat an Ego app as the Windows browser runtime", async () => {
-    const home = await mkdtemp(join(tmpdir(), "oil-ego-app-"));
+    const home = await mkdtemp(join(tmpdir(), "mz-ego-app-"));
     const app = join(home, "Applications", "ego lite.app");
     await mkdir(app, { recursive: true });
     const result = await inspectCreatorSetup({

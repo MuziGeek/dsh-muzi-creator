@@ -1,3 +1,4 @@
+import { WorkbenchIcon } from "./ui/WorkbenchIcon.tsx";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
@@ -8,18 +9,20 @@ import { COVER_KEY_REFS, SUBTITLE_KEY_REFS } from "../secrets.ts";
 import type { CreatorCapabilities, CreatorProfile, CreatorSecrets, PublishPlatform } from "../types.ts";
 import type { CredentialsClient, SecretDraft } from "./credentialsApi.ts";
 import { applyDescribed, secretDraftOf } from "./credentialsApi.ts";
-import type { CreatorViewFace } from "./face.ts";
+import type { CreatorViewFace, TrellisViewFace } from "./face.ts";
+import { TrellisGithubSources } from "./TrellisGithubSources.tsx";
 import type { CreatorKey } from "./locales.ts";
 import { CREATOR_SETTINGS_PLATFORMS } from "./publishPlatforms.ts";
 import { IslandButton, IslandCheckbox, IslandInput, IslandTag, IslandTextarea } from "./ui/IslandControls.tsx";
+import { setContentSelection, setSidebarTab } from "./contentSelection.ts";
 import "./CreatorSettingsCard.css";
 
 export type CreatorSettingsCardProps =
   & PropsRuntime<"settings.plugin.item">
-  & PropsLocale<"dsh.oil.creator">
+  & PropsLocale<"dsh.mz.creator">
   & InjectFace<
-    Pick<CreatorViewFace, "ready" | "getSettings" | "getCapabilities" | "setLibraryRoot" | "setProfile" | "setScriptRules" | "setTrellisProjectsRoot" | "setObsidianExecutable" | "pickDirectory">
-    & { credentials: CredentialsClient | undefined }
+    Pick<CreatorViewFace, "accountManagement" | "ready" | "getSettings" | "getCapabilities" | "setLibraryRoot" | "setProfile" | "setScriptRules" | "setTrellisProjectsRoot" | "setObsidianExecutable" | "pickDirectory">
+    & { credentials: CredentialsClient | undefined; projectSources: Pick<TrellisViewFace, "github"> }
   >;
 
 const EMPTY_SECRETS: CreatorSecrets = {
@@ -73,6 +76,8 @@ export function CreatorSettingsCard({
   pickDirectory,
   getCapabilities,
   credentials,
+  accountManagement,
+  projectSources,
 }: CreatorSettingsCardProps) {
   const [open, setOpen] = useState(false);
   const bodyId = useId();
@@ -270,6 +275,7 @@ export function CreatorSettingsCard({
         aria-label={t((open ? "settings.collapse" : "settings.expand") as CreatorKey)}
         onClick={() => { setOpen(!open); }}
       >
+        <WorkbenchIcon name="settings" size={28} />
         <span className="headText">
           <span className="name">{title}</span>
           <span className="description">{t("settings.description" as CreatorKey)}</span>
@@ -305,7 +311,7 @@ export function CreatorSettingsCard({
               <span className={draftRoot === "" ? "path empty" : "path"}>
                 {draftRoot === "" ? t("settings.libraryRootEmpty" as CreatorKey) : draftRoot}
               </span>
-              <IslandButton
+              <IslandButton icon={<WorkbenchIcon name="folder-open" />}
                 type="default"
                 disabled={pickingDirectory !== undefined}
                 aria-describedby={directoryPickError === "library" ? libraryPickErrorId : undefined}
@@ -320,28 +326,36 @@ export function CreatorSettingsCard({
               </span>
             )}
           </div>
-          <div className="field">
-            <span className="fieldLabel">{t("settings.trellisRoot" as CreatorKey)}</span>
-            <span className="fieldHint">{t("settings.trellisRootHint" as CreatorKey)}</span>
-            <span className="pathRow">
-              <span className={draftTrellisRoot === "" ? "path empty" : "path"}>
-                {draftTrellisRoot === "" ? t("settings.trellisRootEmpty" as CreatorKey) : draftTrellisRoot}
+          <section className="field" aria-label={t("github.sources")}>
+            <span className="fieldLabel">{t("github.sources")}</span>
+            <TrellisGithubSources face={projectSources} t={t}>
+              <span className="fieldLabel">{t("settings.trellisRoot" as CreatorKey)}</span>
+              <span className="fieldHint">{t("settings.trellisRootHint" as CreatorKey)}</span>
+              <span className="pathRow">
+                <span className={draftTrellisRoot === "" ? "path empty" : "path"}>
+                  {draftTrellisRoot === "" ? t("settings.trellisRootEmpty" as CreatorKey) : draftTrellisRoot}
+                </span>
+                <IslandButton icon={<WorkbenchIcon name="folder-open" />}
+                  type="default"
+                  disabled={pickingDirectory !== undefined}
+                  aria-describedby={directoryPickError === "trellis" ? trellisPickErrorId : undefined}
+                  onClick={() => { void pickDirectoryFor("trellis"); }}
+                >
+                  {t("settings.pick" as CreatorKey)}
+                </IslandButton>
               </span>
-              <IslandButton
-                type="default"
-                disabled={pickingDirectory !== undefined}
-                aria-describedby={directoryPickError === "trellis" ? trellisPickErrorId : undefined}
-                onClick={() => { void pickDirectoryFor("trellis"); }}
-              >
-                {t("settings.pick" as CreatorKey)}
-              </IslandButton>
-            </span>
-            {directoryPickError === "trellis" && (
-              <span id={trellisPickErrorId} className="pickerFailed" role="alert">
-                {t("settings.pickFailed" as CreatorKey)}
-              </span>
-            )}
-          </div>
+              {directoryPickError === "trellis" && (
+                <span id={trellisPickErrorId} className="pickerFailed" role="alert">
+                  {t("settings.pickFailed" as CreatorKey)}
+                </span>
+              )}
+            </TrellisGithubSources>
+          </section>
+          {open && accountManagement && <div className="field">
+            <span className="fieldLabel">账号管理</span>
+            <span className="fieldHint">账号连接与身份核验位于内容工作台，发布时只会显示已验证账号。</span>
+            <IslandButton type="default" onClick={() => { setSidebarTab("content"); setContentSelection("content-accounts"); }}>打开账号管理</IslandButton>
+          </div>}
           <div className="field">
             <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>
             <span className="fieldHint">{t("settings.enabledPlatformsHint" as CreatorKey)}</span>

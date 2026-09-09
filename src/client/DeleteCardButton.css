@@ -1,0 +1,27 @@
+[data-plugin="dsh-muzi-creator"] .cardWithActions { position: relative; min-width: 0; }
+[data-plugin="dsh-muzi-creator"] .cardWithActions > .islandSelectableCard { padding-right: 104px; width: 100%; box-sizing: border-box; }
+[data-plugin="dsh-muzi-creator"] .cardDeleteActions { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); max-width: calc(100% - 12px); }
+[data-plugin="dsh-muzi-creator"] .cardDeleteActions button { color: var(--muzi-island-paper-danger); }
+
+.cardDeleteModalBody[data-plugin-modal="dsh-muzi-creator"] {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  max-height: 45vh;
+  overflow-y: auto;
+  text-align: left;
+  line-height: 1.6;
+}
+
+.cardDeleteModalBody p { margin: 0; overflow-wrap: anywhere; }
+.cardDeleteModalTitle { color: var(--muzi-island-paper-text); font-size: 16px; font-weight: 700; }
+.cardDeleteModalHint { color: var(--muzi-island-paper-text); font-size: 14px; }
+.cardDeleteModalError { color: var(--muzi-island-paper-danger); font-size: 14px; }
+
+.cardDeleteModalActions[data-plugin-modal="dsh-muzi-creator"] {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 100%;
+}

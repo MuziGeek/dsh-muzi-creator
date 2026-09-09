@@ -1,104 +1,48 @@
-> Muzi Creator 是基于 [Oil Creator](https://github.com/oil-oil/dsh-oil-creator) 的私有改造版，继续保留原项目的 MIT License。它把 Oil 的本地视频工作流扩展为 llm-wiki 正式知识 → 母内容/视频稿 → 多渠道稿件的创作工作台。
-
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="dsh-muzi-creator：让 AI 和本地内容目录一起工作">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Muzi Creator：让灵感与知识落在本地创作里，从资料到主题目录，再到多渠道稿件。">
 </p>
 
-<p align="center">
-  <strong>DeepSeek Harness 上的知识驱动创作工作台。</strong><br>
-  从正式知识、母内容和多渠道稿件，到录屏工程、字幕、封面与发布事实，一个主题始终对应一个本地项目。
-</p>
+# Muzi Creator
 
-> [!NOTE]
-> 当前固定兼容 Node.js 22.19+、Windows x64 DSH Desktop `2.0.4` 及其内置 DeepSeek Harness `0.1.2-alpha.1`，桌面使用上游兼容模式。核心片库可独立使用；Screen Studio、字幕、封面、公众号和发布能力均可按需安装。
+**DeepSeek Harness 上的本地创作工作台。** 搜索灵感、回看知识、整理稿件与视频产物，在同一个界面查看内容和项目进度。
 
-## 一个主题，就是一个项目目录
+[开始使用](#开始使用) · [灵感搜索](docs/inspiration.md) · [完整使用说明](docs/usage.md) · [设计说明](DESIGN.md)
 
-插件不建立封闭的内容数据库。正文和产物仍是普通文件，任何编辑器和 AI 文件工具都能读取：
+**0.2.0 接口调整：**插件工具统一使用 `mz_*`，远程命名空间为 `mzCreator`，旧接口停止支持。已有数据目录继续读取，不自动迁移。[升级与命名说明](docs/mz-naming.md)
+
+## 从一个主题开始
+
+在「灵感」输入主题，获取带来源的总结和参考素材；回到「知识」查阅已有主题，再把需要创作的内容放进本地项目目录。正文、证据、渠道稿件与媒体文件始终可以用自己的编辑器打开。
 
 ```text
-creator-studio/10-active/YYYY-MM-DD_可读标题/
-├── project.yml
-├── brief.md
-├── evidence.md
-├── mother-content.md
-├── channels/video/script.md
-├── channels/wechat/draft.md
-├── channels/xiaohongshu/draft.md
-├── channels/blog/draft.md
-├── assets/refs.yml
-└── review.md
+一个主题目录/
+├── brief.md                 创作方向
+├── evidence.md              参考证据
+├── mother-content.md        母内容
+├── channels/
+│   ├── video/script.md      视频稿
+│   ├── wechat/draft.md      公众号稿
+│   ├── xiaohongshu/draft.md  小红书稿
+│   └── blog/draft.md        博客稿
+└── review.md                审阅记录
 ```
 
-Creator Studio 保存创作正文和明确状态；Muzi Atlas 始终只读。Oil 的本地媒体 overlay 独立保存在兼容目录 `~/.dsh-oil-creator/overlay.json`，不会写入 Atlas。
-
-左侧将“会话 / 热点 / 灵感 / 内容 / 知识 / 项目”纵向排列。“会话”完整恢复 DSH 官方 Agent；其余五项在中央区域展示各自概览，选择条目后切换为详情，并分别记住最后一次有效选择。知识区域只展示 `wiki/topics` 主题页面，搜索也仅覆盖主题；知识概览包含实时统计与 3D 主题中心知识星图。星图支持滚轮缩放、旋转视角和拖动节点，只使用正式 Wiki 中可唯一解析的显式 `[[Wiki 链接]]`，不会运行 llm-wiki 的离线图谱写入流程，也不会持久化节点位置。内容目录可直接新建，知识新增入口会切换到会话并交由标准 llm-wiki 流程写入。
-
-插件通过 DSH 官方主题服务把会话区、输入区、工具卡片、设置、菜单、弹层和详情区统一到 Animal Island 的暖色浅色/深色视觉，同时保留 DSH 原始组件和交互。兼容皮肤固定适配 Desktop 2.0.4，不接管会话状态、审批、Composer 或设置数据。中央工作台只在非会话入口占用根 `conversation` 区域；切回会话即释放该区域，后台 Agent 不会停止、取消或自动跳转。Windows 标题栏和系统对话框仍使用原生样式。
-
-内容详情中的项目阶段、稿件状态、发布状态和视频制作状态均以中文只读展示。概览会显示从制作准备、录制、剪辑与导出、字幕与封面到成片就绪的紧凑阶段进度；视频制作页展开每个阶段的本地工程、任务和产物事实，字幕与封面作为并行工作展示。发布状态仍由发布渠道单独记录，不生成进度百分比。正文仍可显式编辑和保存，状态变更由创作事实源或经过确认的 Agent 工具负责。
-
-空白会话通过 DSH 已有的 `conversation.hero.brand.mark` 插槽显示内置 Muzi 头像，中心标题仍由 DSH 提供；“木子在生长”（英文界面为 “Muzi is growing”）显示在插件自有的侧边栏品牌区，因此不要求修改 DSH 源码。
-
-## AIHOT 每日热点
-
-“热点”入口通过 [AIHOT REST v1](https://aihot.virxact.com/agent) 的匿名只读接口读取多源热点、过去 24 小时精选和最新日报。结果按“今日必看 / 值得浏览 / 其余动态”分层：今日必看最多 3 条，要求至少两个独立信源并命中 Agent 工作流、安全与政策、内容生产、AI 能力或知识工作关注领域；其余两层分别最多展示 8 条和 12 条。
-
-宿主会缓存最近一次成功结果 15 分钟。刷新失败时继续显示上一版有效数据并明确标记为陈旧；首次读取失败只影响热点模块，不阻塞会话、内容、知识或项目。热点详情在宽屏中央区域使用主文与证据双栏，窄屏下按阅读顺序堆叠；长综述仅按原文自然边界分段，跟进来源默认显示前 6 个并可展开。详情提供 AIHOT 事件和原始来源链接，标题、摘要与事件综述可能由 AI 生成，重要数字、政策和引文仍需回到第三方原文核对。
-
-热点始终是只读外部信号，不会自动生成选题、内容、任务、Agent 指令或发布动作；页面也不会把热点结果写入本地配置或持久化数据。
-
-## 灵感搜索
-
-“灵感”提供“主题搜索”和“获取热点”两个入口。输入主题后点击搜索或按回车，即可从公开网络汇总资料；获取热点时主题选填，留空搜索综合热点。时间范围支持近 24 小时、近 7 天、近 30 天和自定义日期，默认近 24 小时。自定义日期按 Asia/Shanghai 计算，包含起止两天；相对期限按每次点击时重新计算。
-
-结果按“总结 / 参考素材 / 来源”展示，提供可回查的原文链接与发布时间；复制结果包含来源，重新搜索会创建新的运行记录。会话、Obsidian 和内容转换位于“更多”。默认搜索中英文公开资料并用中文总结，不自动生成完整文章。侧栏统一展示历史记录；页面切换不停止后台搜索，运行中可手动停止。
-
-每次运行通过结构化报告工具提交结果，Host 原子写入 `00-inbox/inspirations` 并保留 SHA-256 校验。限期热点保存本次实际时间窗口，报告中未知日期或窗口外的来源不能充当期限内热点依据；日期校验不等同于独立核验原网页事实或全网热度排名。来源不足时显示部分结果，没有可靠材料时显示空结果，失败、停止和中断不自动重试。
-
-灵感研究只由手动操作发起。加载时暂停已有每日计划并取消尚未执行的自动队列，不再补跑；旧计划与历史报告保留，旧报告正文和校验值不变。
-
-报告详情可以打开专用 Agent 会话、再次调研、在已配置 Obsidian 中定位或“转为内容”。转为内容只创建普通会话并提出 3 个方向，不创建正式内容、不写入 Atlas、不整理或发布；后续写入仍需用户在原有 Creator 流程中明确确认。
-
-## 项目管理与 Trellis 进度
-
-“项目”入口直接读取 `trellisProjectsRoot` 下的一级子目录；Windows 默认目录是 `D:\GitProject`，其他平台默认使用 `~/Projects`。列表每次从磁盘重新发现项目，项目标识由规范化后的真实路径稳定生成，不依赖 DSH Workspace，也不保存一份容易失效的关联清单。
-
-只有**本身**是 Git 根目录且包含可读 `.trellis/tasks` 的一级子目录才会进入列表。插件不会递归搜索、向上查找父仓库，也不会把缺失、无权限或损坏的目录换算成零进度。项目卡片和详情面板展示 Trellis 文件中的事实计数：计划中、进行中、已完成待归档、未知状态、已归档和异常任务；不生成主观健康度或虚假的完成百分比。
-
-详情面板读取活动任务和 `archive/YYYY-MM`，展示优先级、负责人、当前阶段与下一阶段、父子关系、时间、分支、相关文件和验证材料。阶段摘要直接读取 Trellis 的 `current_phase` 与 `next_action`，不生成完成百分比。只有归档任务同时满足 `status: completed`、存在 `completedAt` 且包含有意义的验证材料，才标记为“已验证完成”；其他归档任务明确显示“证据不足”。目录监听、防抖 revision 和窗口聚焦刷新会同步磁盘变化。
-
-任务按状态分组并保留原始顺序。四个分组使用等高的固定五行任务窗口；超过 5 条时直接在组内滚动查看全部任务，不再展开卡片。优先级筛选先于展示，切换项目或筛选会把任务窗口恢复到起始位置；恢复选择或通过父子关系定位到窗口外任务时会自动滚动到该任务。
-
-UI 归档采用两阶段确认：先重新检查任务摘要、目标月份、验证材料、Git 未提交摘要、活动子任务和具体影响，再签发短时一次性令牌。确认执行时仍会重新校验；状态漂移、活动子任务、路径异常、缺少 `--no-commit` 支持或配置了 `hooks.after_archive` 都会阻止归档。验证材料不足或 Git 工作树不干净会显示醒目警告。
-
-归档只通过项目自己的 `.trellis/scripts/task.py archive <task> --no-commit` 移动 Trellis 文件。它不会自动提交、推送、发布，也不会在失败或结果不确定时自动重试。首版只提供读取、筛选、详情和受控归档，不提供任务新建、编辑、启动或状态修改。
-
-## 一条片子如何向前推进
-
-| 阶段 | AI 与插件可以做什么 | 仍由人确认什么 |
-| --- | --- | --- |
-| 选题与脚本 | 新建规范目录，读写 `topic.md` / `script.md`，遵守长期脚本规则 | 选题方向和最终表达 |
-| 录制与剪辑 | 绑定并打开 Screen Studio 工程，等待导出文件稳定落盘 | 录制、时间线剪辑和导出 |
-| 字幕与封面 | 启动字幕工作流，打开预览，烧录字幕，生成三种画幅封面 | 专有名词、标题和错别字 |
-| 发布 | Windows 下用 `video-publisher` + Patchright 分平台选择仅准备、立即发布或原生定时发布 | 每个平台最终动作单独确认；默认仅准备 |
-| 数据回收 | 手动触发 Patchright 同步已发布作品的播放、赞、评和链接 | 登录状态、分页完整性和异常匹配结果 |
-
-工作台不会假装替人完成录制、剪辑或最终发布。它负责把每一步需要的文件、状态和下一步动作放在同一个上下文里。
+这是 Creator Studio 的文件组织示意，不代表搜索后自动生成上述文件。灵感结果可以在「更多 → 转为内容」中交给新会话讨论方向，后续写入由你确认。[查看完整目录约定](docs/files.md)
 
 ## 开始使用
 
-### 1. 安装插件
-
-使用 DeepSeek Harness 自带的插件管理命令：
+### 1. 安装到 `web` 配置
 
 ```bash
 npx @deepseek-ai/dsh plugin --profile web add github:MuziGeek/dsh-muzi-creator
 ```
 
-重启 `web` profile 后即可使用。插件会登记到配置里，不需要手改 Harness 配置。已经全局安装 `dsh` 时，可以去掉命令里的 `npx @deepseek-ai/dsh`。
+安装后重启 DSH，并选择安装插件的 **`web` 配置**。如果桌面端仍选中 `desktop`，不会加载这个配置中的个人工作台。
 
-Harness 从 GitHub 安装时生成的构建包包含 README 引用的最终 `assets/readme/hero.svg`，不会包含 `assets/readme/source/` 下的源素材。
+灵感搜索使用当前会话预设的网页工具及宿主配置的搜索提供方（可使用 ModSearch），同时保留研究员的只读限制。更新后需重启宿主并手动重新搜索。[研究工具说明](docs/inspiration.md)
+
+> [!IMPORTANT]
+> 当前代码适配基线为 **Windows x64 DSH Desktop 2.0.4**、内置 Harness `0.1.2-alpha.1` 和 Node.js `22.19+`。Desktop 2.0.5 的完整插件兼容性尚未验收；成功安装或打开宿主不等于所有功能已验证。集成的 Animal Island UI 用于个人、非商业用途，详见 [NOTICE](NOTICE)。
 
 <details>
 <summary>从源码安装</summary>
@@ -109,10 +53,9 @@ cd dsh-muzi-creator
 pnpm install --frozen-lockfile
 pnpm build
 npx @deepseek-ai/dsh plugin --profile web add "$PWD"
-npx @deepseek-ai/dsh web
 ```
 
-如果 pnpm 明确提示安装期构建被阻止，再带 `--allow-build` 重试；正常安装不需要这一步：
+仅在安装工具明确提示插件构建被阻止时，按提示授权该包构建：
 
 ```bash
 npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-muzi-creator github:MuziGeek/dsh-muzi-creator
@@ -120,143 +63,117 @@ npx @deepseek-ai/dsh plugin --profile web add --allow-build=dsh-muzi-creator git
 
 </details>
 
-### 2. 让 AI 完成首次配置
+### 2. 检查自己的目录
 
-推荐选择 Harness 的 `standard` 或 `code` Agent preset，然后直接说：
+选择 `standard` 或 `code` Agent preset，对 AI 说：
 
 > 检查并配置内容工作台，找到适合的内容目录，并告诉我还缺哪些能力。
 
-内置 `creator-workbench` Skill 会先调用只读的 `oil_creator_setup`：
+内置配置 Skill 会检查现有目录与可选能力，先预览变更，确认后保存。也可以在 **设置 → 插件 → 内容工作台** 中调整内容目录、项目目录、Obsidian 路径和脚本规则。不存在的路径不要作为已配置目录填写；字幕、封面等能力可以稍后配置。
 
-1. 寻找已有的内容目录。
-2. 检查 Screen Studio、字幕、封面、Chrome 和 Patchright 等可选能力。
-3. 只报告凭据是否已配置，不把 API Key 读回对话。
-4. 先预览配置变化，得到确认后才保存。
+### 3. 做一次主题搜索
 
-候选目录不存在时，AI 会先展示准备创建的完整路径；确认创建后再重新预览配置。`minimal` preset 不包含 Skill 和文件工具，不适合首次配置或自动整理目录。
+打开 **灵感 → 主题搜索**，输入一个具体主题，例如「个人知识库如何辅助视频选题」，点击「搜索」或按回车。结果按 **总结 → 主要发现 → 分歧与创作角度 → 来源** 完整展开，发现下方的引用与来源列表使用一致编号；点击原文核对资料，或复制包含来源链接的结果。
 
-### 3. 做第一条内容
+总结中原有的连续编号主题会分节显示，长段落按标点增加阅读间隔，保留完整原文。这一步需要宿主可用的模型和公开网络搜索能力。灵感搜索不依赖字幕、封面或发布 Skill。
 
-可以直接对 AI 说：
+## 六个入口，各自保留上下文
 
-> 今天做一期 DeepSeek Harness 安装上手。新建内容目录，把选题写进笔记，再给我一个脚本初稿。
+| 入口 | 用来做什么 |
+| --- | --- |
+| 会话 | 使用完整的 DSH Agent，继续讨论、写作和工具操作。 |
+| 热点 | 只读查看 AIHOT 聚合事件、过去 24 小时精选与日报。 |
+| 灵感 | 手动搜索主题，或按指定期限获取热点资料。 |
+| 内容 | 查看本地项目、正文、成片、字幕、封面和发布事实。 |
+| 知识 | 只读浏览 Wiki 主题，搜索主题并探索显式链接组成的 3D 星图。 |
+| 项目 | 查看 Git + Trellis 项目的任务与证据，按确认流程归档。 |
 
-随后继续说“绑定刚才的 Screen Studio 工程”“等待成片后生成字幕和封面”或“这条还缺什么”。工作台会根据文件夹里的真实产物推进阶段。
+功能入口与相关操作使用统一的 32 枚 Animal Island 图标，位置与素材来源见[图标说明](docs/iconography.md)。
 
-## 核心能力
+界面沿用暖色浅色/深色主题。选择内容后在中央区域阅读详情；切回会话恢复 DSH 官方界面。页面切换会记住有效选择，也不会停止后台 Agent 或灵感搜索。
 
-- **本地片库**：按 `日期_可读标题` 扫描目录，展示阶段、成片、字幕、封面、文章和发布状态。
-- **对话上下文**：通过 `@当前详情`、内容搜索或 `/current content` 把目标文件夹交给 AI。
-- **AI 自举配置**：自动发现标准安装路径，缺少能力时给出明确安装方式，写入前必须预览和确认。
-- **长期脚本规则**：保存语气、结构、禁忌和目标观众，之后写或修改 `script.md` 时复用。
-- **长任务追踪**：字幕、封面和烧录启动后立即返回，由工作台继续观察文件产物和任务状态。
-- **项目进度**：自动发现配置目录中的 Git + Trellis 项目，以事实计数、任务关系和验证材料查看开发进度，并在二次确认后无提交归档。
-- **每日热点**：读取 AIHOT 的多源事件、24 小时精选和日报，按可解释规则分层浏览并回查来源。
-- **灵感搜索**：按主题搜索资料，或按时间获取综合热点，阅读与复制带来源的总结和参考素材。
-- **目录整理**：预览并修正旧文件夹名称；默认不执行、不删除文件。
-- **可选发布闭环**：准备平台草稿后由人最终发表，再同步播放、点赞、评论和作品链接。
+### 灵感：主题搜索与限期热点
 
-完整工具列表和逐步示例见 [使用说明](docs/usage.md)。
+- **主题搜索**：主题必填，默认搜索中英文公开资料，用中文总结。
+- **获取热点**：主题选填；留空获取综合热点。支持近 24 小时、近 7 天、近 30 天或自定义日期。
+- **结果可回查**：提供观点、案例、创作切入点及来源；限期热点说明事件与关注原因，不编造全网排名或热度数字。
+- **运行可控制**：运行时显示进度并可停止；复制结果包含来源链接，重新搜索保留新的历史记录。
+
+自定义日期按 `Asia/Shanghai` 解释，包含起止两天；相对期限按每次点击重新计算。未知日期或范围外来源不能作为期限内热点依据；来源不足显示部分结果，没有可靠材料显示空结果。日期校验不替代对原网页事实的核对。
+
+每日自动研究已停用：旧计划暂停、未执行的自动队列取消，历史报告继续可读。搜索不会自动生成完整文章。[查看操作与结果说明](docs/inspiration.md)
+
+### 内容与知识：文件仍由你掌握
+
+Creator Studio 保存正文和明确状态，Muzi Atlas 提供只读知识。内容详情可编辑正文、打开关联工程或文档，并依据本地产物展示制作阶段；发布状态单独记录。知识页只覆盖 `wiki/topics`，星图关系来自可唯一解析的显式 Wiki 链接，不写入知识库。
+
+视频制作可以使用任意本地录制或剪辑工具。在「内容 → 视频制作」中绑定工程文件或目录，打开所在目录，或直接等待 MP4/MOV 成片导出到内容目录。绑定只保存引用，不搬动素材或修改工程；字幕、封面与发布工作流继续按需接入。Screen Studio 保留为 macOS 专属适配，录制、剪辑、预览和导出由人在对应工具中完成。[查看跨平台视频流程](docs/video-production.md)
+
+### 项目：进度来自 Trellis 文件
+
+项目页支持本地目录与 GitHub 仓库来源，在「设置 → 插件 → 个人内容工作台 → 项目来源」统一配置。本地模式读取配置目录中的一级 Git 项目；GitHub 模式通过仓库链接或用户名选择仓库及分支，读取 `.trellis/tasks` 并显示提交与同步时间。任务按状态分组，支持筛选、组内滚动与详情定位，不生成主观完成百分比。远程任务只读；公开链接无需授权，私有仓库需管理员配置 GitHub App 后连接账号。参见 [GitHub 项目来源](docs/github-projects.md)。
+
+归档先预览具体影响，再确认执行；状态漂移或校验失败会阻止操作。归档只调用项目自己的 `task.py archive --no-commit`，不自动提交或推送。[查看项目操作说明](docs/usage.md)
 
 ## 可选能力
 
-核心片库和脚本管理不依赖下表中的外部工具。缺少某项时，只关闭对应环节。
+| 需要的环节 | 依赖 |
+| --- | --- |
+| 字幕转录、预览、排版与烧录 | `oil-subtitle` 及相应服务凭据 |
+| 多画幅封面 | `oil-cover` 及相应服务凭据 |
+| 通用录制与剪辑流程 | 使用自己的录制/剪辑工具；工程引用和 MP4/MOV 导出等待不依赖 Screen Studio |
+| Screen Studio 专属适配（可选） | macOS 上的 Screen Studio 与 `screen-studio-editor`；不作为主流程前提 |
+| 在 Obsidian 中定位文档 | 已安装 Obsidian，并配置可执行文件绝对路径 |
+| 发布准备、立即/定时发布、数据回收 | Chrome、固定版本 Patchright、`video-publisher` 与已验收账号能力 |
+| 公众号图文工作流 | `oil-video-article` |
 
-| 能力 | 可选依赖 | 说明 |
-| --- | --- | --- |
-| 字幕转录、排版、预览和烧录 | [oil-subtitle](https://github.com/oil-oil/oil-subtitle) + `DASHSCOPE_API_KEY` | 首次 clone 后必须运行 `bash ~/.agents/skills/oil-subtitle/setup.sh`；Key 在[百炼控制台](https://bailian.console.aliyun.com)申请 |
-| 三画幅封面 | [oil-cover](https://github.com/oil-oil/oil-cover) + `ZENMUX_API_KEY` | Key 在 [ZenMux](https://zenmux.ai) 申请 |
-| Screen Studio 自动剪辑 | [screen-studio-editor](https://github.com/oil-oil/screen-studio-editor) | 仅 macOS；录制和导出仍在 Screen Studio 完成 |
-| Creator 文档定位 | [Obsidian](https://obsidian.md/) | 配置宿主上的 `obsidianExecutable` 绝对路径后，内容详情可直接定位到对应 Markdown 文档 |
-| 多平台草稿、立即/定时发布与数据回收 | 本机 Chrome + 固定版本 Patchright + [video-publisher](https://github.com/oil-oil/video-publisher-skill) | Windows 使用独立账号目录；账号和模式只从只读能力快照选择，缺失、错误或未验收一律禁用，最终动作和同步仍需当次批准 |
-| 公众号图文 | [oil-video-article](https://github.com/oil-oil/oil-video-article) | 独立工作流，工作台负责展示已有文章 |
+账号从「内容模块概览 → 账号管理」连接，浏览器登录和平台身份核验通过后才添加成功。点击内容卡片选择平台、账号和模式，首次验证融入准备，准备完成后再统一确认最终提交。具体步骤见[账号管理与内容发布](docs/usage.md#账号管理)。
 
-字幕和封面 Skill 留空时，插件会依次从 `~/.claude/skills`、`~/.codex/skills`、`~/.agents/skills` 自动发现；只有非标准安装位置才需要填写高级路径。
+账号管理支持 Node 和 DSH Desktop。提示程序或依赖缺失时检查 `video-publisher` 安装；提示未返回有效 JSON 时检查运行环境。
 
-## 配置原则
+字幕、封面需预先安装相应 Skill 和运行环境，由插件调用其中的脚本；插件不会自动安装。公众号文章由外部 Skill 处理，工作台负责读取和展示。
 
-设置入口位于 **设置 → 插件 → 内容工作台**。设置页只保留需要人决定的信息，例如内容目录、项目目录、Obsidian 定位路径、脚本规则和可选能力凭据；可以通过系统检查发现的路径不重复暴露。
+缺少某项时，只影响对应环节。配置检查会报告可用性与缺项；凭据通过 Harness 官方凭据服务保存，界面不回显明文。[查看工具和配置说明](docs/usage.md)
 
-- API Key 使用 Harness 官方凭据服务保存。页面只显示“已配置 / 未配置”，不会回显明文。
-- 内容目录可以换成任意已有的绝对路径，每个直接子文件夹代表一条内容。
-- 项目目录（`trellisProjectsRoot`）决定「项目」页从哪里发现 Git + Trellis 项目；留空恢复自动默认（Windows 为 `D:\GitProject`，其他平台为 `~/Projects`）。
-- Obsidian 定位路径（`obsidianExecutable`）必须是宿主机器上 Obsidian 可执行文件的绝对路径，用于在 Obsidian 中定位 Creator 文档；留空回退到 Cordis 配置值（如有）。
-- `enabledPlatforms` 默认全开，包含小红书、抖音、B 站和视频号。关闭的平台不会参与 AI 发布或数据同步；全部关闭时不执行这两项操作。
-- `externalActionsEnabled` 默认关闭。打开它只允许请求进入 DSH 审批，不会保存发布授权；准备上传、每个平台最终提交和数据同步仍分别确认。
-- `muzi_creator_video_publish_capabilities` 只读运行 `publisher.mjs capabilities --json`，返回 `muzi.video-publisher.capabilities/1` 账号快照。快照必须为每个账号显式给出 `prepare_only`、`publish_now`、`schedule`、`metrics` 的验收、启用、原因、验收时间和适配器版本；任何字段缺失或解析错误都会 fail closed。
-- 脚本规则既可以在设置页修改，也可以让 AI 通过 `oil_script_rules` 记录和更新。
-- 页面填写的项目目录和 Obsidian 路径保存在兼容目录 `~/.dsh-oil-creator/overlay.json`，覆盖 Cordis 配置的初始值，不迁移既有本地数据。Cordis 高级配置仍保留 `libraryRoot`、`creatorRoot`、`atlasRoot`、`dataDir`、`subtitleSkillDir`、`coverSkillDir`、`obsidianExecutable` 和 `trellisProjectsRoot`，作为首次启动和自动发现无法覆盖特殊环境时的回退。知识预览通过 `graphNodeLimit` 和 `graphEdgeLimit` 控制只读星图上限，默认分别为 500 个节点和 5000 条关系。
+## 数据与操作边界
 
-## 数据与权限边界
+灵感历史和内容卡片可在确认后从工作台删除，本地目录、稿件和报告文件保留。灵感报告操作默认直接显示，无需展开。
 
-- 正文、视频、字幕、封面和文章保存在用户选择的本地目录。
-- 插件不会自动上传内容；上传只在用户明确调用发布 Skill 后发生，并停在最终发表前。
-- 字幕、封面和平台同步会访问各自的外部服务；不安装、不配置就不会启用。
-- 目录创建、配置保存和批量重命名都遵循“先预览、再确认、后执行”。
-- Trellis 项目发现保持只读；归档只移动目标项目中的 Trellis 文件，不会自动提交、推送或发布。
-- AIHOT 热点只在本地工作台中读取和展示，不自动转成内容或任务，也不进行公开数据再分发。
-- 灵感研究只访问公开 HTTP(S) 页面和只读知识接口；报告写入配置的 Creator Studio `00-inbox/inspirations`，不保存凭据、Cookie 或网页完整正文。
-- 灵感专用 Agent 拒绝文件、Shell、子进程、项目修改、Atlas 写入、内容创建、发布、消息发送和其他外部动作；每次研究均由用户手动发起。
+- **正文留在本地**：普通文件保存创作正文和媒体产物；插件的兼容配置与界面状态以有效 `dataDir` 为准，新安装默认使用 `~/.dsh-mz-creator`，已有目录配置继续保留。
+- **知识保持只读**：插件不写入 Atlas。灵感报告保存到 Creator Studio 的 `00-inbox/inspirations`，保留正文与 SHA-256 校验。
+- **搜索范围明确**：灵感专用 Agent 访问公开 HTTP(S) 页面与只读知识接口，不能执行 Shell、修改项目、创建内容或发布。
+- **上传与发布默认关闭**：账号连接独立授权，不会打开 `externalActionsEnabled`。启用外部操作后，准备上传、最终提交和数据同步仍分别确认，每个平台的提交授权只使用一次。
+- **外部服务按需使用**：AIHOT 提供只读热点；模型、网络搜索、字幕、封面和平台同步会访问相应服务。本地存储不意味着所有处理都离线。
 
-## 卸载
-
-```bash
-npx @deepseek-ai/dsh plugin --profile web remove dsh-muzi-creator
-```
-
-安装、卸载或更新配置后重启 `dsh web`。不要手动修改 `~/.dsh/profiles/web/package.json`，也不要把项目的 `cordis.patch.yml` 复制到用户 profile；插件自己的 bundle patch 会负责装配和清理侧栏。
-
-如果旧版本曾在 profile 的 `cordis.patch.yml` 里手动加入以下内容，迁移后应删除，避免卸载插件后官方侧栏仍被关闭：
-
-```yaml
-- id: ui-sidebar
-  disabled: true
-```
-
-## 开发与验证
-
-### 隔离 UI Lab
-
-需要检查 Animal Island UI、侧栏、中央工作台或响应式布局时，在项目目录运行：
-
-```sh
-pnpm build
-pnpm lab:setup
-pnpm lab:config
-pnpm lab:start -- --cli /path/to/dsh/lib/bin.js --port 51873
-```
-
-Windows 源码版 DSH 示例：`pnpm lab:start -- --cli D:\\Muzi\\DSH\\apps\\cli\\lib\\bin.js --port 51873`。`lab:setup` 只在项目内创建 `.lab/` fixture、隔离 home、供系统目录选择器使用的 `Desktop` / `Documents` / `Downloads`，以及一个精确指向当前源码目录的插件联接点；`lab:config` 写入真实的 `.lab/dsh-home/profiles/web` 与安全清单 `.lab/config/safety.json`。其中 `externalActionsEnabled` 固定为 `false`、凭据为空、内容/知识/Trellis 路径均在 `.lab` 内。脚本拒绝逃逸路径和任何非受控符号链接/联接点，不读取或复制真实用户 profile、凭据或内容。
-
-`lab:desktop -- --desktop <已安装的 Desktop 路径>` 只在显式普通可执行文件存在时启动，不会安装软件。脚本在启动前严格要求 `ProductName=DSH Desktop`、`FileVersion=2.0.4` 和 `ProductVersion=2.0.4.0`；同一可执行文件已有进程时也会拒绝启动，避免 Electron 把请求交给正式 Profile。Desktop 使用独立的 `.lab/desktop-home` 和 `.lab/desktop-user-data`，固定选择隔离 `web` Profile、`compatibility` 上游兼容模式和 `disabled` 插件市场，并复核源码链接、可写目录、构建产物及 Desktop 2.0.4 的三个持久状态。没有匹配的 DSH CLI 或 Desktop 时，Lab 会给出明确错误；未完成原生窗口验收时状态为 `UNVERIFIED`，不代表产品失败。
-
-需要读取本机真实工作资料时，先运行 `pnpm lab:personal:config`，再运行 `pnpm lab:personal:desktop -- --desktop "D:\\DSH Desktop\\DSH Desktop.exe"`。个人模式把 DSH Profile、Electron user-data 和插件 overlay 分别保存在 `.lab/personal/dsh-home`、`.lab/personal/user-data` 和 `.lab/personal/data`，但保留真实 `HOME` / `USERPROFILE` 供 Windows 目录选择器使用。固定业务根为 `D:\\Muzi\\Workspace\\creator-studio\\10-active`、`D:\\Muzi\\Workspace\\creator-studio`、`D:\\Muzi\\Knowledge\\muzi-atlas`、`D:\\GitProject`，Obsidian 为 `D:\\WorkSoft\\Obsidian\\Obsidian.exe`。生成器只接受存在的普通目录与 `.exe`，遇到冲突配置或 overlay 会拒绝覆盖；外部动作、发布目标、凭据和遥测仍保持关闭。个人模式中的业务命令可能作用于真实文件，验收时不要执行创建、整理、归档、同步或发布。
-
-固定安装包为 `DSH-Desktop-2.0.4-x64-Setup.exe`，GitHub Release 公布的 SHA-256 为 `c5c8a5192549e389a040ccac5320776c97ffc49c46cd21b3dd8c7cccbf48dd80`。下载和校验不等于安装；安装程序必须在执行当次获得明确确认。成品包验收使用 `.lab/packages/` 下的本地 `.tgz` 和独立 Desktop Profile，不接触个人 DSH Profile。
-
-仓库的 `.npmrc` 关闭自动 peer 安装。发布元数据把 DSH Peer 固定为 Desktop 2.0.4 内置的 `0.1.2-alpha.1`；该版本尚未发布到 npm，因此本地 `devDependencies` 暂用 `0.1.1-rc.2` 作为 TypeScript 编译基线，真实兼容性以 Desktop 2.0.4 内置运行时的隔离启动和界面验收为准。
-
-Animal Island 组件映射、token、三栏布局和宿主边界见 [DESIGN.md](DESIGN.md)。库版本为 `animal-island-ui@1.6.0`，其 CC BY-NC 4.0 归属与项目 MIT 代码边界见 [NOTICE](NOTICE)。
+## 开发与文档
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm check
 ```
 
-`pnpm check` 会依次运行 TypeScript 检查、Vitest 测试和 Host / Client 构建。欢迎提交 Issue 或 Pull Request；涉及文件格式、配置兼容或外部能力时，请同时补充对应测试和文档。
+`pnpm check` 包含类型检查、测试与构建。准备提交发布内容时使用 `pnpm release:check`，它要求工作区干净并检查安装包内容。构建只写当前仓库的 `lib/`，不会自动更新桌面端已安装的插件。
 
-准备推送开源提交或创建 GitHub tag 前运行 `pnpm release:check`。它会先拒绝脏工作树、未跟踪的关键文件或缺失的 `origin`，再验证测试、构建和 GitHub 安装包内容；不会发布到 npm。
+- [灵感搜索使用说明](docs/inspiration.md)
+- [日常使用、配置与隔离 Lab](docs/usage.md)
+- [文件夹约定](docs/files.md)
+- [实现与兼容性](docs/implementation.md)
+- [界面设计](DESIGN.md) · [产品说明](PRODUCT.md)
+- [反馈问题](https://github.com/MuziGeek/dsh-muzi-creator/issues)
 
-## 文档
+<details>
+<summary>卸载与旧配置清理</summary>
 
-- [日常使用与完整工具说明](docs/usage.md)
-- [内容文件夹约定](docs/files.md)
-- [插件实现与兼容性说明](docs/implementation.md)
+```bash
+npx @deepseek-ai/dsh plugin --profile web remove dsh-muzi-creator
+```
 
-## 使用问题
+操作后重启对应配置。不要复制项目的 `cordis.patch.yml` 到用户配置；插件自带的 bundle patch 负责装配和清理。若旧版本曾在用户 patch 中手动禁用 `ui-sidebar`，需清理那条遗留配置，避免卸载后官方侧栏仍被关闭。
 
-安装或使用过程中遇到问题，可以到 [oiloil.org](https://www.oiloil.org/#consulting) 联系我。代码缺陷和功能建议仍然欢迎提交 Issue。
+</details>
 
-## License
+## 来源与许可
 
-插件自有代码使用 [MIT](LICENSE)。内容与知识工作台直接使用的 [animal-island-ui](https://github.com/guokaigdg/animal-island-ui) 采用 CC BY-NC 4.0，本地集成仅用于个人、非商业用途；第三方署名见 [NOTICE](NOTICE)。
+项目自有代码使用 [MIT](LICENSE)。上游来源、版权署名及第三方归属见 [NOTICE](NOTICE)。Animal Island UI 使用 CC BY-NC 4.0，相关使用边界详见上述说明。
+
+Muzi 输入框、多行文本、日期时间和下拉框统一使用贴合圆角外壳的聚焦描边，覆盖浅色、暗色及弹窗。内容详情的标签栏与正文共用一张浮层卡片，随内容区域宽度调整外边距，正文独立滚动。

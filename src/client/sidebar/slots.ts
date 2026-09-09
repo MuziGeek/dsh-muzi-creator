@@ -23,13 +23,13 @@ export interface SidebarFooterActionOwnerProps {
   wide: boolean;
 }
 
-export interface OilSidebarInjected {
+export interface MzSidebarInjected {
   startSession: (workspaceId?: WorkspaceId) => void;
   toggleSidebar: () => void;
 }
 
-export type OilSidebarSlotProps =
+export type MzSidebarSlotProps =
   & PropsRuntime<"sidebar">
   & PropsRenderSlots<"sidebar.workspaces" | "sidebar.settings" | "sidebar.footer.action">
-  & OilSidebarInjected
-  & PropsLocale<"dsh.oil.creator">;
+  & MzSidebarInjected
+  & PropsLocale<"dsh.mz.creator">;

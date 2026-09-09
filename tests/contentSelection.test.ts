@@ -118,7 +118,7 @@ describe("content selection", () => {
 
     const root = new FakeHTMLElement();
     const querySelector = vi.fn();
-    root.style.setProperty("--oil-sidebar-width", "11px", "important");
+    root.style.setProperty("--mz-sidebar-width", "11px", "important");
     vi.stubGlobal("HTMLElement", FakeHTMLElement);
     vi.stubGlobal("document", {
       documentElement: root,
@@ -132,16 +132,16 @@ describe("content selection", () => {
     setSelectedContentId(null);
 
     setSidebarChromeWidth(350);
-    expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("350px");
+    expect(root.style.getPropertyValue("--mz-sidebar-width")).toBe("350px");
     releaseShellChrome();
-    expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("11px");
-    expect(root.style.getPropertyPriority("--oil-sidebar-width")).toBe("important");
+    expect(root.style.getPropertyValue("--mz-sidebar-width")).toBe("11px");
+    expect(root.style.getPropertyPriority("--mz-sidebar-width")).toBe("important");
     expect(querySelector).not.toHaveBeenCalled();
 
     setSidebarChromeWidth(350);
-    expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("350px");
+    expect(root.style.getPropertyValue("--mz-sidebar-width")).toBe("350px");
     releaseShellChrome();
-    expect(root.style.getPropertyValue("--oil-sidebar-width")).toBe("11px");
+    expect(root.style.getPropertyValue("--mz-sidebar-width")).toBe("11px");
     expect(querySelector).not.toHaveBeenCalled();
   });
 

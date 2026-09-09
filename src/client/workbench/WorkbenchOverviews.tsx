@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { DeleteCardButton } from "../DeleteCardButton.tsx";
 import type { DailyHotItem, DailyHotResult } from "../../dailyHotTypes.ts";
 import type {
   MuziProjectListResult,
@@ -9,7 +11,7 @@ import type {
   TrellisProjectListResult,
   TrellisProjectSummary,
 } from "../../trellisTypes.ts";
-import { IslandSelectableCard, IslandState, IslandTag } from "../ui/IslandControls.tsx";
+import { IslandButton, IslandSelectableCard, IslandState, IslandTag } from "../ui/IslandControls.tsx";
 import "./WorkbenchOverviews.css";
 
 const STAGE_LABELS: Record<MuziProjectStage, string> = {
@@ -54,12 +56,13 @@ function Metric({ label, value, note }: { label: string; value: string | number;
   </div>;
 }
 
-function OverviewHeader({ id, title, description }: { id: string; title: string; description: string }) {
+function OverviewHeader({ id, title, description, action }: { id: string; title: string; description: string; action?: ReactNode }) {
   return <header className="workbenchOverviewHeader">
     <div>
       <h2 id={id}>{title}</h2>
       <p>{description}</p>
     </div>
+    {action}
   </header>;
 }
 
@@ -94,8 +97,11 @@ export function HotOverview({ result, onSelect }: {
 }
 
 /** Read-only creation-project summary with real document and publication counts. */
-export function ContentOverview({ result, onSelect }: {
+export function ContentOverview({ result, onSelect, onDelete, onManageAccounts, t }: {
   result: MuziProjectListResult;
+  onDelete?: (project: MuziProjectSummary) => Promise<void>;
+  onManageAccounts?: () => void;
+  t?: (key: string) => string;
   onSelect: (id: string) => void;
 }) {
   const stageSummary = Object.entries(STAGE_LABELS)
@@ -108,7 +114,7 @@ export function ContentOverview({ result, onSelect }: {
   const latest = [...result.items].sort((left, right) => dateOrder(right.updatedAt) - dateOrder(left.updatedAt));
 
   return <section className="workbenchOverview" aria-labelledby="content-overview-title">
-    <OverviewHeader id="content-overview-title" title="创作内容" description="项目、稿件与发布事实保持在各自的只读来源中。" />
+    <OverviewHeader id="content-overview-title" title="创作内容" description="项目、稿件与发布事实保持在各自的只读来源中。" action={onManageAccounts === undefined ? undefined : <IslandButton type="default" size="small" onClick={onManageAccounts}>账号管理</IslandButton>} />
     <dl className="workbenchOverviewMetrics">
       <Metric label="内容项目" value={result.items.length} />
       <Metric label="稿件已就绪" value={totals.ready} />
@@ -122,7 +128,7 @@ export function ContentOverview({ result, onSelect }: {
     {latest.length === 0 ? <IslandState kind="empty" title="还没有创作项目" message="创建项目后，这里会显示来自项目列表的真实状态。" /> : <div className="workbenchOverviewList" aria-label="最近更新内容">
       {latest.slice(0, 4).map((project) => {
         const counts = contentReadiness(project);
-        return <IslandSelectableCard key={project.id} className="workbenchOverviewCard" onSelect={() => { onSelect(project.id); }}>
+        return <div key={project.id} className={onDelete === undefined ? undefined : "cardWithActions"}><IslandSelectableCard className="workbenchOverviewCard" onSelect={() => { onSelect(project.id); }}>
           <span className="workbenchOverviewCardHeading">
             <strong>{project.title}</strong>
             <IslandTag color="app-teal" size="small" variant="soft">{STAGE_LABELS[project.stage]}</IslandTag>
@@ -131,7 +137,9 @@ export function ContentOverview({ result, onSelect }: {
             <span>更新于 {displayDate(project.updatedAt)}</span>
             <span>{counts.ready} 稿就绪 · {counts.published} 项已发布</span>
           </span>
-        </IslandSelectableCard>;
+        </IslandSelectableCard>
+        {onDelete !== undefined && <DeleteCardButton title={project.title} t={t} onDelete={() => onDelete(project)} />}
+        </div>;
       })}
     </div>}
   </section>;
@@ -169,7 +177,7 @@ export function ProjectsOverview({ result, onSelect }: {
     <dl className="workbenchOverviewMetrics">
       <Metric label="已发现项目" value={result.projects.length} />
       <Metric label="可统计项目" value={projectsWithCounts.length === 0 ? "不可用" : projectsWithCounts.length} />
-      <Metric label="最近项目" value="不可用" note="项目 DTO 未提供更新时间" />
+      <Metric label="最近同步" value={displayDate(result.projects.map((project) => project.github?.syncedAt).filter((value): value is string => Boolean(value)).sort().at(-1))} />
     </dl>
     <div className="workbenchOverviewBreakdown" aria-label="任务状态分布">
       <span>任务状态</span>
@@ -185,7 +193,7 @@ export function ProjectsOverview({ result, onSelect }: {
       <IslandTag color="app-yellow" size="small" variant="soft">需处理 {connections.degraded}</IslandTag>
       <IslandTag color="app-red" size="small" variant="soft">不可用 {connections.unavailable}</IslandTag>
     </div>
-    {result.projects.length === 0 ? <IslandState kind="empty" title="尚未发现项目" message="配置项目根目录后，已连接的 Git 与 Trellis 项目会显示在这里。" /> : <div className="workbenchOverviewList" aria-label="已连接项目">
+    {result.projects.length === 0 ? <IslandState kind="empty" title="尚未发现项目" message="在设置 → 插件 → 个人内容工作台 → 项目来源中添加 GitHub 仓库或配置本地项目目录。" /> : <div className="workbenchOverviewList" aria-label="已连接项目">
       {result.projects.slice(0, 4).map((project) => <IslandSelectableCard key={project.projectId} className="workbenchOverviewCard" onSelect={() => { onSelect(project.projectId); }}>
         <span className="workbenchOverviewCardHeading">
           <strong>{project.title}</strong>

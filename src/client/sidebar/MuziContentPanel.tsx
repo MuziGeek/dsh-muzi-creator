@@ -1,9 +1,8 @@
+import { DeleteCardButton } from "../DeleteCardButton.tsx";
 import { useEffect, useState } from "react";
-import type { MuziPrimaryDocument } from "../../muziTypes.ts";
 import type { MuziViewFace } from "../face.ts";
 import { MuziProjectCover } from "../MuziProjectCover.tsx";
-import { bumpLibrary, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
-import { CreateProjectDialog } from "./CreateProjectDialog.tsx";
+import { bumpLibrary, getContentSelection, useLibraryEpoch, useSelectedContentId } from "../contentSelection.ts";
 import { PanelSectionHeader } from "./PanelSectionHeader.tsx";
 import {
   IslandCheckbox,
@@ -25,15 +24,12 @@ function statusCount(project: Awaited<ReturnType<MuziViewFace["listProjects"]>>[
   return { ready, published };
 }
 
-export function MuziContentPanel({ face, resource }: { face: MuziViewFace; resource: ReadonlyResource<Awaited<ReturnType<MuziViewFace["listProjects"]>>> }) {
+export function MuziContentPanel({ face, resource, t }: { t?: (key: string) => string; face: MuziViewFace; resource: ReadonlyResource<Awaited<ReturnType<MuziViewFace["listProjects"]>>> }) {
   const [query, setQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [items, setItems] = useState<Awaited<ReturnType<MuziViewFace["listProjects"]>>["items"]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [createDraft, setCreateDraft] = useState<{ title: string; primary: MuziPrimaryDocument } | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useSelectedContentId();
   const epoch = useLibraryEpoch();
 
@@ -57,35 +53,16 @@ export function MuziContentPanel({ face, resource }: { face: MuziViewFace; resou
     return () => { window.clearTimeout(timer); };
   }, [query, includeArchived, epoch]);
 
-  const create = async (): Promise<void> => {
-    if (createDraft === null || createDraft.title.trim() === "") return;
-    setCreating(true);
-    setCreateError(null);
-    try {
-      const created = await face.createProject(createDraft.title.trim(), createDraft.primary);
-      bumpLibrary();
-      setSelectedId(created.id);
-      setCreateDraft(null);
-    } catch (cause) {
-      setCreateError(cause instanceof Error ? cause.message : "无法创建内容");
-    } finally {
-      setCreating(false);
-    }
-  };
-
   return (
     <div className="muziPanel">
       <PanelSectionHeader
         label="创作项目"
-        count={items.length}
         query={query}
         searchLabel="搜索内容"
         searchName="content-search"
         searchPlaceholder="搜索内容…"
-        addLabel="新增内容目录"
         viewLabel="内容视图选项"
         onQueryChange={setQuery}
-        onAdd={() => { setCreateError(null); setCreateDraft({ title: "", primary: "mother" }); }}
         onRefresh={() => { void load(true); }}
         viewContent={(
           <IslandCheckbox
@@ -100,14 +77,14 @@ export function MuziContentPanel({ face, resource }: { face: MuziViewFace; resou
       <div className="muziPanelList">
         {loading && items.length === 0 && <div className="muziCardSkeletons" aria-label="正在读取内容">{[0, 1, 2].map((key) => <IslandSkeleton key={key} variant="rect" widthValue="100%" heightValue={88} />)}</div>}
         {error !== null && <IslandState kind="error" title="内容读取失败" message={error} />}
-        {!loading && error === null && items.length === 0 && <IslandState kind="empty" title="还没有创作项目" message="使用上方的新增按钮建立第一个内容目录。" />}
+        {!loading && error === null && items.length === 0 && <IslandState kind="empty" title="还没有创作项目" message="可通过会话创建内容，创建后会显示在这里。" />}
         {items.map((item) => {
           const counts = statusCount(item);
           const selected = selectedId === item.id;
           const toggleSelection = (): void => { setSelectedId(item.id); };
           return (
+            <div className="cardWithActions" key={item.id}>
             <IslandSelectableCard
-              key={item.id}
               id={sidebarItemElementId("content", item.id)}
               className={selected ? "muziListRow muziContentRow selected" : "muziListRow muziContentRow"}
               selected={selected}
@@ -128,21 +105,17 @@ export function MuziContentPanel({ face, resource }: { face: MuziViewFace; resou
                 </span>
               </span>
             </IslandSelectableCard>
+            <DeleteCardButton title={item.title} t={t} onDelete={async () => {
+              await face.deleteProject(item.id, item.revision);
+              setItems((current) => current.filter((project) => project.id !== item.id));
+              if (getContentSelection() === item.id) setSelectedId(null);
+              await resource.refreshAfterMutation();
+              bumpLibrary();
+            }} />
+            </div>
           );
         })}
       </div>
-      {createDraft !== null && (
-        <CreateProjectDialog
-          title={createDraft.title}
-          primary={createDraft.primary}
-          submitting={creating}
-          error={createError}
-          onTitleChange={(title) => { setCreateDraft((draft) => draft === null ? null : { ...draft, title }); }}
-          onPrimaryChange={(primary) => { setCreateDraft((draft) => draft === null ? null : { ...draft, primary }); }}
-          onCancel={() => { if (!creating) setCreateDraft(null); }}
-          onSubmit={() => { void create(); }}
-        />
-      )}
     </div>
   );
 }

@@ -1,0 +1,13 @@
+# Account removal and creator identity
+
+Account management belongs to the content module overview. Publication targets only include enabled accounts with verified identity and login evidence. Refreshing the registry clears an unavailable selected account without substituting another identity. Persisted preparation must be invalidated before submission; publication history remains readable.
+
+The account list requires a timestamped successful login check; verified disabled accounts remain manageable, while incomplete or invalid identities use a separate recovery entry. Connection checks share one in-flight request per selected connection. A successful registration is read back before the UI accepts it, including recovery from a lost operation response. Publishing-capability lookup failure cannot erase account registration results. Private bounded diagnostics correlate the plugin request with the runtime's actual registry, profile and persistence stages without recording platform identities or login material.
+
+Removal persists an unavailable account with `removalPending` before clearing its isolated browser profile. Browser ownership requires matching the recorded executable and the exact profile argument, and cleanup rejects linked paths. The account lock serializes removal with browser work. Failed cleanup remains visible and retryable. Removing the last account leaves valid initialized configuration; a new connection allocates a new profile, so old authorization cannot bind to it.
+
+Xiaohongshu's creator upload page exposes the nickname but not the account ID. Connections open the creator home page, where the current personal card displays both. Publication identity checks may use a separate temporary home tab and never replace the upload page. Login and challenge detection depends on visible form components, not words appearing in help or logout controls. Real platform acceptance remains distinct from fixture coverage.
+
+Problem account recovery runs inside an inline disclosure keyed by platform and account profile. Disclosure state does not own polling; modal and inline connections share one selected connection and request guards. Cancellation failure retains that connection and its recovery controls, and account removal retains explicit confirmation.
+
+The management dialog keeps account state and enable/disable together, gives verification and reconnection equal-width controls, and separates removal from Close in its footer. Narrow viewports stack recovery controls. The outlined removal action still opens the shared confirmation before any account mutation.

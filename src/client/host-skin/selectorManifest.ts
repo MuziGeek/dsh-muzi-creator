@@ -28,6 +28,7 @@ const expandedNarrowConversation = `${expandedNarrowFrame} > :has(> [data-slot="
 const sessionBrowserSlot = `${host} [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] [data-slot="sidebar.workspaces"]`;
 const sessionBrowserRoot = `${sessionBrowserSlot} > :first-child`;
 const sessionBrowserHeader = `${sessionBrowserRoot} > :first-child`;
+const sessionBrowserLabel = `${sessionBrowserHeader} > span:first-child`;
 const sessionBrowserActions = `${sessionBrowserHeader}:not(:has(input[type="text"]:not([tabindex="-1"]))) > :has(button):not(:has(input[type="text"]))`;
 const sessionBrowserSearchSlot = `${sessionBrowserHeader} > :has(input[type="text"])`;
 const sessionBrowserSearch = `${sessionBrowserSearchSlot} > :has(> input[type="text"])`;
@@ -58,6 +59,9 @@ export const dsh204HostSkinSelectors = [
   { selector: hostTarget(":where(p, li, dd, dt, pre, code, blockquote)"), surface: "long text", purpose: "wrap unbroken host content", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: `${hostElement}`, surface: "scrollbar", purpose: "use host token colors for scrollbars", version: DSH_HOST_SKIN_VERSION, kind: "semantic" },
   { selector: sessionBrowserRoot, surface: "session browser", purpose: "preserve the official browser flex seat inside the Muzi sidebar", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: `${host} [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"]`, surface: "session browser container", purpose: "scope the official workspace toolbar", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: sessionBrowserLabel, surface: "session browser title", purpose: "align the host title with its toolbar controls", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
+  { selector: `${sessionBrowserSlot} [role="tooltip"]`, surface: "session browser tooltips", purpose: "pair host tooltip text and background inside the plugin wrapper", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: sessionBrowserHeader, surface: "session browser header", purpose: "reserve room for the official toolbar controls", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: sessionBrowserActions, surface: "session browser actions", purpose: "fit the official view and add controls without clipping", version: DSH_HOST_SKIN_VERSION, kind: "structural" },
   { selector: `${sessionBrowserHeader} button`, surface: "session browser controls", purpose: "align official search, view, add and clear controls", version: DSH_HOST_SKIN_VERSION, kind: "structural" },

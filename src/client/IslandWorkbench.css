@@ -4,6 +4,7 @@
 .trellisArchiveModal {
   --muzi-island-canvas: var(--animal-bg-color-secondary);
   --muzi-island-paper: var(--animal-bg-color);
+  --muzi-island-toolbar: color-mix(in srgb, var(--animal-bg-color) 84%, var(--animal-text-color));
   --muzi-island-sidebar: color-mix(in srgb, var(--animal-bg-color-secondary) 76%, var(--animal-bg-color));
   --muzi-island-line: var(--animal-border-color-light);
   --muzi-island-line-strong: var(--animal-border-color);
@@ -72,6 +73,7 @@ body[data-ds-dark-theme] [data-plugin-modal="dsh-muzi-creator"] {
   --animal-bg-color-disabled: #3a3027;
   --animal-mask-bg: rgb(18 13 9 / 68%);
   --muzi-island-accent-ink: #2d471f;
+  --muzi-island-toolbar: var(--animal-bg-color-secondary);
 }
 
 /* Animal Modal 1.6.0 uses a fixed cream shell; portal content deliberately keeps matching light tokens. */
@@ -178,6 +180,7 @@ body[data-ds-dark-theme] .trellisArchiveModal {
 }
 
 [data-plugin="dsh-muzi-creator"] .muziTabs [role="tablist"] {
+  background: var(--muzi-island-toolbar);
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -188,7 +191,12 @@ body[data-ds-dark-theme] .trellisArchiveModal {
 
 [data-plugin="dsh-muzi-creator"] .muziTabs [role="tab"] {
   flex: 0 0 auto;
+  color: var(--muzi-island-text);
   white-space: nowrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziTabs [role="tab"]:not([aria-selected="true"]):hover {
+  background: var(--muzi-island-paper);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziTabs [role="tab"][aria-selected="true"] {

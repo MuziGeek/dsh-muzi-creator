@@ -1,0 +1,13 @@
+.productionProjectControls { min-width: 0; padding: 20px 0; display: grid; gap: 12px; }
+.productionProjectControls h3, .productionProjectControls p { margin: 0; }
+.productionProjectControls p { max-width: 72ch; line-height: 1.6; }
+.productionProjectControls form, .productionProjectPath { display: grid; gap: 10px; min-width: 0; }
+.productionProjectActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.productionBoundPath { overflow-wrap: anywhere; }
+.productionExportActions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.productionExportActions p { min-width: 0; flex: 1; }
+.productionExportActions button { flex-shrink: 0; }
+@media (max-width: 560px) {
+  .productionExportActions { align-items: flex-start; flex-direction: column; }
+  .productionProjectActions { gap: 8px; }
+}

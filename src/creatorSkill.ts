@@ -40,14 +40,16 @@ export const CREATOR_WORKBENCH_SKILL = {
 
 - 项目可从母内容或视频稿起步。
 - 文档包括母内容、视频稿、公众号、小红书和博客；状态是 not_started、draft、review、ready。
-- 写或改视频稿前先用 \`oil_script_rules\` 读取长期语气、结构、观众与禁忌。
+- 写或改视频稿前先用 \`mz_script_rules\` 读取长期语气、结构、观众与禁忌。
 - 发布目标包括 B站、抖音、公众号、小红书和博客；状态只能依据用户或已批准同步的事实填写，不根据文件存在推断。
 - Atlas 引用只存定位符、标题、引用时哈希与时间，不复制知识正文。
 
-## Oil 视频能力与外部安全
+## Mz 视频能力与外部安全
 
-- Screen Studio、字幕、封面与本地媒体检查继续使用 Oil 工具；缺少能力只降级对应环节。
+- 通用制作工程引用、成片等待、字幕、封面与本地媒体检查使用 Mz 工具；录制和剪辑可使用任意本地软件，Screen Studio 仅为 macOS 可选适配。
 - 外部同步、上传和发布默认关闭。即使启用，每次也必须等待 DSH 审批；没有审批通道或审批被拒绝时不得执行。
+- 账号通过 muzi_creator_connect_account 开始连接，用户在浏览器登录后用 muzi_creator_check_connection 核验；只有明确平台身份才登记。连接独立授权，不开启上传权限。已连接账号可通过 muzi_creator_open_account 打开后台。
+- 内容发布使用 muzi_creator_prepare_publish_flow，读取 muzi_creator_publish_flow 跟踪进度，处理登录失效后用 muzi_creator_resume_publish_flow 继续。展示就绪目标的平台、账号、标题、素材、模式和时间并取得最终确认后，才调用 muzi_creator_commit_publish_flow。结果不明不得重试。
 - 不向用户索要 API Key 明文；凭据只在 DSH 设置中配置。
 - “开始运行”不等于“完成”，长任务以真实产物或状态为准。
 

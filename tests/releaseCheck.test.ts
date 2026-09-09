@@ -17,6 +17,7 @@ const releaseCheck = resolve(root, "scripts/check-release.mjs");
 const buildScript = "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs";
 const releaseCheckTimeout = process.platform === "win32" ? 90_000 : 10_000;
 const REQUIRED_CHAIN_FILES = [
+  "scripts/check-mz-names.mjs",
   "src/creatorSkill.ts",
   "src/capabilities.ts",
   "src/guide.ts",
@@ -69,7 +70,8 @@ function createRepository() {
         build: buildScript,
         prepare: "npm run build",
         typecheck: "tsc --noEmit",
-        check: "pnpm typecheck && pnpm test && pnpm build",
+        check: "pnpm check:names && pnpm typecheck && pnpm test && pnpm build",
+        "check:names": "node scripts/check-mz-names.mjs",
         test: "vitest run",
         "release:check": "node scripts/check-release.mjs",
       },
@@ -141,6 +143,25 @@ function runReleaseCheck(repository: string) {
 }
 
 describe("release:check", () => {
+  it.each(["omitted-step", "replaced-command", "failed-check"])("rejects a bypassed or failed naming check: %s", (scenario) => {
+    const repository = createRepository();
+    try {
+      const manifestPath = join(repository, "package.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      if (scenario === "omitted-step") manifest.scripts.check = "pnpm typecheck && pnpm test && pnpm build";
+      if (scenario === "replaced-command") manifest.scripts["check:names"] = "node -e \"process.exit(0)\"";
+      if (scenario === "failed-check") writeFileSync(join(repository, "scripts/check-mz-names.mjs"), "process.exit(1);\n");
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      git(repository, "add", "--all");
+      git(repository, "commit", "-qm", "change naming gate");
+      const result = runReleaseCheck(repository);
+      expect(result.code).not.toBe(0);
+      expect(result.output).toContain(scenario === "failed-check" ? "pnpm check 失败" : "check:names");
+    } finally {
+      rmSync(repository, { recursive: true, force: true });
+    }
+  }, releaseCheckTimeout);
+
   it("accepts a clean repository with origin and tracked release files", () => {
     const repository = createRepository();
     try {

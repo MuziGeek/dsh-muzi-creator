@@ -7,6 +7,8 @@
   min-height: 0;
   flex: 1;
   flex-direction: column;
+  container-type: inline-size;
+  container-name: muzi-workbench;
   overflow: hidden;
   background: var(--muzi-island-canvas);
   color: var(--muzi-island-text);
@@ -21,8 +23,11 @@
   justify-content: space-between;
   gap: 16px;
   padding: 9px clamp(14px, 2.5vw, 26px);
+  /* Keep header actions clear of desktop controls at the pane's upper edge. */
+  padding-inline-end: 88px;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--muzi-island-line);
-  background: var(--muzi-island-paper);
+  background: var(--muzi-island-toolbar);
   box-sizing: border-box;
 }
 
@@ -32,6 +37,20 @@
   min-width: 0;
   align-items: center;
   gap: 9px;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziWorkbenchActions {
+  margin-inline-start: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+[data-plugin="dsh-muzi-creator"] .muziWorkbenchActions > button {
+  flex: 0 0 auto;
+  height: 32px;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 [data-plugin="dsh-muzi-creator"] .muziWorkbenchHeading h1 {
@@ -131,6 +150,7 @@
     min-height: 54px;
     gap: 8px;
     padding: 7px 9px;
+    padding-inline-end: 88px;
   }
   [data-plugin="dsh-muzi-creator"] .muziWorkbenchHeading { gap: 5px; }
   [data-plugin="dsh-muzi-creator"] .muziWorkbenchHeading h1 { font-size: 14px; }
@@ -141,4 +161,10 @@
   [data-plugin="dsh-muzi-creator"][data-surface="central-workbench"] * {
     scroll-behavior: auto;
   }
+}
+
+@container muzi-workbench (max-width: 520px) {
+  [data-plugin="dsh-muzi-creator"] .muziWorkbenchBar { gap: 8px; }
+  [data-plugin="dsh-muzi-creator"] .muziWorkbenchHeading { flex-basis: 100%; }
+  [data-plugin="dsh-muzi-creator"] .muziWorkbenchActions { margin-inline-start: 0; justify-content: flex-start; }
 }

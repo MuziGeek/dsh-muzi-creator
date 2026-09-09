@@ -15,7 +15,7 @@ const CLIPBOARD = /^Clipboard-(\d{4})(\d{2})(\d{2})-(\d{6})(?:-(\d+))?$/i;
 const SCREEN = /^录屏(\d{4})-(\d{2})-(\d{2})(?:[ _.-](.+))?$/;
 const FEISHU = /^飞书(\d{4})(\d{2})(\d{2})(?:-(\d+))?$/;
 const CN_DATE = /^(\d{1,2})月(\d{1,2})日$/;
-const STAGING = ".oil-organize-tmp";
+const STAGING = ".mz-organize-tmp";
 
 export function inferDateFromName(folderName: string, recordedAt: Date): string {
   const dated = DATED.exec(folderName);

@@ -20,10 +20,10 @@ function runCollector(env: NodeJS.ProcessEnv): Promise<{ code: number | null; st
 describe("Patchright metrics account grant", () => {
   it("fails before Chrome startup when the current account has no exact DSH grant", async () => {
     const result = await runCollector({
-      OIL_COLLECT_PLATFORMS: "xiaohongshu",
-      OIL_COLLECT_ACCOUNTS: JSON.stringify({ xiaohongshu: "xiaohongshu-main" }),
-      OIL_COLLECT_METRICS_GRANTS: JSON.stringify({ xiaohongshu: "another-account" }),
-      OIL_COLLECT_CLEANUP_STALE: "0",
+      MZ_COLLECT_PLATFORMS: "xiaohongshu",
+      MZ_COLLECT_ACCOUNTS: JSON.stringify({ xiaohongshu: "xiaohongshu-main" }),
+      MZ_COLLECT_METRICS_GRANTS: JSON.stringify({ xiaohongshu: "another-account" }),
+      MZ_COLLECT_CLEANUP_STALE: "0",
     });
     expect(result.code).toBe(0);
     expect(result.stderr).toBe("");

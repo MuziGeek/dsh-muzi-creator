@@ -16,6 +16,14 @@
   min-width: 0;
 }
 
+[data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader h2,
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader p {
   margin: 0;

@@ -34,7 +34,7 @@ export function getSelectedDailyHotId(): DailyHotItemId | null {
 
 /** Select a hotspot for this browser session without persisting external data. */
 export function selectDailyHotItem(item: DailyHotItem | null): void {
-  if (selectedItem === item) return;
+  if (selectedItem === item && selectedItemId === (item?.id ?? null)) return;
   selectedItem = item;
   selectedItemId = item?.id ?? null;
   persist();

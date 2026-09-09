@@ -1,5 +1,9 @@
 import type { InvocationDescriptor } from "@deepseek-ai/dsh-typert-protocol";
 import { z } from "zod";
+import { githubRequestSchema, githubResultSchema } from "./trellisGithubSchemas.ts";
+import { addVideoAccountSchema, setVideoAccountEnabledSchema, videoAccountLoginSchema, videoAccountManagementSchema, videoConnectionRequestSchema, videoConnectionReopenSchema } from "./videoAccountSchemas.ts";
+import { publishFlowSchema, publishFlowGetSchema, publishFlowPrepareSchema, publishFlowActionSchema } from "./publishFlowSchemas.ts";
+
 
 import {
   capabilitiesResultSchema,
@@ -17,6 +21,7 @@ import {
   setContentStageRequestSchema,
   setProfileRequestSchema,
   setScriptRulesRequestSchema,
+  bindProductionProjectRequestSchema,
   bindStudioRequestSchema,
   setPublishRequestSchema,
   setScriptRequestSchema,
@@ -27,6 +32,7 @@ import {
   syncPublishResultSchema,
   videoPlaybackResultSchema,
   articleMediaResultSchema,
+  waitExportRequestSchema,
 } from "./schemas.ts";
 import {
   knowledgeGetRequestSchema,
@@ -38,6 +44,7 @@ import {
   knowledgeSearchRequestSchema,
   knowledgeSearchResultSchema,
   knowledgeStatusSchema,
+  deleteMuziProjectResultSchema,
   muziArchiveRequestSchema,
   muziDocumentSaveRequestSchema,
   muziDocumentLocationRequestSchema,
@@ -75,6 +82,8 @@ import {
 } from "./dailyHotSchemas.ts";
 import {
   archiveInspirationRequestSchema,
+  deleteInspirationRequestSchema,
+  deleteInspirationResultSchema,
   getInspirationRequestSchema,
   inspirationDetailSchema,
   inspirationItemSchema,
@@ -106,7 +115,7 @@ import {
 } from "./trellisSchemas.ts";
 
 export const PACKAGE_NAME = "dsh-muzi-creator";
-export const REMOTE_NAMESPACE = "oilCreator";
+export const REMOTE_NAMESPACE = "mzCreator";
 
 const emptyObjectSchema = z.object({});
 
@@ -145,13 +154,28 @@ function invocation(
   };
 }
 
-export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
+export const MZ_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("listContents", listContentsRequestSchema, listContentsResultSchema),
   invocation("getContent", idRequestSchema, contentDetailSchema),
   invocation("getCoverThumb", idRequestSchema, coverThumbResultSchema),
   invocation("getVideoPlayback", idRequestSchema, videoPlaybackResultSchema),
   invocation("getArticleMedia", idRequestSchema, articleMediaResultSchema),
   invocation("getSubtitleText", idRequestSchema, subtitleTextResultSchema),
+  invocation("getVideoAccounts", emptyObjectSchema, videoAccountManagementSchema),
+  invocation("addVideoAccount", addVideoAccountSchema, videoAccountManagementSchema),
+  invocation("setVideoAccountEnabled", setVideoAccountEnabledSchema, videoAccountManagementSchema),
+  invocation("removeVideoAccount", videoAccountLoginSchema, videoAccountManagementSchema),
+  invocation("openVideoAccountLogin", videoAccountLoginSchema, videoAccountManagementSchema),
+  invocation("checkVideoAccountLogin", videoAccountLoginSchema, videoAccountManagementSchema),
+  invocation("reconnectVideoAccount", videoAccountLoginSchema, videoAccountManagementSchema),
+  invocation("pollVideoAccountConnection", videoConnectionRequestSchema, videoAccountManagementSchema),
+  invocation("cancelVideoAccountConnection", videoConnectionRequestSchema, videoAccountManagementSchema),
+  invocation("reopenVideoAccountConnection", videoConnectionReopenSchema, videoAccountManagementSchema),
+  invocation("getPublishFlow", publishFlowGetSchema, publishFlowSchema.nullable()),
+  invocation("preparePublishFlow", publishFlowPrepareSchema, publishFlowSchema),
+  invocation("resumePublishFlow", publishFlowActionSchema, publishFlowSchema),
+  invocation("invalidatePublishFlow", publishFlowActionSchema, publishFlowSchema),
+  invocation("commitPublishFlow", publishFlowActionSchema, publishFlowSchema),
   invocation("getSettings", emptyObjectSchema, librarySettingsSchema),
   invocation("getCapabilities", emptyObjectSchema, capabilitiesResultSchema),
   invocation("getRevision", emptyObjectSchema, revisionResultSchema),
@@ -163,6 +187,10 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("setContentStage", setContentStageRequestSchema, contentDetailSchema),
   invocation("setProfile", setProfileRequestSchema, librarySettingsSchema),
   invocation("setScriptRules", setScriptRulesRequestSchema, librarySettingsSchema),
+  invocation("bindProductionProject", bindProductionProjectRequestSchema, contentDetailSchema),
+  invocation("openProductionProjectFolder", idRequestSchema, contentDetailSchema),
+  invocation("waitForExport", waitExportRequestSchema, contentDetailSchema),
+  invocation("cancelWaitForExport", idRequestSchema, contentDetailSchema),
   invocation("bindStudio", bindStudioRequestSchema, contentDetailSchema),
   invocation("openStudio", idRequestSchema, contentDetailSchema),
   invocation("setPublish", setPublishRequestSchema, contentDetailSchema),
@@ -179,14 +207,13 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("saveMuziDocument", muziDocumentSaveRequestSchema, muziProjectDetailSchema),
   invocation("setMuziProjectStatus", muziProjectStatusRequestSchema, muziProjectDetailSchema),
   invocation("setMuziPublication", muziPublicationSetRequestSchema, muziProjectDetailSchema),
-  invocation("beginMuziVideoAcceptance", videoAcceptanceBeginRequestSchema, videoAcceptanceSessionResultSchema),
+  invocation("beginMuziVideoAcceptance", videoAcceptanceBeginRequestSchema.refine(request => request.capability === "metrics", "Publishing uses the content flow"), videoAcceptanceSessionResultSchema),
   invocation("getMuziVideoPublishCapabilities", emptyObjectSchema, videoPublishCapabilitiesResultSchema),
-  invocation("finalizeMuziVideoAcceptance", videoAcceptanceFinalizeRequestSchema, videoAcceptanceFinalizeResultSchema),
-  invocation("prepareMuziVideoPublish", videoPublishPrepareRequestSchema, videoPublishTaskResultSchema),
-  invocation("commitMuziVideoPublish", videoPublishCommitRequestSchema, videoPublishTaskResultSchema),
+  invocation("finalizeMuziVideoAcceptance", videoAcceptanceFinalizeRequestSchema.refine(request => request.capability === "metrics", "Publishing uses the content flow"), videoAcceptanceFinalizeResultSchema),
   invocation("getMuziVideoPublishStatus", videoPublishStatusRequestSchema, videoPublishStatusResultSchema),
   invocation("syncMuziVideoMetrics", videoMetricsSyncRequestSchema, videoMetricsSyncResultSchema),
   invocation("archiveMuziProject", muziArchiveRequestSchema, muziProjectDetailSchema),
+  invocation("deleteMuziProject", muziArchiveRequestSchema, deleteMuziProjectResultSchema),
   invocation("getMuziWorkspaceRevision", emptyObjectSchema, muziWorkspaceRevisionSchema),
   invocation("getMuziDocumentLocation", muziDocumentLocationRequestSchema, muziDocumentLocationSchema),
   invocation("openMuziDocumentInObsidian", muziDocumentLocationRequestSchema, muziDocumentOpenResultSchema),
@@ -211,8 +238,10 @@ export const OIL_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("runInspirationTaskNow", runInspirationTaskNowRequestSchema, inspirationRunSchema),
   invocation("markInspirationRead", markInspirationReadRequestSchema, inspirationRunSchema),
   invocation("archiveInspiration", archiveInspirationRequestSchema, inspirationItemSchema),
+  invocation("deleteInspiration", deleteInspirationRequestSchema, deleteInspirationResultSchema),
   invocation("openInspirationReportInObsidian", openInspirationReportRequestSchema, openedInspirationReportSchema),
   invocation("serializeInspirationReference", serializeInspirationReferenceRequestSchema, inspirationReferenceSchema),
+  invocation("manageTrellisGithub", githubRequestSchema, githubResultSchema),
   invocation("listTrellisProjects", emptyObjectSchema, trellisProjectListResultSchema),
   invocation("getTrellisProject", getTrellisProjectRequestSchema, trellisProjectDetailSchema),
   invocation("prepareTrellisTaskArchive", prepareTrellisTaskArchiveRequestSchema, trellisArchivePreviewSchema),

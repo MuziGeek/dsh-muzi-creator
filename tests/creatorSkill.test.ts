@@ -12,7 +12,7 @@ describe("creator-workbench skill", () => {
     expect(CREATOR_WORKBENCH_SKILL.content).toContain("muzi_creator_status atlasLocator");
     expect(CREATOR_WORKBENCH_SKILL.content).toContain("muzi_creator_read");
     expect(CREATOR_WORKBENCH_SKILL.content).toContain("confirmed=false");
-    expect(CREATOR_WORKBENCH_SKILL.content).toContain("oil_script_rules");
+    expect(CREATOR_WORKBENCH_SKILL.content).toContain("mz_script_rules");
     expect(CREATOR_WORKBENCH_SKILL.content).toContain("Creator Studio 是唯一可写创作事实源");
     expect(CREATOR_WORKBENCH_SKILL.content).toContain("不得搜索或引用 raw/");
     expect(CREATOR_WORKBENCH_SKILL.content).toContain("修订冲突");

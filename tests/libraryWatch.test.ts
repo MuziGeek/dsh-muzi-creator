@@ -100,7 +100,7 @@ describe("startLibraryWatch", () => {
   });
 
   it("notifies after a library file change", async () => {
-    const root = join(tmpdir(), `oil-watch-${Date.now()}`);
+    const root = join(tmpdir(), `mz-watch-${Date.now()}`);
     const dataDir = join(root, "data");
     const libraryRoot = join(root, "library");
     await mkdir(libraryRoot, { recursive: true });
@@ -126,7 +126,7 @@ describe("startLibraryWatch", () => {
   });
 
   it("notifies after a script.md change in an episode folder", async () => {
-    const root = join(tmpdir(), `oil-watch-script-${Date.now()}`);
+    const root = join(tmpdir(), `mz-watch-script-${Date.now()}`);
     const dataDir = join(root, "data");
     const libraryRoot = join(root, "library");
     const episodeDir = join(libraryRoot, "2026-08-16_demo");

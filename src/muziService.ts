@@ -10,6 +10,7 @@ import type { Config } from "./config.ts";
 import type {
   AtlasReference,
   MuziArchiveRequest,
+  MuziDeleteResult,
   MuziDocumentKey,
   MuziDocumentLocation,
   MuziDocumentLocationRequest,
@@ -63,6 +64,7 @@ interface ProjectManifest {
   updated?: unknown;
   revision?: unknown;
   stage?: unknown;
+  deleted?: unknown;
   primaryDocument?: unknown;
   documents?: Record<string, StoredDocument>;
   publications?: Record<string, StoredPublication>;
@@ -259,7 +261,7 @@ export class MuziCreatorService {
     ];
   }
 
-  private async locateAll(includeArchived: boolean): Promise<LocatedProject[]> {
+  private async locateAll(includeArchived: boolean, includeDeleted = false): Promise<LocatedProject[]> {
     await this.ready;
     const located: LocatedProject[] = [];
     for (const group of await this.roots(includeArchived)) {
@@ -277,14 +279,15 @@ export class MuziCreatorService {
         if (!isRecord(parsed)) continue;
         const manifest = parsed as ProjectManifest;
         if (manifest.schema !== "muzi.creator/2") continue;
+        if (!includeDeleted && manifest.deleted === true) continue;
         located.push({ root, archive: group.archive, manifest });
       }
     }
     return located;
   }
 
-  private async locate(id: string): Promise<LocatedProject> {
-    const matches = (await this.locateAll(true)).filter((item) => item.manifest.id === id);
+  private async locate(id: string, includeDeleted = false): Promise<LocatedProject> {
+    const matches = (await this.locateAll(true, includeDeleted)).filter((item) => item.manifest.id === id);
     if (matches.length !== 1) throw new Error(matches.length === 0 ? "creator project not found" : "duplicate creator project id");
     return matches[0]!;
   }
@@ -415,7 +418,7 @@ export class MuziCreatorService {
 
   async revision(): Promise<string> {
     const records: string[] = [];
-    for (const project of await this.locateAll(true)) {
+    for (const project of await this.locateAll(true, true)) {
       for (const relativePath of ["project.yml", ...Object.values(DOCUMENT_PATHS)]) {
         const path = join(project.root, relativePath);
         const info = await lstat(path).catch(() => undefined);
@@ -484,6 +487,7 @@ export class MuziCreatorService {
       updated: now,
       revision: 0,
       stage: "idea",
+      deleted: false,
       primaryDocument: request.primaryDocument,
       documents: emptyDocuments(request.primaryDocument),
       publications: emptyPublications(),
@@ -588,6 +592,33 @@ export class MuziCreatorService {
     return this.getProject({ id: request.id });
   }
 
+  /** Hide one project while retaining its directory, drafts, and project manifest. */
+  async deleteProject(request: MuziArchiveRequest): Promise<MuziDeleteResult> {
+    if (!request.confirmed) throw new Error("delete confirmation required");
+    const located = await this.locate(request.id, true);
+    const release = await acquireManifestLock(located.root);
+    try {
+      const manifestPath = join(located.root, "project.yml");
+      const currentValue = parse(await readFile(manifestPath, "utf8")) as unknown;
+      if (!isRecord(currentValue)) throw new Error("project manifest is invalid");
+      const current = currentValue as ProjectManifest;
+      if (asString(current.id) !== asString(located.manifest.id)) throw new Error("project identity changed before update");
+      const revision = asRevision(current.revision);
+      if (revision !== request.expectedRevision) throw new Error(`revision conflict: expected ${request.expectedRevision}, current ${revision}`);
+      if (current.deleted === true) return { deleted: true };
+      await atomicWrite(manifestPath, stringify({
+        ...current,
+        deleted: true,
+        schema: "muzi.creator/2",
+        updated: new Date().toISOString(),
+        revision: revision + 1,
+      }));
+      return { deleted: true };
+    } finally {
+      await release();
+    }
+  }
+
   private async patchManifest(
     located: LocatedProject,
     expectedRevision: number,
@@ -600,6 +631,7 @@ export class MuziCreatorService {
       if (!isRecord(currentValue)) throw new Error("project manifest is invalid");
       const current = currentValue as ProjectManifest;
       if (asString(current.id) !== asString(located.manifest.id)) throw new Error("project identity changed before update");
+      if (current.deleted === true) throw new Error("deleted projects are read-only");
       const revision = asRevision(current.revision);
       if (revision !== expectedRevision) throw new Error(`revision conflict: expected ${expectedRevision}, current ${revision}`);
       await atomicWrite(manifestPath, stringify({
