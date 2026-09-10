@@ -1,12 +1,55 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="Muzi Creator：让灵感与知识落在本地创作里，从资料到主题目录，再到多渠道稿件。">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Muzi Creator 本地创作工作台：灵感与知识 → 本地主题目录 → 母内容与渠道稿件。">
 </p>
 
 # Muzi Creator
 
 **DeepSeek Harness 上的本地创作工作台。** 搜索灵感、回看知识、整理稿件与视频产物，在同一个界面查看内容和项目进度。
 
-[开始使用](#开始使用) · [工作台导航](#六个入口各自保留上下文) · [灵感搜索](docs/inspiration.md) · [内置外观](docs/theme-skin.md) · [完整使用说明](docs/usage.md)
+[界面示例](#界面示例) · [开始使用](#开始使用) · [工作台导航](#六个入口各自保留上下文) · [灵感搜索](docs/inspiration.md) · [完整使用说明](docs/usage.md)
+
+## 界面示例
+
+以下截图由当前工作台组件与示例数据渲染，不含私人资料；用于说明界面布局，不代表 Desktop 实机验收。点击图片可查看原尺寸。
+
+### 热点：按阅读优先级浏览动态
+
+聚合条目按「今日必看」「值得浏览」「其余动态」分组，保留来源与时间，方便挑选需要深入阅读的内容。
+
+[![热点工作台：左侧热点列表，中央按今日必看和值得浏览分组展示摘要、来源和时间；使用示例数据。](assets/readme/workbench-hot.jpg)](assets/readme/workbench-hot.jpg)
+
+### 灵感报告：按模块阅读，保留来源
+
+摘要、关键发现、分歧、创作切入点和来源分别展示，可从章节导航直接跳转。宽屏并排阅读，较窄窗口自动转为单列。
+
+[![灵感报告浅色界面：章节导航、分组摘要和关键发现，左侧保留灵感历史；使用示例数据。](assets/readme/workbench-inspiration.jpg)](assets/readme/workbench-inspiration.jpg)
+
+<details>
+<summary>查看深色阅读示例</summary>
+
+深色模式沿用相同的模块结构与来源入口，可在 DSH 外观设置中切换。
+
+[![灵感报告深色界面：关键发现、待核实项与创作切入点；使用示例数据。](assets/readme/workbench-inspiration-dark.jpg)](assets/readme/workbench-inspiration-dark.jpg)
+
+</details>
+
+### 内容：项目与稿件进度一眼可见
+
+菜单默认显示会话、热点、灵感、内容四项，向下滚动可访问其余入口。下方卡片区独立滚动；中央概览汇总创作阶段、就绪稿件与发布记录。
+
+[![内容工作台浅色界面：左侧四行导航与创作卡片，中央显示项目阶段和稿件进度；使用示例数据。](assets/readme/workbench-content.jpg)](assets/readme/workbench-content.jpg)
+
+### 知识：从主题卡片到关联星图
+
+左侧搜索和浏览主题知识，中央查看知识库概况及显式链接组成的 3D 星图。知识保持只读，选中主题可继续查看详情。
+
+[![知识工作台：左侧主题卡片，中央显示知识统计及六个主题之间的关联星图；使用示例数据。](assets/readme/workbench-knowledge.jpg)](assets/readme/workbench-knowledge.jpg)
+
+### 项目：查看任务状态与连接情况
+
+按项目汇总 Trellis 中计划、进行和完成的任务，结合连接状态查看当前进展；点击项目可进入任务详情。
+
+[![项目工作台：左侧项目列表，中央展示任务分布、连接健康与各项目的任务统计；使用示例数据。](assets/readme/workbench-projects.jpg)](assets/readme/workbench-projects.jpg)
 
 ## 从一个主题开始
 
@@ -157,8 +200,6 @@ pnpm check
 ```
 
 `pnpm check` 包含命名检查、类型检查、测试与构建。构建先验证内置图标、字体和许可证，再生成客户端、服务端及运行脚本。`pnpm release:check` 要求提交后的工作区干净，执行完整检查和打包预检；它不会发布安装包或推送代码。构建产物位于仓库 `lib/`，不会自动替换 Desktop 已安装的插件。
-
-**0.2.0 升级：**工具统一使用 `mz_*`，远程命名空间为 `mzCreator`，旧接口停止支持。已有数据目录继续读取，不自动迁移。[升级与命名说明](docs/mz-naming.md)
 
 - [灵感搜索使用说明](docs/inspiration.md)
 - [日常使用、配置与隔离 Lab](docs/usage.md)

@@ -1,24 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
-  <title id="title">Muzi Creator — 本地创作工作台</title>
-  <desc id="desc">让灵感与知识落在本地创作里。结构示意：灵感与只读知识支持一个主题目录，再由创作者组织多渠道稿件。</desc>
-  <rect width="1200" height="420" rx="26" fill="#F8F5EC"/>
-  <g id="folder-outline" fill="none" stroke="#54765C" stroke-width="2">
-    <path d="M48 88V55Q48 36 67 36H371L404 70H1133Q1152 70 1152 89V364Q1152 384 1132 384H68Q48 384 48 364V88Z"/>
-  </g>
-  <g id="title-block" font-family="Segoe UI, Microsoft YaHei, PingFang SC, sans-serif">
-    <text x="74" y="64" fill="#54765C" font-size="22" font-weight="600">本地创作工作台</text>
-    <text x="80" y="170" fill="#294C3D" font-size="82" font-weight="750" letter-spacing="-2">Muzi Creator</text>
-    <text x="82" y="232" fill="#294C3D" font-size="40" font-weight="500">让灵感与知识，落在本地创作里。</text>
-  </g>
-  <g id="project-proof" font-family="Segoe UI, Microsoft YaHei, PingFang SC, sans-serif" font-size="36" font-weight="600" fill="#294C3D">
-    <path d="M80 270H1120" stroke="#D7DED1" stroke-width="2"/>
-    <path d="M84 304h25v32H84zM91 312h11m-11 8h11" fill="none" stroke="#54765C" stroke-width="2" stroke-linejoin="round"/>
-    <text x="128" y="333">灵感与知识</text>
-    <path d="M352 320h64m-12-9 12 9-12 9" fill="none" stroke="#B57452" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M457 309h15l7 7h24v23h-46z" fill="#E6ECDD" stroke="#54765C" stroke-width="2" stroke-linejoin="round"/>
-    <text x="522" y="333">主题目录</text>
-    <path d="M725 320h64m-12-9 12 9-12 9" fill="none" stroke="#B57452" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M831 307h27v32h-27zM839 300h27v31" fill="none" stroke="#54765C" stroke-width="2" stroke-linejoin="round"/>
-    <text x="887" y="333">多渠道稿件</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Muzi Creator · 本地创作工作台</title>
+  <desc id="desc">从灵感与知识出发，在本地主题目录中组织母内容，再整理为文章与视频稿。下方 README 提供工作台界面示例。</desc>
+  <rect width="1200" height="400" rx="28" fill="#F8F5EC"/>
+  <g font-family="'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif">
+    <g id="identity" transform="translate(56 44)">
+      <text x="0" y="22" font-size="22" font-weight="600" letter-spacing="2" fill="#54765C">本地创作工作台</text>
+      <text x="-4" y="116" font-size="86" font-weight="750" letter-spacing="-3" fill="#294C3D">Muzi Creator</text>
+      <text x="0" y="174" font-size="36" font-weight="500" fill="#725A43">让灵感有出处，让创作有归处。</text>
+    </g>
+    <g id="local-topic" transform="translate(922 42)" fill="none" stroke="#54765C" stroke-width="4" stroke-linejoin="round">
+      <path d="M0 40V18Q0 6 12 6H67L84 24H168Q180 24 180 36V148Q180 160 168 160H12Q0 160 0 148Z" fill="#E8EDDB"/>
+      <path d="M28 53H123L149 80V136H28Z" fill="#FFFDF6"/>
+      <path d="M123 53V80H149M48 95H114M48 113H99" stroke="#A8B595"/>
+      <path d="M157 119C137 93 166 79 187 83C184 105 176 119 157 119Z" fill="#54765C" stroke="none"/>
+      <path d="M155 135L172 101" stroke="#54765C"/>
+    </g>
+    <g id="creation-flow" transform="translate(56 276)">
+      <path d="M240 30H326M622 30H708" fill="none" stroke="#B57452" stroke-width="3"/>
+      <path d="M316 22L327 30L316 38M698 22L709 30L698 38" fill="none" stroke="#B57452" stroke-width="3"/>
+      <g fill="#294C3D" font-size="28" font-weight="650">
+        <rect width="238" height="60" rx="18" fill="#E8EDDB"/>
+        <text x="119" y="40" text-anchor="middle">灵感与知识</text>
+        <rect x="338" width="282" height="60" rx="18" fill="#E8EDDB"/>
+        <text x="479" y="40" text-anchor="middle">本地主题目录</text>
+        <rect x="720" width="368" height="60" rx="18" fill="#EDE3D5"/>
+        <text x="904" y="40" text-anchor="middle">母内容 → 渠道稿件</text>
+      </g>
+    </g>
   </g>
 </svg>
