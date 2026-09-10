@@ -17,7 +17,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .muziInspectorTop { display: flex; height: 52px; flex: none; align-items: center; justify-content: space-between; padding: 0 18px; border-bottom: 1px solid var(--muzi-island-line); }
-[data-plugin="dsh-muzi-creator"] .muziInspectorTitle { overflow: hidden; font-size: 15px; font-weight: 600; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
+[data-plugin="dsh-muzi-creator"] .muziInspectorTitle { overflow: hidden; font-size: var(--muzi-type-card-title-size, 1rem); font-weight: var(--muzi-type-card-title-weight, 700); letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
 [data-plugin="dsh-muzi-creator"] .muziInspectorTop button { flex: none; }
 [data-plugin="dsh-muzi-creator"][data-surface="muzi-inspector"]:has(> .muziTabs),
 [data-plugin="dsh-muzi-creator"] .muziWorkbenchContent.detail > [data-surface="muzi-inspector"]:has(> .muziTabs) {
@@ -75,7 +75,7 @@
 [data-plugin="dsh-muzi-creator"] .muziInspectorHeader { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 28px 24px; border-bottom: 1px solid var(--muzi-island-line); background: var(--muzi-surface); }
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeading { display: grid; min-width: 0; gap: 7px; }
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeader h1,
-[data-plugin="dsh-muzi-creator"] .pendingDetailHeader h1 { margin: 0; overflow-wrap: anywhere; font: 20px/28px var(--muzi-island-font); font-weight: 600; letter-spacing: -.02em; }
+[data-plugin="dsh-muzi-creator"] .pendingDetailHeader h1 { margin: 0; overflow-wrap: anywhere; font-weight: var(--muzi-type-title-weight, 700); letter-spacing: -.02em; }
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeader p { margin: 0; color: var(--muzi-island-text-muted); font-size: 11px; line-height: 18px; }
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailHeader code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: inherit; }
 [data-plugin="dsh-muzi-creator"] .knowledgeDetailMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muzi-island-text-muted); font-size: 11px; line-height: 18px; }
@@ -161,7 +161,7 @@
 [data-plugin="dsh-muzi-creator"] .videoPublishStatusLine small { color: var(--animal-text-color-secondary); font-size: 10px; }
 [data-plugin="dsh-muzi-creator"] .videoPublishStatusLine a { color: var(--muzi-island-leaf-dark); font-size: 10px; text-decoration: none; }
 [data-plugin="dsh-muzi-creator"] .videoPublishStatusLine button { margin-left: auto; }
-[data-plugin="dsh-muzi-creator"] .videoPublishBlocker { margin: 0; color: var(--animal-warning-color-active); font-size: 10px; line-height: 16px; }
+[data-plugin="dsh-muzi-creator"] .videoPublishBlocker { margin: 0; color: var(--animal-warning-color-active); }
 [data-plugin="dsh-muzi-creator"] .videoMetricLine { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding-top: 8px; border-top: 1px solid var(--animal-border-color-light); }
 [data-plugin="dsh-muzi-creator"] .videoMetricLine div { min-width: 0; }
 [data-plugin="dsh-muzi-creator"] .videoMetricLine dt { color: var(--animal-text-color-secondary); font-size: 9px; line-height: 13px; }

@@ -1,0 +1,25 @@
+{
+  "name": "dsh-muzi-creator-workbench-theme-icons-20260910",
+  "style": "animal-island-inspired soft utility 3D",
+  "cutout": "rembg",
+  "sheet": { "grid": "4x4", "background": "#808080", "activeCells": [1, 2], "blankCells": "3-16" },
+  "palette": {
+    "cream": ["#FFF8E7", "#F8EBCB"],
+    "mint": ["#9CDBB4", "#5B9E78"],
+    "warmGold": "#E7C98C",
+    "sshGlyph": "#56735F",
+    "forbiddenDominant": ["#000000", "#1A1A1A"]
+  },
+  "construction": {
+    "perspective": "front-facing with shallow soft lower-right depth",
+    "light": "single soft upper-left light",
+    "form": "rounded borderless object silhouette, thick puffy volume",
+    "detailBudget": "one main object plus one small green motif",
+    "safeInset": "same 128px canvas alignment and padding as existing workbench-icons",
+    "smallSize": "recognizable at 24px"
+  },
+  "icons": [
+    {"name": "ssh", "metaphor": "cream terminal window with green connection prompt"},
+    {"name": "skills", "metaphor": "cream skill card with green five-point star marker"}
+  ]
+}

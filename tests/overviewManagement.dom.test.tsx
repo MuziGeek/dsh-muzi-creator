@@ -2,7 +2,8 @@
 import type { ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("@deepseek-ai/dsh-client-ui-primitives", () => ({ MarkdownText: ({ text }: { text: string }) => <div>{text}</div> }));
+vi.mock("@deepseek-ai/dsh-client-ui-primitives", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@deepseek-ai/dsh-client-ui-primitives")>(), MarkdownText: ({ text }: { text: string }) => <div>{text}</div> }));
 vi.mock("../src/client/KnowledgePreview.tsx", () => ({ KnowledgePreview: () => null }));
 import { MuziInspector } from "../src/client/MuziInspector.tsx";
 import { setSelectedContentId, setSidebarTab } from "../src/client/contentSelection.ts";

@@ -275,7 +275,7 @@ export function CreatorSettingsCard({
         aria-label={t((open ? "settings.collapse" : "settings.expand") as CreatorKey)}
         onClick={() => { setOpen(!open); }}
       >
-        <WorkbenchIcon name="settings" size={28} />
+        <WorkbenchIcon name="settings" purpose="navigation" />
         <span className="headText">
           <span className="name">{title}</span>
           <span className="description">{t("settings.description" as CreatorKey)}</span>

@@ -7,6 +7,7 @@
 [data-plugin="dsh-muzi-creator"] .muziIslandAction {
   min-height: 40px;
   border-radius: var(--muzi-island-radius-sm);
-  font-family: var(--muzi-island-font);
-  font-weight: 700;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  font-weight: var(--muzi-type-body-weight, 500);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
 }

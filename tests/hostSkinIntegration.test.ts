@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 
 describe("Muzi host skin client integration", () => {
-  it("injects the pinned theme service and installs one compatibility skin", async () => {
+  it("loads its fixed appearance through the client effect without a skin-center dependency", async () => {
     const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "utf8")) as {
       dsh: { client: { inject: string[] } };
       peerDependencies: Record<string, string>;
@@ -19,9 +19,11 @@ describe("Muzi host skin client integration", () => {
     expect(packageJson.devDependencies["@deepseek-ai/dsh-client-ui-theme"]).toBe("0.1.1-rc.2");
     expect(packageJson.dsh.client.inject).not.toContain("@deepseek-ai/dsh-client-runtime");
     expect(client.match(/animal-island-ui\/style/g)).toHaveLength(1);
-    expect(client.match(/host-skin\/dsh-2\.0\.4\.css/g)).toHaveLength(1);
-    expect(client).toContain("installMuziHostSkin(ctx)");
-    expect(client).toMatch(/export const inject = \[[^\]]*"theme"/s);
+    expect(client).toContain("./host-skin/layout.css");
+    expect(client).toContain("mountWorkbenchAppearance(document)");
+    expect(client).toContain("releaseAppearance()");
+    expect(client).not.toContain("/api/skin-center");
+    expect(client).not.toMatch(/export const inject = \[[^\]]*"theme"/s);
   });
 
   it("switches only the conversation root and leaves inner official seats and settings untouched", async () => {

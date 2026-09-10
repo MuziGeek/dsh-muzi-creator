@@ -1,10 +1,11 @@
+import { mountWorkbenchAppearance } from "./appearance/index.ts";
 import type { VideoAccountFace, VideoAccountManagement, AddVideoAccount, SetVideoAccountEnabled, VideoAccountLogin, VideoConnectionRequest, VideoConnectionReopen } from "../videoAccountSchemas.ts";
 import type { PublishFlow, PublishFlowPrepare, PublishFlowAction } from "../publishFlowSchemas.ts";
 import type { Context as ClientContext } from "@deepseek-ai/cordis";
 import type { SessionId, WorkspaceId } from "@deepseek-ai/dsh-client-connection/client";
 import type { IConversation } from "@deepseek-ai/dsh-client-ui-conversation/client";
 import "animal-island-ui/style";
-import "./host-skin/dsh-2.0.4.css";
+import "./host-skin/layout.css";
 import type {} from "@deepseek-ai/dsh-client-locale/client";
 import type {} from "@deepseek-ai/dsh-client-ui-layout/client";
 import type {} from "@deepseek-ai/dsh-api-remotes/client";
@@ -34,7 +35,6 @@ import { startLibraryLiveSync } from "./catalogSync.ts";
 import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
 import { releaseShellChrome } from "./contentSelection.ts";
 import { registerMuziTriggers } from "./contentTriggers.ts";
-import { installMuziHostSkin } from "./host-skin/index.ts";
 import { stageSessionHandoff } from "./sessionHandoff.ts";
 import {
   pickSettingsDirectory,
@@ -275,17 +275,18 @@ function unwrap<T>(answer: RemoteAnswer<T>, fallback: string): T {
   return answer.value;
 }
 
-export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection", "conversation", "theme"];
+export const inject = ["slots", "locale", "remote", "workspaces", "layout", "connection", "conversation"];
 
 export function apply(ctx: ClientContext): void {
-  installMuziHostSkin(ctx);
   ctx.effect(() => ctx.locale.register(NS, {
     zh: { ...zh, ...inspirationZh },
     en: { ...en, ...inspirationEn },
   }), "dsh-muzi-creator: dictionaries");
   ctx.effect(() => {
     remountPluginCss();
+    const releaseAppearance = mountWorkbenchAppearance(document);
     return () => {
+      releaseAppearance();
       releasePluginCss();
       releaseShellChrome();
     };
@@ -907,8 +908,10 @@ export function apply(ctx: ClientContext): void {
   }, "dsh-muzi-creator: content triggers");
 
   const injectSidebar = (): MzSidebarInjected => ({
-    startSession: (workspaceId?: WorkspaceId) => {
-      ctx.workspaces.startSession(workspaceId);
+    startSession: async (workspaceId?: WorkspaceId) => {
+      const sessions = ctx.get("sessions") as unknown as FreshSessionsClient;
+      const sessionId = await sessions.create({ workspaceId: workspaceId ?? handoffWorkspace() });
+      sessions.open(sessionId);
     },
     toggleSidebar: () => {
       ctx.layout.toggleSidebar();

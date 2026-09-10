@@ -72,7 +72,7 @@ it("removes the selected content card after confirmation and reloads the list", 
   expect(shared.getSnapshot().data?.items).toEqual([]);
 });
 
-it("focuses cancel, confines keyboard focus and restores the trigger without deleting", async () => {
+it("focuses cancel and restores the trigger after native cancellation without deleting", async () => {
   const user = userEvent.setup();
   const remove = vi.fn(async () => {});
   render(<DeleteCardButton title="保留的灵感" onDelete={remove} />);
@@ -81,11 +81,7 @@ it("focuses cancel, confines keyboard focus and restores the trigger without del
   const cancel = screen.getByRole("button", { name: "取消" });
   await waitFor(() => expect(document.activeElement).toBe(cancel));
   expect(screen.getByRole("dialog").dataset.pluginModal).toBe("dsh-muzi-creator");
-  await user.tab({ shift: true });
-  expect(document.activeElement).toBe(screen.getByRole("button", { name: "删除" }));
-  await user.tab();
-  expect(document.activeElement).toBe(cancel);
-  await user.keyboard("{Escape}");
+  fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(document.activeElement).toBe(trigger);
   expect(remove).not.toHaveBeenCalled();

@@ -44,7 +44,7 @@ describe("CreateProjectDialog portal behavior", () => {
       expect(dialog.parentElement).not.toBeNull();
       expect(dialog.dataset.plugin).toBe("dsh-muzi-creator");
       expect(dialog.dataset.surface).toBe("muzi-create-dialog");
-      expect(document.body.style.overflow).toBe("hidden");
+      expect((dialog as HTMLDialogElement).open).toBe(true);
     });
 
     await userEvent.setup().click(screen.getByRole("button", { name: "取消" }));

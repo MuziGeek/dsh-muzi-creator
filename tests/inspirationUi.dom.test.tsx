@@ -329,7 +329,7 @@ describe("inspiration research UI", () => {
     expect(article.querySelector(".inspirationSummaryContent")?.textContent).toBe(report.summary);
     expect(article.querySelectorAll("details")).toHaveLength(0);
     const firstFinding = article.querySelector(".inspirationEvidenceList > li")! as HTMLElement;
-    expect(firstFinding.querySelector("p")?.textContent).toBe(report.findings[0]!.text);
+    expect(firstFinding.querySelector(".inspirationReportText")?.textContent).toBe(report.findings[0]!.text);
     const citations = within(firstFinding).getAllByRole("link");
     expect(citations.map((link) => [link.textContent, link.getAttribute("href")]))
       .toEqual([["[2]", "https://example.com/second"], ["[1]", "https://example.com/source"]]);
@@ -340,6 +340,37 @@ describe("inspiration research UI", () => {
     expect(sourceList.textContent).toContain("未知");
     expect(Array.from(article.querySelectorAll(".inspirationEvidenceStatus")).map((label) => label.textContent))
       .toEqual(["存在分歧", "尚不确定", "有来源支持"]);
+    expect(creator.startResearch).not.toHaveBeenCalled();
+  });
+
+  it("preserves report passages and moves keyboard focus through the reading navigation", async () => {
+    const report = structuredClone(DETAIL.report);
+    report.findings[0]!.text = "主题标签（日期：9月8日）：" + "这一段保留报告原文和来源信息。".repeat(12);
+    report.angles = ["写作切入点：保留原文。\n第二段也保留。"];
+    const original = structuredClone(report);
+    const creator = face({ ...DETAIL, report });
+    const user = userEvent.setup();
+    const hash = location.hash;
+    setInspirationSelection({ kind: "item", id: ITEM.id, runId: RUN.id });
+    render(<InspirationWorkbench resource={resource()} face={creator} t={t} openSession={vi.fn()} promote={vi.fn()} />);
+    const article = await screen.findByRole("article");
+    const navigation = within(article).getByRole("navigation", { name: "研究报告" });
+    expect(within(navigation).getAllByRole("link").map((link) => link.textContent))
+      .toEqual(["总结", "主要发现", "分歧与未知", "创作角度", "来源"]);
+    const passage = article.querySelector(".inspirationEvidenceList .inspirationReportText")!;
+    expect(passage.textContent).toBe(original.findings[0]!.text);
+    expect(passage.querySelector("h4")?.textContent).toBe("主题标签（日期：9月8日）：");
+    expect(passage.querySelectorAll("p").length).toBeGreaterThan(1);
+    expect(article.querySelector(".inspirationAngles .inspirationReportText")?.textContent).toBe(original.angles[0]);
+    const heading = within(article).getByRole("heading", { name: "来源" });
+    const scroll = vi.fn();
+    heading.scrollIntoView = scroll;
+    within(navigation).getByRole("link", { name: "来源" }).focus();
+    await user.keyboard("{Enter}");
+    expect(scroll).toHaveBeenCalledWith({ block: "start" });
+    expect(document.activeElement).toBe(heading);
+    expect(location.hash).toBe(hash);
+    expect(report).toEqual(original);
     expect(creator.startResearch).not.toHaveBeenCalled();
   });
 
@@ -482,9 +513,9 @@ describe("inspiration research UI", () => {
         "# 完整报告\nhttps://example.com/source",
       ),
     );
-    expect(screen.getByText("总结")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "总结" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "主要发现" })).toBeTruthy();
-    expect(screen.getByText("分歧与未知")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "分歧与未知" })).toBeTruthy();
     expect(screen.queryByText("更多")).toBeNull();
     expect(
       screen.getByRole("button", { name: "在 Obsidian 中打开" }),

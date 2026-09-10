@@ -43,13 +43,13 @@
   min-width: 0;
   flex: 1;
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotStatusLine time {
   flex: none;
   color: var(--muzi-island-text-muted);
-  font-size: 11px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
   font-variant-numeric: tabular-nums;
 }
 
@@ -82,13 +82,13 @@
   padding: 8px 4px;
   background: var(--muzi-island-paper);
   color: var(--muzi-island-text-muted);
-  font-size: 10px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
   text-align: center;
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotCounts b {
   color: var(--muzi-island-text);
-  font-size: 13px;
+  font-size: var(--muzi-type-card-title-size, 1rem);
   font-variant-numeric: tabular-nums;
 }
 
@@ -96,7 +96,7 @@
   width: fit-content;
   max-width: 100%;
   color: var(--muzi-island-leaf-dark);
-  font-size: 11px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
   overflow-wrap: anywhere;
 }
 
@@ -111,8 +111,8 @@
   border-radius: var(--muzi-island-radius-md);
   background: var(--muzi-island-warning-soft);
   color: var(--muzi-island-warning);
-  font-size: 11px;
-  line-height: 1.55;
+  font-size: var(--muzi-type-empty-size, 0.875rem);
+  line-height: var(--muzi-type-empty-line, 1.3125rem);
   overflow-wrap: anywhere;
 }
 
@@ -134,8 +134,8 @@
   min-width: 0;
   margin: 0;
   color: var(--muzi-island-text-muted);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   overflow-wrap: anywhere;
 }
 
@@ -158,9 +158,9 @@
   display: -webkit-box;
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.5;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  font-weight: var(--muzi-type-card-title-weight, 700);
+  line-height: var(--muzi-type-card-title-line, 1.5rem);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -172,8 +172,8 @@
   flex-wrap: wrap;
   gap: 4px 8px;
   color: var(--muzi-island-paper-text);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotItem.is-selected .dailyHotItemMeta {
@@ -197,8 +197,8 @@
 [data-plugin="dsh-muzi-creator"] .dailyHotTierEmpty,
 [data-plugin="dsh-muzi-creator"] .dailyHotFootnote {
   color: var(--muzi-island-text-muted);
-  font-size: 11px;
-  line-height: 1.55;
+  font-size: var(--muzi-type-empty-size, 0.875rem);
+  line-height: var(--muzi-type-empty-line, 1.3125rem);
   overflow-wrap: anywhere;
 }
 

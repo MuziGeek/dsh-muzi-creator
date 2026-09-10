@@ -1,0 +1,31 @@
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton {
+  --island-action: var(--dsw-alias-button-primary-fill);
+  --island-action-hover: var(--dsw-alias-button-primary-hover);
+  border-radius: var(--muzi-control-radius, 8px);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l2);
+  box-shadow: none;
+}
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton[data-island-danger] { --island-action: var(--dsw-alias-state-error-primary); --island-action-hover: var(--dsw-alias-state-error-secondary); color: var(--island-action); }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton[data-island-kind="primary"] { color: var(--dsw-alias-brand-primary-invert); background: var(--island-action); border-color: transparent; }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton[data-island-kind="primary"]:hover:not(:disabled) { background: var(--island-action-hover); }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton:is([data-island-kind="text"], [data-island-kind="link"], [data-island-ghost]) { background: transparent; border-color: transparent; }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton[data-island-ghost] { color: var(--island-action); border-color: currentColor; }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton:not([data-island-kind="primary"]):hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton > span { color: inherit; }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandButton:disabled { opacity: .5; transform: none; cursor: not-allowed; }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandCard {
+  min-width: 0;
+  max-width: 100%;
+  border-radius: var(--muzi-card-radius, 8px);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  border-color: var(--dsw-alias-border-l2);
+  background-image: none;
+}
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandCard[aria-pressed="true"] { background: var(--dsw-alias-button-primary-dimmed); border-color: var(--dsw-alias-brand-primary); }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandTag { max-width: 100%; white-space: normal; overflow-wrap: anywhere; color: var(--dsw-alias-label-secondary); background: var(--dsw-alias-bg-layer-2); border-color: var(--dsw-alias-border-l2); }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandTag-danger { color: var(--dsw-alias-state-error-primary); }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandTag-warning { color: var(--dsw-alias-state-warn-label, var(--dsw-alias-state-warn-primary)); }
+:is([data-plugin="dsh-muzi-creator"], [data-plugin-modal="dsh-muzi-creator"]) .islandTag-success { color: var(--dsw-alias-state-success-primary); }

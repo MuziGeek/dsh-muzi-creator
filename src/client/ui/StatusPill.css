@@ -1,7 +1,9 @@
 [data-plugin="dsh-muzi-creator"] .statusPill {
   gap: 5px;
   max-width: 100%;
-  font-weight: 500;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  font-weight: var(--muzi-type-support-weight, 500);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   white-space: nowrap;
 }
 

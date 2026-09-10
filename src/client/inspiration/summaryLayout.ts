@@ -43,3 +43,27 @@ export function layoutSummary(text: string): SummaryGroup[] {
   }
   return result;
 }
+
+/**
+ * Separates an explicit opening label from a finding or creative angle, without rewriting it.
+ * @param text Saved plain text; quoted colons, times and URLs remain in the body.
+ * @returns A title and paragraphs that concatenate to the exact input.
+ */
+export function layoutReportText(text: string): SummaryGroup {
+  const closing: string[] = [];
+  const pairs: Record<string, string> = { "（": "）", "(": ")", "“": "”", "‘": "’", "「": "」", "『": "』", '"': '"' };
+  for (let index = 0; index < Math.min(text.length, 96); index += 1) {
+    const char = text[index]!;
+    if (char === closing.at(-1)) closing.pop();
+    else if (pairs[char] !== undefined) closing.push(pairs[char]);
+    if (closing.length > 0) continue;
+    if (/[。！？\n]/u.test(char) || (char === "." && /\s/u.test(text[index + 1] ?? ""))) break;
+    if (char !== "：" && char !== ":") continue;
+    const title = text.slice(0, index + 1);
+    if (title.trim().length < 3 || /^\s*https?\b/iu.test(title)
+      || (/\d/u.test(text[index - 1] ?? "") && /\d/u.test(text[index + 1] ?? ""))
+      || text.slice(index + 1).trim() === "") break;
+    return { title, paragraphs: paragraphs(text.slice(index + 1)) };
+  }
+  return { title: "", paragraphs: paragraphs(text) };
+}

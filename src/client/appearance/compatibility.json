@@ -1,0 +1,32 @@
+{
+  "desktop": "2.0.5",
+  "semanticContract": "semantic-attrs/v1",
+  "selectors": [
+    ".dshMarketOverlay",
+    ".dshMarketOverlayMask",
+    ".dshMarketCard",
+    ".dshMarketCardTop",
+    ".dshMarketCardName",
+    ".dshMarketTags",
+    ".dshMarketGrid"
+  ],
+  "pluginLayout": "src/client/host-skin/layout.css",
+  "communityIcons": [
+    {
+      "plugin": "ssh",
+      "icon": "ssh",
+      "row": "data-dsh-ssh-entry"
+    },
+    {
+      "plugin": "skill-explorer",
+      "icon": "skills",
+      "row": "data-dsh-skill-explorer-entry"
+    },
+    {
+      "plugin": "task-board",
+      "icon": "tasks",
+      "row": "data-dsh-taskboard-entry"
+    }
+  ],
+  "entryMarker": "data-muzi-entry"
+}

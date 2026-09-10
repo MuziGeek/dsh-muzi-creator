@@ -24,7 +24,7 @@ export interface SidebarFooterActionOwnerProps {
 }
 
 export interface MzSidebarInjected {
-  startSession: (workspaceId?: WorkspaceId) => void;
+  startSession: (workspaceId?: WorkspaceId) => void | Promise<void>;
   toggleSidebar: () => void;
 }
 

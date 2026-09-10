@@ -29,8 +29,8 @@
   gap: 7px;
   overflow: hidden;
   white-space: nowrap;
-  font-weight: 650;
-  line-height: 1.5;
+  font-weight: var(--muzi-type-nav-weight, 500);
+  line-height: var(--muzi-type-nav-line, 1.3125rem);
   padding-block: 2px;
 }
 
@@ -183,9 +183,9 @@
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.45;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  font-weight: var(--muzi-type-card-title-weight, 700);
+  line-height: var(--muzi-type-card-title-line, 1.5rem);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -194,8 +194,8 @@
 [data-plugin="dsh-muzi-creator"] .muziListMeta,
 [data-plugin="dsh-muzi-creator"] .muziListSummary {
   color: var(--muzi-island-paper-text);
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .islandSelectableCard.is-selected .muziListMeta,
@@ -226,7 +226,7 @@
   display: -webkit-box;
   min-width: 0;
   overflow: hidden;
-  line-height: 1.55;
+  line-height: var(--muzi-type-body-line, 1.3125rem);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -261,7 +261,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .muziCoverFallback span {
-  font-size: 10px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
   white-space: nowrap;
 }
 
@@ -280,7 +280,7 @@
   gap: 8px;
   padding-inline: 4px;
   color: var(--muzi-island-text-muted);
-  font-size: 12px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .muziBrowseHeading > :last-child {
@@ -313,14 +313,14 @@
 .muziCreateField small {
   margin: 0;
   color: var(--muzi-island-text-muted);
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 .muziCreateField {
   color: var(--muzi-island-text);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  font-weight: var(--muzi-type-support-weight, 500);
 }
 
 .muziCreateField input {
@@ -340,8 +340,8 @@
 .muziCreateForm legend {
   margin-bottom: 8px;
   color: var(--muzi-island-text);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  font-weight: var(--muzi-type-support-weight, 500);
 }
 
 .muziCreatePrimary,
@@ -351,15 +351,15 @@
 
 .muziCreatePrimary small {
   color: var(--muzi-island-text-muted);
-  font-size: 11px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 .muziCreateError {
   margin: -6px 0 0;
   color: var(--muzi-island-danger);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   overflow-wrap: anywhere;
 }
 
@@ -384,7 +384,7 @@
   [data-plugin="dsh-muzi-creator"] .muziSearchButton,
   [data-plugin="dsh-muzi-creator"] .muziClearButton {
     padding-inline: 7px;
-    font-size: 11px;
+    font-size: var(--muzi-type-support-size, 0.75rem);
   }
 
   [data-plugin="dsh-muzi-creator"] .muziPanelList {

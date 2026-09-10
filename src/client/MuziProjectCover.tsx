@@ -25,7 +25,7 @@ export function MuziProjectCover({
         height={4}
         fallback={(
           <span className="muziCoverFallback" role="img" aria-label={`暂无封面：${title}`}>
-            <WorkbenchIcon name="covers" size={32} />
+            <WorkbenchIcon name="covers" purpose="heading" />
             <span>无图片</span>
           </span>
         )}

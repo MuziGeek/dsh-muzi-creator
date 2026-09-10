@@ -1,5 +1,5 @@
 {
-  "source": "oil-icon generated Animal Island workbench and operation families, 2026-09-08 / 2026-09-09",
+  "source": "oil-icon generated Animal Island workbench and operation families, 2026-09-08 / 2026-09-09; SSH and skills extension generated with oil-icon on 2026-09-10",
   "nativeAssetSize": 128,
   "files": {
     "archive.png": "3c67b14a1d15aeedf065c51eb09899749bc578917c4092cab8b550e1ac5725ba",
@@ -33,6 +33,8 @@
     "stop.png": "6621f6947c41d8956d500c83e8c65c62ea7bad3833565ec3ec57e6a18b10a050",
     "connect.png": "e6bbaac2dc7fe72b1852ff60d4e65a481c50c9051b386968862b253c7fd6938d",
     "disconnect.png": "f4353eeac04366b3d790152760ab2baa14874b50e6da41714a3c13830deac3f5",
-    "verify.png": "17a0af6dad7640a88ab69ce803fb1e19dbcbd22cf18f5101e38c402a706a83c5"
+    "verify.png": "17a0af6dad7640a88ab69ce803fb1e19dbcbd22cf18f5101e38c402a706a83c5",
+    "ssh.png": "6968e2b2f8034d3518bd2dc1dcd6727ae4a0275b276503ca32620f50edd51a7a",
+    "skills.png": "a253b393ec07a158e4e8a76b2013dfe44ebad8d9cb9e0bb206ec37dba887e4fa"
   }
 }

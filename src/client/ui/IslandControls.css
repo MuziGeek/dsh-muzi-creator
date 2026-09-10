@@ -20,12 +20,12 @@
   resize: vertical;
   padding: 12px 14px;
   border: 1px solid var(--animal-border-color-light);
-  border-radius: max(12px, var(--animal-border-radius-sm));
+  border-radius: var(--muzi-control-radius, 8px);
   background: var(--animal-bg-color);
   color: var(--animal-text-color);
   box-sizing: border-box;
   font: inherit;
-  line-height: 1.6;
+  line-height: var(--muzi-type-body-line, 1.3125rem);
 }
 
 .islandField {
@@ -118,7 +118,7 @@
 }
 
 .islandField.islandSelect [role="combobox"] {
-  border-radius: 999px;
+  border-radius: var(--muzi-control-radius, 8px);
 }
 
 .islandSelect > div {
@@ -141,7 +141,7 @@
   display: block;
   margin-top: 6px;
   color: var(--animal-text-color-secondary);
-  line-height: 1.5;
+  line-height: var(--muzi-type-support-line, 1.125rem);
   overflow-wrap: anywhere;
 }
 
@@ -162,7 +162,7 @@
 .islandState p {
   margin: 0;
   color: inherit;
-  line-height: 1.55;
+  line-height: var(--muzi-type-empty-line, 1.3125rem);
 }
 
 .islandState-error strong,

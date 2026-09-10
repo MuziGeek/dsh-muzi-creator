@@ -2,6 +2,7 @@ import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -31,8 +32,9 @@ import {
 import type { ReadonlyResource } from "../workbench/WorkbenchData.ts";
 import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
 import { inspirationZh } from "./copy.ts";
-import { layoutSummary } from "./summaryLayout.ts";
+import { layoutReportText, layoutSummary } from "./summaryLayout.ts";
 import "./Inspiration.css";
+import "./InspirationReading.css";
 
 type Translator = (key: string) => string;
 type SearchMode = "topic" | "trend";
@@ -735,6 +737,7 @@ function ReportBody({
   report: NonNullable<InspirationDetail["report"]>;
   t: Translator;
 }) {
+  const sectionPrefix = useId();
   const sources = new Map(
     report.sources.map((source, index) => [source.id, { ...source, number: index + 1 }]),
   );
@@ -742,16 +745,26 @@ function ReportBody({
     report.findings.length > 0 ||
     report.disagreements.length > 0 ||
     (report.sources.length > 0 && report.angles.length > 0);
+  const sections = ["summary", "findings", ...(report.disagreements.length > 0 ? ["disagreements"] : []),
+    ...(report.sources.length > 0 && report.angles.length > 0 ? ["angles"] : []), "sources"];
   return (
-    <article className="inspirationReport">
+    <article className="inspirationReport inspirationModularReport">
       {report.partialReason !== null && (
         <aside className="inspirationPartialReason">
           <strong>{text(t, "partial")}</strong>
           <p>{report.partialReason}</p>
         </aside>
       )}
-      <section className="inspirationSummary">
-        <h3>{text(t, "summary")}</h3>
+      <nav className="inspirationReadingNav" aria-label={text(t, "details")}>
+        {sections.map((section) => <a key={section} href={`#${sectionPrefix}-${section}`} onClick={(event) => {
+          event.preventDefault();
+          const heading = document.getElementById(`${sectionPrefix}-${section}`);
+          heading?.scrollIntoView({ block: "start" });
+          heading?.focus({ preventScroll: true });
+        }}>{text(t, section)}</a>)}
+      </nav>
+      <section className="inspirationModule inspirationSummary" aria-labelledby={`${sectionPrefix}-summary`}>
+        <h3 id={`${sectionPrefix}-summary`} tabIndex={-1}>{text(t, "summary")}</h3>
         <div className="inspirationSummaryContent">
           {layoutSummary(report.summary).map((group, index) => (
             <div className={group.title ? "inspirationSummaryGroup" : "inspirationSummaryIntro"} key={index}>
@@ -763,13 +776,14 @@ function ReportBody({
           ))}
         </div>
       </section>
-      <section>
-        <h3>{text(t, "findings")}</h3>
+      <section className="inspirationModule" aria-labelledby={`${sectionPrefix}-findings`}>
+        <h3 id={`${sectionPrefix}-findings`} tabIndex={-1}>{text(t, "findings")}</h3>
         {!hasMaterials && <p>{text(t, "noMaterials")}</p>}
         <EvidenceList values={report.findings} sources={sources} t={t} />
+      </section>
         {report.disagreements.length > 0 && (
-          <section>
-            <h4>{text(t, "disagreements")}</h4>
+          <section className="inspirationModule inspirationDisagreements" aria-labelledby={`${sectionPrefix}-disagreements`}>
+            <h3 id={`${sectionPrefix}-disagreements`} tabIndex={-1}>{text(t, "disagreements")}</h3>
             <EvidenceList
               values={report.disagreements}
               sources={sources}
@@ -779,11 +793,10 @@ function ReportBody({
           </section>
         )}
         {report.sources.length > 0 && report.angles.length > 0 && (
-          <TextList title={text(t, "angles")} values={report.angles} />
+          <TextList title={text(t, "angles")} values={report.angles} headingId={`${sectionPrefix}-angles`} />
         )}
-      </section>
-      <section>
-        <h3 className="muziIconLabel"><WorkbenchIcon name="sources" />{text(t, "sources")}</h3>
+      <section className="inspirationModule" aria-labelledby={`${sectionPrefix}-sources`}>
+        <h3 id={`${sectionPrefix}-sources`} tabIndex={-1} className="muziIconLabel"><WorkbenchIcon name="sources" />{text(t, "sources")}</h3>
         {report.sources.length === 0 && <p>{text(t, "noSources")}</p>}
         <ol className="inspirationSources">
           {report.sources.map((source, index) => (
@@ -826,7 +839,7 @@ function EvidenceList({
     <ol className="inspirationEvidenceList">
       {values.map((value, index) => (
         <li key={`${String(index)}-${value.text}`}>
-          <p className="inspirationReportText">{value.text}</p>
+          <ReportText value={value.text} />
           {showEvidence && (
             <span className="inspirationEvidenceStatus">
               {text(t, `evidence_${value.evidence}`)}
@@ -859,13 +872,22 @@ function EvidenceList({
     </ol>
   );
 }
-function TextList({ title, values }: { title: string; values: string[] }) {
+function ReportText({ value }: { value: string }) {
+  const group = layoutReportText(value);
+  return <div className="inspirationReportText">
+    {group.title && <h4>{group.title}</h4>}
+    <div className="inspirationPassage">
+      {group.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+    </div>
+  </div>;
+}
+function TextList({ title, values, headingId }: { title: string; values: string[]; headingId: string }) {
   return (
-    <section>
-      <h4>{title}</h4>
-      <ul>
+    <section className="inspirationModule" aria-labelledby={headingId}>
+      <h3 id={headingId} tabIndex={-1}>{title}</h3>
+      <ul className="inspirationAngles">
         {values.map((value) => (
-          <li key={value}>{value}</li>
+          <li key={value}><ReportText value={value} /></li>
         ))}
       </ul>
     </section>

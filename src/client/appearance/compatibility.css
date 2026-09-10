@@ -1,0 +1,57 @@
+/* Desktop 2.0.5 / community skin center 0.3.18 compatibility anchors. */
+html[data-muzi-workbench-appearance] [data-dsh-surface="composer"] textarea, html[data-muzi-workbench-appearance] [role="menu"] { border-radius: 8px; }
+html[data-muzi-workbench-appearance] [role="menuitem"] { border-radius: 6px; }
+html[data-muzi-workbench-appearance] [role="tooltip"] { color: var(--muzi-host-tooltip-text); border: 1px solid var(--muzi-host-tooltip-border); }
+/* Community Market uses buttons for its full-window mask and catalog cards. */
+html[data-muzi-workbench-appearance] .dshMarketOverlay {
+  box-sizing: border-box;
+  max-inline-size: none;
+  border-radius: 0;
+}
+
+html[data-muzi-workbench-appearance] .dshMarketOverlayMask {
+  min-block-size: 0;
+  border-radius: 0;
+}
+
+html[data-muzi-workbench-appearance] .dshMarketCard {
+  box-sizing: border-box;
+  min-block-size: 150px;
+  max-inline-size: 100%;
+  border-radius: 8px;
+}
+
+html[data-muzi-workbench-appearance] .dshMarketCardTop {
+  min-inline-size: 0;
+  inline-size: 100%;
+}
+
+html[data-muzi-workbench-appearance] .dshMarketCardName {
+  min-inline-size: 0;
+}
+
+html[data-muzi-workbench-appearance] .dshMarketTags {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: visible;
+}
+
+html[data-muzi-workbench-appearance] .dshMarketCard .dshMarketTags > * {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+
+html[data-muzi-workbench-appearance] .dshMarketOverlay { inset: 0; width: 100%; height: 100%; }
+html[data-muzi-workbench-appearance] .dshMarketOverlayMask { inset: 0; width: 100%; height: 100%; }
+html[data-muzi-workbench-appearance] .dshMarketCardName :is(strong, span) { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-muzi-workbench-appearance] .dshMarketTags { display: flex; flex-wrap: wrap; }
+@media (max-width: 680px) { html[data-muzi-workbench-appearance] .dshMarketGrid { grid-template-columns: minmax(0, 1fr); } }
+
+
+html[data-muzi-workbench-appearance] [id="root"] { background: transparent; }
+
+html[data-muzi-workbench-appearance] body { --shiki-background: var(--dsw-alias-markdown-code-block); }

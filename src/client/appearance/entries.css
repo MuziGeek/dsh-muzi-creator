@@ -1,0 +1,67 @@
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] button[data-muzi-entry] {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0 0 4px;
+  padding: 0 12px;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 50px;
+  box-shadow: none;
+  transform: none;
+  color: var(--muzi-island-text);
+  background: transparent;
+  font: 600 14px/21px var(--muzi-island-font);
+  text-align: center;
+}
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] button[data-muzi-entry]:hover {
+  background: var(--muzi-island-leaf-soft);
+}
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] button[data-muzi-entry]:is([data-active]:not([data-active="false"]), [aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) {
+  background: var(--muzi-island-leaf);
+  color: var(--muzi-island-accent-ink);
+  border-color: var(--muzi-island-leaf);
+}
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] button[data-muzi-entry]:focus-visible {
+  outline: 2px solid var(--muzi-island-focus);
+  outline-offset: -2px;
+}
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] button[data-muzi-entry]:is(:disabled, [aria-disabled="true"]) {
+  opacity: .5;
+  cursor: not-allowed;
+}
+html[data-muzi-workbench-appearance] button[data-muzi-entry] > span:first-child {
+  position: absolute;
+  inset-inline-start: 12px;
+  display: block;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  background: center / contain no-repeat;
+}
+html[data-muzi-workbench-appearance] button[data-muzi-entry] > span:first-child > svg { visibility: hidden; }
+html[data-muzi-workbench-appearance] button[data-muzi-entry="ssh"] > span:first-child { background-image: url('./assets/icons/ssh.png'); }
+html[data-muzi-workbench-appearance] button[data-muzi-entry="skill-explorer"] > span:first-child { background-image: url('./assets/icons/skills.png'); }
+html[data-muzi-workbench-appearance] button[data-muzi-entry="task-board"] > span:first-child { background-image: url('./assets/icons/tasks.png'); }
+html[data-muzi-workbench-appearance] button[data-muzi-entry] > span:last-child {
+  flex: initial;
+  min-width: 0;
+  max-width: calc(100% - 64px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-muzi-workbench-appearance] [data-surface="sidebar"]:not([data-sidebar-expanded]) button[data-muzi-entry] > span:first-child {
+  inset-inline-start: calc(50% - 12px);
+}
+html[data-muzi-workbench-appearance] [data-surface="sidebar"]:not([data-sidebar-expanded]) button[data-muzi-entry] > span:last-child { display: none; }
+html[data-muzi-workbench-appearance] [data-surface="sidebar"]:not([data-sidebar-expanded]) button[data-muzi-entry="generic"] > span:first-child {
+  background: currentColor;
+  mask: url('./assets/generic-entry.svg') center / contain no-repeat;
+}

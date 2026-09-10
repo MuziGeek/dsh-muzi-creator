@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "tsdown";
 
+import { scopeAnimalStyles } from "./scripts/scope-animal-styles.ts";
+
 const PLUGIN_ID = "dsh-muzi-creator";
 const CSS_PREFIX = "\0dsh-muzi-creator-css:";
 const CSS_SUFFIX = ".mjs";
@@ -80,7 +82,8 @@ function inlineCssPlugin() {
     async load(id: string) {
       if (!id.startsWith(CSS_PREFIX)) return null;
       const file = id.slice(CSS_PREFIX.length, -CSS_SUFFIX.length);
-      const css = await inlineCssAssets(await readFile(file, "utf8"), file);
+      let css = await inlineCssAssets(await readFile(file, "utf8"), file);
+      if (file === ANIMAL_ISLAND_CSS) css = scopeAnimalStyles(css);
       const tagId = `${PLUGIN_ID}/${basename(file)}`;
       const registry = resolve(dirname(fileURLToPath(import.meta.url)), "src/client/pluginCss.ts");
       return [

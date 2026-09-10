@@ -23,6 +23,6 @@ describe("Animal Island sidebar controls", () => {
     expect(settings).toContain("IslandInput");
     expect(workbench).toContain("--muzi-island-text-muted: var(--animal-text-color-secondary)");
     expect(workbench).toContain("--muzi-island-mint: var(--animal-primary-color-bg)");
-    expect(workbench).toContain("body[data-ds-dark-theme] .muziCreateModal");
+    expect(workbench).not.toContain("body[data-ds-dark-theme] .muziCreateModal");
   });
 });

@@ -66,22 +66,28 @@ function OverviewHeader({ id, title, description, action }: { id: string; title:
   </header>;
 }
 
-/** Read-only AIHOT summary with a short, keyboard-selectable reading queue. */
+/** Read-only AIHOT overview with every returned tier and keyboard-selectable item. */
 export function HotOverview({ result, onSelect }: {
   result: DailyHotResult;
   onSelect: (item: DailyHotItem) => void;
 }) {
-  const focusItems = [...result.tiers.mustRead, ...result.tiers.browse].slice(0, 4);
+  const groups = [
+    { key: "mustRead", label: "今日必看", items: result.tiers.mustRead },
+    { key: "browse", label: "值得浏览", items: result.tiers.browse },
+    { key: "other", label: "其余动态", items: result.tiers.other },
+  ];
+  const total = groups.reduce((count, group) => count + group.items.length, 0);
   const sourceStatus = result.status === "live" ? "实时" : "暂存快照";
   return <section className="workbenchOverview" aria-labelledby="hot-overview-title">
     <OverviewHeader id="hot-overview-title" title="今日热点" description="只读浏览与优先阅读，不自动创建内容或任务。" />
     <dl className="workbenchOverviewMetrics">
       <Metric label="更新时间" value={displayDate(result.fetchedAt)} />
       <Metric label="数据状态" value={sourceStatus} />
-      <Metric label="必读 / 浏览" value={`${String(result.counts.mustRead)} / ${String(result.counts.browse)}`} />
+      <Metric label="全部热点" value={total} />
     </dl>
-    {focusItems.length === 0 ? <IslandState kind="empty" title="暂无可读热点" message="当前聚合未返回重点条目。" /> : <div className="workbenchOverviewList" aria-label="重点热点">
-      {focusItems.map((item) => <IslandSelectableCard key={item.id} className="workbenchOverviewCard" onSelect={() => { onSelect(item); }}>
+    {total === 0 ? <IslandState kind="empty" title="暂无可读热点" message="当前聚合未返回热点条目。" /> : groups.filter((group) => group.items.length > 0).map((group) => <section key={group.key} className="workbenchOverviewList" aria-labelledby={`hot-tier-${group.key}`}>
+      <h3 className="workbenchHotTierHeading" id={`hot-tier-${group.key}`}>{group.label}<span>{group.items.length} 条</span></h3>
+      {group.items.map((item) => <IslandSelectableCard key={item.id} className="workbenchOverviewCard" onSelect={() => { onSelect(item); }}>
         <span className="workbenchOverviewCardHeading">
           <strong>{item.title}</strong>
           <IslandTag color={item.evidence.level === "summary-only" ? "app-yellow" : "app-green"} size="small" variant="soft">{item.evidence.label}</IslandTag>
@@ -92,7 +98,7 @@ export function HotOverview({ result, onSelect }: {
         </span>
         {item.summary !== null && <span className="workbenchOverviewExcerpt">{item.summary}</span>}
       </IslandSelectableCard>)}
-    </div>}
+    </section>)}
   </section>;
 }
 

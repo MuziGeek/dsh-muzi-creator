@@ -20,8 +20,8 @@
   gap: 7px;
   margin: 2px 0 10px;
   color: var(--muzi-island-text-muted);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .trellisProjectsRoot span {
@@ -92,8 +92,8 @@
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  line-height: var(--muzi-type-card-title-line, 1.5rem);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -102,15 +102,15 @@
 [data-plugin="dsh-muzi-creator"] .trellisProjectHeading small {
   flex: none;
   color: var(--muzi-island-paper-text);
-  font-size: 10px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .trellisProjectPath {
   min-width: 0;
   overflow: hidden;
   color: var(--muzi-island-paper-text);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -121,8 +121,8 @@
   flex-wrap: wrap;
   gap: 4px 10px;
   color: var(--muzi-island-paper-text);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .trellisProjectCounts b {

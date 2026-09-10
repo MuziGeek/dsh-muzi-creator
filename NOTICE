@@ -15,3 +15,9 @@ https://github.com/guokaigdg/animal-island-ui
 animal-island-ui is distributed under the Creative Commons Attribution-
 NonCommercial 4.0 International License (CC BY-NC 4.0). This integration is
 intended for personal, non-commercial use.
+
+The bundled Nunito and Noto Sans SC font files are distributed under the
+SIL Open Font License 1.1. Their copyright notices and license texts are
+included in src/client/appearance/assets/fonts/OFL.txt and
+src/client/appearance/assets/fonts/OFL-NotoSansSC.txt. File provenance and
+SHA-256 hashes are recorded in that directory's manifest.json.

@@ -10,13 +10,13 @@
   max-height: 45vh;
   overflow-y: auto;
   text-align: left;
-  line-height: 1.6;
+  line-height: var(--muzi-type-body-line, 1.3125rem);
 }
 
 .cardDeleteModalBody p { margin: 0; overflow-wrap: anywhere; }
-.cardDeleteModalTitle { color: var(--muzi-island-paper-text); font-size: 16px; font-weight: 700; }
-.cardDeleteModalHint { color: var(--muzi-island-paper-text); font-size: 14px; }
-.cardDeleteModalError { color: var(--muzi-island-paper-danger); font-size: 14px; }
+.cardDeleteModalTitle { color: var(--muzi-island-paper-text); font-size: var(--muzi-type-card-title-size, 1rem); font-weight: var(--muzi-type-card-title-weight, 700); }
+.cardDeleteModalHint { color: var(--muzi-island-paper-text); font-size: var(--muzi-type-body-size, 0.875rem); }
+.cardDeleteModalError { color: var(--muzi-island-paper-danger); font-size: var(--muzi-type-body-size, 0.875rem); }
 
 .cardDeleteModalActions[data-plugin-modal="dsh-muzi-creator"] {
   display: flex;

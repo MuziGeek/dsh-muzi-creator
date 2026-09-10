@@ -75,7 +75,7 @@ export function TrellisProjectPanel({ t, resource }: TrellisProjectPanelProps) {
         {listed !== null && <p className="trellisProjectsRoot"><span>{t(listed.projectsRoot === "GitHub" ? "github.remote" : "projects.root")}</span><code title={listed.projectsRoot}>{listed.projectsRoot}</code></p>}
         {loading && listed === null && <div className="muziCardSkeletons" aria-label={t("projects.loading")}><IslandSkeleton variant="rect" widthValue="100%" heightValue={84} /><IslandSkeleton variant="rect" widthValue="100%" heightValue={84} /></div>}
         {error !== null && listed === null && <IslandState kind="error" title={t("projects.error")} message={error} />}
-        {!loading && listed !== null && listed.projects.length === 0 && <IslandState kind="empty" title={t(listed.projectsRoot === "GitHub" ? "github.noProjects" : "projects.empty")} action={<WorkbenchIcon name="projects" size={40} />} />}
+        {!loading && listed !== null && listed.projects.length === 0 && <IslandState kind="empty" title={t(listed.projectsRoot === "GitHub" ? "github.noProjects" : "projects.empty")} action={<WorkbenchIcon name="projects" purpose="empty" />} />}
         {filtered.map((project) => {
           const selected = selection.projectId === project.projectId;
           const counts = project.counts;

@@ -1,0 +1,33 @@
+{
+  "source": "animal-island-ui@1.6.0/dist/files",
+  "licenses": {
+    "Nunito": "OFL.txt",
+    "NotoSansSC": "OFL-NotoSansSC.txt"
+  },
+  "files": [
+    {
+      "file": "noto-sans-sc-chinese-simplified-400-normal.woff2",
+      "sha256": "95e3633b6a98f764ba3adfb54504a0cd4799328c009adf9081d6c1850f9c4c78"
+    },
+    {
+      "file": "noto-sans-sc-chinese-simplified-500-normal.woff2",
+      "sha256": "885f52ca6a25fddde7641eaf9cf6d6fd9e8f1a454f99f77f0f1be1be0c6470a5"
+    },
+    {
+      "file": "noto-sans-sc-chinese-simplified-700-normal.woff2",
+      "sha256": "e1df51edc00bce27b58044e829fb8ec6accc8a5daece475413de90d52818845c"
+    },
+    {
+      "file": "nunito-latin-500-normal.woff2",
+      "sha256": "23ae3083dbdaeabf3b9969a3947ddf5d5614683516e28ffa110ca4eb6192a9ff"
+    },
+    {
+      "file": "nunito-latin-700-normal.woff2",
+      "sha256": "fa89300b9bbb3bd0f60d6991aa055965d98e2ccca27bf8688fe0c39cdc796846"
+    },
+    {
+      "file": "nunito-latin-900-normal.woff2",
+      "sha256": "9ca32f5d8334579387361096944286df451272a557bb09bd906254a623aba99e"
+    }
+  ]
+}

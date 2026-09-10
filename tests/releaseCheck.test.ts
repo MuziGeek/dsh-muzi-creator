@@ -14,10 +14,16 @@ import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const releaseCheck = resolve(root, "scripts/check-release.mjs");
-const buildScript = "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs";
+const buildScript = "pnpm build:appearance && tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs";
 const releaseCheckTimeout = process.platform === "win32" ? 90_000 : 10_000;
 const REQUIRED_CHAIN_FILES = [
   "scripts/check-mz-names.mjs",
+  "scripts/build-appearance.mjs",
+  "scripts/scope-animal-styles.ts",
+  "src/client/appearance/assets/fonts/OFL.txt",
+  "src/client/appearance/assets/fonts/OFL-NotoSansSC.txt",
+  "src/client/appearance/assets/fonts/manifest.json",
+  "src/client/appearance/assets/icons/manifest.json",
   "src/creatorSkill.ts",
   "src/capabilities.ts",
   "src/guide.ts",
@@ -64,6 +70,9 @@ function createRepository() {
         "README.md",
         "DESIGN.md",
         "assets/readme/hero.svg",
+        "src/client/appearance/assets/fonts/OFL*.txt",
+        "src/client/appearance/assets/fonts/manifest.json",
+        "src/client/appearance/assets/icons/manifest.json",
       ],
       dsh: { bundle: { patch: "./cordis.patch.yml" } },
       scripts: {
@@ -72,6 +81,7 @@ function createRepository() {
         typecheck: "tsc --noEmit",
         check: "pnpm check:names && pnpm typecheck && pnpm test && pnpm build",
         "check:names": "node scripts/check-mz-names.mjs",
+        "build:appearance": "node scripts/build-appearance.mjs",
         test: "vitest run",
         "release:check": "node scripts/check-release.mjs",
       },
@@ -143,6 +153,43 @@ function runReleaseCheck(repository: string) {
 }
 
 describe("release:check", () => {
+  it("rejects a package that omits bundled font licenses", () => {
+    const repository = createRepository();
+    try {
+      const manifestPath = join(repository, "package.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      manifest.files = manifest.files.filter((file: string) => !file.endsWith("OFL*.txt"));
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      git(repository, "add", "--all");
+      git(repository, "commit", "-qm", "omit font licenses");
+      const result = runReleaseCheck(repository);
+      expect(result.code).not.toBe(0);
+      expect(result.output).toContain("npm pack --dry-run 缺少");
+      expect(result.output).toContain("OFL-NotoSansSC.txt");
+    } finally {
+      rmSync(repository, { recursive: true, force: true });
+    }
+  }, releaseCheckTimeout);
+
+  it.each(["omitted-step", "replaced-command", "failed-check"])("rejects bypassed or failed appearance validation: %s", (scenario) => {
+    const repository = createRepository();
+    try {
+      const manifestPath = join(repository, "package.json");
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      if (scenario === "omitted-step") manifest.scripts.build = buildScript.replace("pnpm build:appearance && ", "");
+      if (scenario === "replaced-command") manifest.scripts["build:appearance"] = "node -e \"process.exit(0)\"";
+      if (scenario === "failed-check") writeFileSync(join(repository, "scripts/build-appearance.mjs"), "process.exit(1);\n");
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+      git(repository, "add", "--all");
+      git(repository, "commit", "-qm", "change appearance validation");
+      const result = runReleaseCheck(repository);
+      expect(result.code).not.toBe(0);
+      expect(result.output).toContain(scenario === "failed-check" ? "pnpm check 失败" : "build:appearance");
+    } finally {
+      rmSync(repository, { recursive: true, force: true });
+    }
+  }, releaseCheckTimeout);
+
   it.each(["omitted-step", "replaced-command", "failed-check"])("rejects a bypassed or failed naming check: %s", (scenario) => {
     const repository = createRepository();
     try {

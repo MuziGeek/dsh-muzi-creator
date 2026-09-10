@@ -14,7 +14,7 @@ it("keeps image decoration out of the control name and preserves activation", as
   render(<IslandButton icon={<WorkbenchIcon name="search" />} onClick={onClick}>搜索资料</IslandButton>);
   const button = screen.getByRole("button", { name: "搜索资料" });
   expect(screen.queryByRole("img")).toBeNull();
-  expect(button.querySelector("img")?.getAttribute("src")).toContain("search.png");
+  expect(button.querySelector('[data-workbench-icon="search"] img')).not.toBeNull();
   await user.click(button);
   button.focus();
   await user.keyboard("{Enter}");
@@ -25,10 +25,10 @@ it("uses the settings icon in wide and rail content without owning the host butt
   const { container, rerender } = render(<WorkbenchSettingsTrigger wide t={() => "设置"} />);
   expect(screen.getByText("设置")).toBeTruthy();
   expect(container.querySelector("button")).toBeNull();
-  expect(container.querySelector("img")?.getAttribute("data-workbench-icon")).toBe("settings");
+  expect(container.querySelector("[data-workbench-icon]")?.getAttribute("data-workbench-icon")).toBe("settings");
   rerender(<WorkbenchSettingsTrigger wide={false} t={() => "设置"} />);
   expect(screen.getByText("设置").className).toBe("muziIconSrOnly");
-  expect(container.querySelector("img")?.getAttribute("width")).toBe("28");
+  expect(container.querySelector("[data-workbench-icon]")?.getAttribute("data-icon-purpose")).toBe("navigation");
 });
 
 it("retains the host settings button name when the sidebar collapses", () => {

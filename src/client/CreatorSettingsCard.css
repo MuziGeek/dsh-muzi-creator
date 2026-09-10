@@ -46,15 +46,15 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .name {
   color: var(--dsw-alias-label-primary);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  font-weight: var(--muzi-type-card-title-weight, 700);
+  line-height: var(--muzi-type-card-title-line, 1.5rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .description {
   color: var(--dsw-alias-label-tertiary);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .pending {
@@ -64,9 +64,9 @@
   border-radius: 999px;
   background: var(--dsw-alias-bg-module-platform);
   color: var(--dsw-alias-label-secondary);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 17px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  font-weight: var(--muzi-type-support-weight, 500);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .chevron {
@@ -94,15 +94,15 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .fieldLabel {
   color: var(--muzi-island-text);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 20px;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  font-weight: var(--muzi-type-body-weight, 500);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .fieldHint {
   color: var(--muzi-island-text-muted);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .inputLabel {
@@ -111,8 +111,8 @@
   gap: 4px;
   margin-top: 8px;
   color: var(--muzi-island-text-muted);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .input {
@@ -139,8 +139,8 @@
   border: 1px solid var(--muzi-island-line);
   border-radius: var(--muzi-island-radius-md);
   color: var(--muzi-island-text);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -151,8 +151,8 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .pickerFailed {
   color: var(--muzi-island-danger);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .footer {

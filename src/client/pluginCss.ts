@@ -3,17 +3,18 @@ const PLUGIN_ID = "dsh-muzi-creator";
 
 interface CssStore {
   sheets: Map<string, string>;
+  active: boolean;
 }
 
 function cssStore(): CssStore {
   const global = globalThis as typeof globalThis & { [STORE]?: CssStore };
-  global[STORE] ??= { sheets: new Map() };
+  global[STORE] ??= { sheets: new Map(), active: false };
   return global[STORE];
 }
 
 export function registerPluginCss(tagId: string, css: string): void {
   cssStore().sheets.set(tagId, css);
-  mountPluginCss(tagId, css);
+  if (cssStore().active) mountPluginCss(tagId, css);
 }
 
 function mountPluginCss(tagId: string, css: string): void {
@@ -27,10 +28,12 @@ function mountPluginCss(tagId: string, css: string): void {
 }
 
 export function remountPluginCss(): void {
+  cssStore().active = true;
   for (const [tagId, css] of cssStore().sheets) mountPluginCss(tagId, css);
 }
 
 export function releasePluginCss(): void {
+  cssStore().active = false;
   if (typeof document === "undefined") return;
   for (const tag of document.querySelectorAll(`style[data-plugin="${PLUGIN_ID}"]`)) {
     tag.remove();

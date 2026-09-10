@@ -13,6 +13,12 @@ const REQUIRED_FILES = [
   "scripts/copy-inplace.mjs",
   "scripts/check-release.mjs",
   "scripts/check-mz-names.mjs",
+  "scripts/build-appearance.mjs",
+  "scripts/scope-animal-styles.ts",
+  "src/client/appearance/assets/fonts/OFL.txt",
+  "src/client/appearance/assets/fonts/OFL-NotoSansSC.txt",
+  "src/client/appearance/assets/fonts/manifest.json",
+  "src/client/appearance/assets/icons/manifest.json",
   "src/index.ts",
   "src/client/index.tsx",
   "src/creatorSkill.ts",
@@ -42,6 +48,13 @@ const RUNTIME_FILES = [
   "lib/client.js",
   "lib/typert.host.js",
   "lib/collect-publish.mjs",
+];
+
+const APPEARANCE_PACKAGE_FILES = [
+  "src/client/appearance/assets/fonts/OFL.txt",
+  "src/client/appearance/assets/fonts/OFL-NotoSansSC.txt",
+  "src/client/appearance/assets/fonts/manifest.json",
+  "src/client/appearance/assets/icons/manifest.json",
 ];
 
 const GITHUB_REPOSITORY = "https://github.com/MuziGeek/dsh-muzi-creator";
@@ -131,8 +144,11 @@ function checkRelease(root) {
   }
 
   const scripts = manifest.scripts ?? {};
-  if (scripts.build !== "tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs") {
-    addFailure("build 脚本不是仓库内可复现的 tsdown + lib 拷贝流程");
+  if (scripts.build !== "pnpm build:appearance && tsdown && node scripts/copy-inplace.mjs scripts/collect-publish.mjs lib/collect-publish.mjs") {
+    addFailure("build 脚本必须先执行 build:appearance，再执行 tsdown 和 lib 拷贝");
+  }
+  if (scripts["build:appearance"] !== "node scripts/build-appearance.mjs") {
+    addFailure("build:appearance 必须执行内置资源验证脚本");
   }
   if (scripts.prepare !== "npm run build") {
     addFailure("prepare 必须固定为 npm run build");
@@ -220,10 +236,10 @@ function runReleasePipeline(root) {
   const packedFiles = new Set(
     metadata.flatMap((pack) => pack.files ?? []).map((file) => file.path),
   );
-  const missing = [...RUNTIME_FILES, "DESIGN.md", "assets/readme/hero.svg"]
+  const missing = [...RUNTIME_FILES, ...APPEARANCE_PACKAGE_FILES, "DESIGN.md", "assets/readme/hero.svg"]
     .filter((file) => !packedFiles.has(file));
   return missing.length > 0
-    ? [`npm pack --dry-run 缺少运行或 Hero 文件：${missing.join(", ")}`]
+    ? [`npm pack --dry-run 缺少运行、外观来源或 Hero 文件：${missing.join(", ")}`]
     : [];
 }
 

@@ -32,16 +32,16 @@
 
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader h2 {
   color: var(--muzi-island-text);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: var(--muzi-type-title-size, 1.25rem);
+  font-weight: var(--muzi-type-title-weight, 700);
+  line-height: var(--muzi-type-title-line, 1.75rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewHeader p {
   margin-top: 5px;
   color: var(--muzi-island-text-muted);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewMetrics {
@@ -64,8 +64,8 @@
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewMetric dt,
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewMetric small {
   color: var(--muzi-island-text-muted);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   overflow-wrap: anywhere;
 }
 
@@ -73,8 +73,8 @@
   min-width: 0;
   margin: 0;
   color: var(--muzi-island-text);
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  font-weight: var(--muzi-type-card-title-weight, 700);
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -87,14 +87,14 @@
   align-items: center;
   gap: 6px;
   color: var(--muzi-island-text-muted);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewBreakdown > span:first-child {
   margin-right: 2px;
   color: var(--muzi-island-text-soft);
-  font-weight: 600;
+  font-weight: var(--muzi-type-support-weight, 500);
 }
 
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewList {
@@ -109,6 +109,23 @@
   gap: 7px;
   padding: 12px 14px;
   color: var(--muzi-island-paper-text);
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchHotTierHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0 0;
+  color: var(--muzi-island-text);
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
+}
+
+[data-plugin="dsh-muzi-creator"] .workbenchHotTierHeading span {
+  color: var(--muzi-island-text-muted);
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  font-weight: var(--muzi-type-support-weight, 500);
 }
 
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewCardHeading,
@@ -127,9 +144,9 @@
   min-width: 0;
   overflow: hidden;
   color: var(--muzi-island-paper-text);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.35;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  font-weight: var(--muzi-type-card-title-weight, 700);
+  line-height: var(--muzi-type-card-title-line, 1.5rem);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -141,8 +158,8 @@
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewCardMeta {
   justify-content: space-between;
   color: var(--muzi-island-paper-text);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .workbenchOverviewCardMeta > span {
@@ -156,8 +173,8 @@
   display: -webkit-box;
   overflow: hidden;
   color: var(--muzi-island-paper-text);
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

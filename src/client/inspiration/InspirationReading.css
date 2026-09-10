@@ -1,0 +1,168 @@
+[data-plugin="dsh-muzi-creator"] .inspirationWorkbench:has(> .inspirationDetail) {
+  width: 100%;
+  max-width: none;
+  padding: clamp(12px, 2vw, 24px);
+  box-sizing: border-box;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationDetail > * {
+  max-width: none;
+}
+
+html [data-plugin="dsh-muzi-creator"] .muziWorkbenchContent.overview > .inspirationWorkbench:has(> .inspirationDetail) {
+  width: 100%;
+  padding: 0;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport {
+  gap: 2rem;
+  font-size: 1rem;
+  line-height: 1.85;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationReadingNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  padding: 0.25rem 1rem;
+  border-radius: var(--muzi-island-radius-md);
+  background: var(--muzi-island-canvas);
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationReadingNav a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationReadingNav a:hover {
+  text-decoration: underline;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationModule {
+  gap: 1.5rem;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationSummaryContent {
+  max-width: none;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationModule + .inspirationModule {
+  padding-top: 2rem;
+  border-top: 1px solid var(--muzi-island-line);
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport h3 {
+  font-size: 1.25rem;
+  scroll-margin-top: 1.5rem;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport h4 {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport h3:focus-visible {
+  outline: 2px solid var(--muzi-island-focus);
+  outline-offset: 4px;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationReportText, .inspirationPassage) {
+  display: grid;
+  min-width: 0;
+  gap: 0.75rem;
+  white-space: pre-wrap;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationEvidenceList, .inspirationAngles) {
+  padding-inline-start: 1.5rem;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationEvidenceList, .inspirationAngles) > li {
+  padding-inline-start: 0.5rem;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationEvidenceList, .inspirationAngles) > li + li {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--muzi-island-line);
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationCitations {
+  gap: 0.375rem;
+  margin-top: 0.875rem;
+  align-items: baseline;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationCitations a {
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  background: var(--muzi-island-canvas);
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationEvidenceStatus {
+  width: fit-content;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--muzi-island-line);
+  border-radius: 4px;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationSources {
+  gap: 1.25rem;
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationSources > li + li {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--muzi-island-line);
+}
+
+[data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationSourceBody {
+  gap: 0.5rem;
+}
+
+@container (min-width: 960px) {
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationSummaryContent, .inspirationEvidenceList, .inspirationAngles, .inspirationSources) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+    align-items: start;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationSummaryIntro {
+    grid-column: 1 / -1;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationSummaryGroup {
+    padding-top: 1rem;
+    border-top: 1px solid var(--muzi-island-line);
+  }
+
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationEvidenceList, .inspirationAngles, .inspirationSources) > li,
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationEvidenceList, .inspirationAngles, .inspirationSources) > li + li {
+    min-width: 0;
+    margin-top: 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--muzi-island-line);
+  }
+
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationEvidenceList, .inspirationAngles, .inspirationSources) > li:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (max-width: 560px) {
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport {
+    gap: 1.5rem;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport .inspirationReadingNav {
+    column-gap: 1rem;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .inspirationModularReport :is(.inspirationEvidenceList, .inspirationAngles) {
+    padding-inline-start: 1.25rem;
+  }
+}

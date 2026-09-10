@@ -228,7 +228,7 @@ export function MuziWorkbenchRoot({
     <main data-plugin="dsh-muzi-creator" data-surface="central-workbench" data-feature={feature}>
       <header className="muziWorkbenchBar">
         <div className="muziWorkbenchHeading">
-          <WorkbenchIcon name={FEATURE_ICONS[feature]} size={32} />
+          <WorkbenchIcon name={FEATURE_ICONS[feature]} purpose="heading" />
           <h1 ref={headingRef} tabIndex={-1}>{TAB_TITLES[feature]}</h1>
           <IslandTag size="small" color={snapshot.error === null ? "app-green" : "app-yellow"} variant="soft">{statusLabel}</IslandTag>
         </div>

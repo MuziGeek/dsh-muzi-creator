@@ -5,7 +5,6 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 import {
-  Card as AnimalCard,
   type CardColor as AnimalCardColor,
   type CardProps as AnimalCardProps,
   Input as AnimalInput,
@@ -21,20 +20,20 @@ import {
 import "./IslandControls.css";
 
 export {
-  Button as IslandButton,
-  Card as IslandCard,
   Checkbox as IslandCheckbox,
   Divider as IslandDivider,
   Drawer as IslandDrawer,
-  Modal as IslandModal,
   Radio as IslandRadio,
   Skeleton as IslandSkeleton,
   Switch as IslandSwitch,
   Tabs as IslandTabs,
-  Tag as IslandTag,
   Title as IslandTitle,
   Tooltip as IslandTooltip,
 } from "animal-island-ui";
+
+export { IslandModal } from "./IslandModal.tsx";
+export { IslandButton, IslandCard, IslandTag } from "./IslandSurfaces.tsx";
+import { IslandCard as AnimalCard } from "./IslandSurfaces.tsx";
 
 export type {
   ButtonProps as IslandButtonProps,

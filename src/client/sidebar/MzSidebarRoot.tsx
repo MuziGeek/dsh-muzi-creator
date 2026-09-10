@@ -34,6 +34,7 @@ import { TrellisProjectPanel } from "./TrellisProjectPanel.tsx";
 import { MzBrand } from "./MzBrand.tsx";
 import type { MzSidebarSlotProps } from "./slots.ts";
 import "./MzSidebarRoot.css";
+import "./SidebarNavigation.css";
 
 const COLLAPSE_SETTLE_MS = 150;
 const SCROLLBAR_LINGER_MS = 2000;
@@ -93,6 +94,28 @@ export function MzSidebarRoot({
   if (!collapsed) everWide.current = true;
 
   const sidebarTab = useSidebarTab();
+  const menu = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (menu.current !== null) menu.current.scrollTop = 0;
+  }, [wide]);
+  const startingSession = useRef(false);
+  const [sessionPending, setSessionPending] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const beginSession = async (): Promise<void> => {
+    if (startingSession.current) return;
+    startingSession.current = true;
+    setSessionPending(true);
+    setSessionError(null);
+    try {
+      await startSession();
+      setSidebarTab("sessions");
+    } catch (cause) {
+      setSessionError(`${t("session.new.label")}: ${cause instanceof Error ? cause.message : String(cause)}`);
+    } finally {
+      startingSession.current = false;
+      setSessionPending(false);
+    }
+  };
   const slotError = useWorkbenchSlotError();
   const sessionActivity = deriveSessionActivityBadge(useSyncExternalStore(
     sessionList.subscribe,
@@ -113,6 +136,10 @@ export function MzSidebarRoot({
   useEffect(() => bindSidebarLayout({ collapsed, toggle: toggleSidebar }), [collapsed, toggleSidebar]);
 
   const chooseTab = (tab: typeof sidebarTab): void => {
+    // Community panels own their controller state; their active entry closes them.
+    column.current?.querySelectorAll<HTMLButtonElement>(
+      "[data-dsh-ssh-entry][data-active], [data-dsh-taskboard-entry][data-active]",
+    ).forEach((entry) => { entry.click(); });
     if (tab === "hot") selectDailyHotItem(null);
     if (tab === "inspiration") setInspirationSelection(null);
     if (tab === "content") setContentSelection(null);
@@ -128,7 +155,7 @@ export function MzSidebarRoot({
     const tabList = event.currentTarget.closest("[role=tablist]");
     chooseTab(next);
     window.requestAnimationFrame(() => {
-      tabList?.querySelector<HTMLButtonElement>(`[data-sidebar-tab="${next}"]`)?.focus();
+      tabList?.querySelector<HTMLButtonElement>(`[data-sidebar-tab="${next}"]`)?.focus({ preventScroll: true });
     });
   };
 
@@ -215,9 +242,10 @@ export function MzSidebarRoot({
         {wide && (
           <IslandButton
             type="text"
-            className={cx("brandButton", "wide")}
+            className={cx("brandButton", "wide", "newSessionAnchor")}
             aria-label={t("session.new.label")}
-            onClick={() => { startSession(); }}
+            loading={sessionPending}
+            onClick={() => { void beginSession(); }}
           >
             <MzBrand tagline={t("brand.tagline")} />
           </IslandButton>
@@ -228,9 +256,11 @@ export function MzSidebarRoot({
             size="small"
             className={cx("iconButton", "topNewSession")}
             aria-label={t("session.new.label")}
-            onClick={() => { startSession(); }}
+            title={t("session.new.label")}
+            loading={sessionPending}
+            onClick={() => { void beginSession(); }}
           >
-            <WorkbenchIcon name="sessions" size={28} />
+            <WorkbenchIcon name="sessions" purpose="navigation" />
           </IslandButton>
         )}
         <IslandButton
@@ -249,110 +279,127 @@ export function MzSidebarRoot({
           type="text"
           className="newSession"
           aria-label={t("session.new.label")}
-          onClick={() => { startSession(); }}
+          title={t("session.new.label")}
+          loading={sessionPending}
+          onClick={() => { void beginSession(); }}
         >
-          <WorkbenchIcon name="sessions" size={28} />
+          <WorkbenchIcon name="sessions" purpose="navigation" />
         </IslandButton>
       )}
 
-      {wide && (
-        <div className="tabRow">
-          <div className="tabList" role="tablist" aria-orientation="vertical" aria-label="Muzi Creator 导航">
-            <IslandButton
-              type={sidebarTab === "sessions" ? "primary" : "text"}
-              role="tab"
-              aria-selected={sidebarTab === "sessions"}
-              tabIndex={sidebarTab === "sessions" ? 0 : -1}
-              data-sidebar-tab="sessions"
-              className={cx("tabButton", sidebarTab === "sessions" && "active")}
-              aria-label={sessionActivity === null ? tabLabels.sessions : `${tabLabels.sessions}，${sessionActivity.label}`}
-              onClick={() => { chooseTab("sessions"); }}
-              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "sessions"); }}
-            >
-              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="sessions" size={32} /></span>
-              <span className="tabLabel">{tabLabels.sessions}</span>
-              {sessionActivity !== null && (
-                <span className={`sessionActivityBadge ${sessionActivity.kind}`} aria-hidden="true">
-                  <i />
-                  <span className="sessionActivityText">{sessionActivity.label}</span>
-                </span>
-              )}
-            </IslandButton>
-            <IslandButton
-              type={sidebarTab === "hot" ? "primary" : "text"}
-              role="tab"
-              aria-selected={sidebarTab === "hot"}
-              tabIndex={sidebarTab === "hot" ? 0 : -1}
-              data-sidebar-tab="hot"
-              className={cx("tabButton", sidebarTab === "hot" && "active")}
-              onClick={() => { chooseTab("hot"); }}
-              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "hot"); }}
-            >
-              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="hotspots" size={32} /></span>
-              <span className="tabLabel">{tabLabels.hot}</span>
-            </IslandButton>
-            <IslandButton
-              type={sidebarTab === "inspiration" ? "primary" : "text"}
-              role="tab"
-              aria-selected={sidebarTab === "inspiration"}
-              tabIndex={sidebarTab === "inspiration" ? 0 : -1}
-              data-sidebar-tab="inspiration"
-              className={cx("tabButton", sidebarTab === "inspiration" && "active")}
-              aria-label={inspirationActivity === null ? tabLabels.inspiration : `${tabLabels.inspiration}，${inspirationActivity.label}`}
-              onClick={() => { chooseTab("inspiration"); }}
-              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "inspiration"); }}
-            >
-              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="inspiration" size={32} /></span>
-              <span className="tabLabel">{tabLabels.inspiration}</span>
-              {inspirationActivity !== null && (
-                <span className={`sessionActivityBadge ${inspirationActivity.kind}`} aria-hidden="true">
-                  <i />
-                  <span className="sessionActivityText">{inspirationActivity.label}</span>
-                </span>
-              )}
-            </IslandButton>
-            <IslandButton
-              type={sidebarTab === "content" ? "primary" : "text"}
-              role="tab"
-              aria-selected={sidebarTab === "content"}
-              tabIndex={sidebarTab === "content" ? 0 : -1}
-              data-sidebar-tab="content"
-              className={cx("tabButton", sidebarTab === "content" && "active")}
-              onClick={() => { chooseTab("content"); }}
-              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "content"); }}
-            >
-              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="content" size={32} /></span>
-              <span className="tabLabel">{tabLabels.content}</span>
-            </IslandButton>
-            <IslandButton
-              type={sidebarTab === "knowledge" ? "primary" : "text"}
-              role="tab"
-              aria-selected={sidebarTab === "knowledge"}
-              tabIndex={sidebarTab === "knowledge" ? 0 : -1}
-              data-sidebar-tab="knowledge"
-              className={cx("tabButton", sidebarTab === "knowledge" && "active")}
-              onClick={() => { chooseTab("knowledge"); }}
-              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "knowledge"); }}
-            >
-              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="knowledge" size={32} /></span>
-              <span className="tabLabel">{tabLabels.knowledge}</span>
-            </IslandButton>
-            <IslandButton
-              type={sidebarTab === "projects" ? "primary" : "text"}
-              role="tab"
-              aria-selected={sidebarTab === "projects"}
-              tabIndex={sidebarTab === "projects" ? 0 : -1}
-              data-sidebar-tab="projects"
-              className={cx("tabButton", sidebarTab === "projects" && "active")}
-              onClick={() => { chooseTab("projects"); }}
-              onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "projects"); }}
-            >
-              <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="projects" size={32} /></span>
-              <span className="tabLabel">{tabLabels.projects}</span>
-            </IslandButton>
+      <div
+        ref={menu}
+        className="sidebarMenu"
+        data-sidebar-menu=""
+        onFocusCapture={(event) => {
+          const viewport = event.currentTarget;
+          const bounds = viewport.getBoundingClientRect();
+          const target = event.target.getBoundingClientRect();
+          if (target.top < bounds.top) viewport.scrollTop += target.top - bounds.top;
+          else if (target.bottom > bounds.bottom) viewport.scrollTop += target.bottom - bounds.bottom;
+        }}
+      >
+        {wide && (
+          <div className="tabRow">
+            <div className="tabList" role="tablist" aria-orientation="vertical" aria-label="Muzi Creator 导航">
+              <IslandButton
+                type={sidebarTab === "sessions" ? "primary" : "text"}
+                role="tab"
+                aria-selected={sidebarTab === "sessions"}
+                tabIndex={sidebarTab === "sessions" ? 0 : -1}
+                data-sidebar-tab="sessions"
+                className={cx("tabButton", sidebarTab === "sessions" && "active")}
+                aria-label={sessionActivity === null ? tabLabels.sessions : `${tabLabels.sessions}，${sessionActivity.label}`}
+                onClick={() => { chooseTab("sessions"); }}
+                onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "sessions"); }}
+              >
+                <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="sessions" purpose="navigation" /></span>
+                <span className="tabLabel">{tabLabels.sessions}</span>
+                {sessionActivity !== null && (
+                  <span className={`sessionActivityBadge ${sessionActivity.kind}`} aria-hidden="true">
+                    <i />
+                    <span className="sessionActivityText">{sessionActivity.label}</span>
+                  </span>
+                )}
+              </IslandButton>
+              <IslandButton
+                type={sidebarTab === "hot" ? "primary" : "text"}
+                role="tab"
+                aria-selected={sidebarTab === "hot"}
+                tabIndex={sidebarTab === "hot" ? 0 : -1}
+                data-sidebar-tab="hot"
+                className={cx("tabButton", sidebarTab === "hot" && "active")}
+                onClick={() => { chooseTab("hot"); }}
+                onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "hot"); }}
+              >
+                <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="hotspots" purpose="navigation" /></span>
+                <span className="tabLabel">{tabLabels.hot}</span>
+              </IslandButton>
+              <IslandButton
+                type={sidebarTab === "inspiration" ? "primary" : "text"}
+                role="tab"
+                aria-selected={sidebarTab === "inspiration"}
+                tabIndex={sidebarTab === "inspiration" ? 0 : -1}
+                data-sidebar-tab="inspiration"
+                className={cx("tabButton", sidebarTab === "inspiration" && "active")}
+                aria-label={inspirationActivity === null ? tabLabels.inspiration : `${tabLabels.inspiration}，${inspirationActivity.label}`}
+                onClick={() => { chooseTab("inspiration"); }}
+                onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "inspiration"); }}
+              >
+                <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="inspiration" purpose="navigation" /></span>
+                <span className="tabLabel">{tabLabels.inspiration}</span>
+                {inspirationActivity !== null && (
+                  <span className={`sessionActivityBadge ${inspirationActivity.kind}`} aria-hidden="true">
+                    <i />
+                    <span className="sessionActivityText">{inspirationActivity.label}</span>
+                  </span>
+                )}
+              </IslandButton>
+              <IslandButton
+                type={sidebarTab === "content" ? "primary" : "text"}
+                role="tab"
+                aria-selected={sidebarTab === "content"}
+                tabIndex={sidebarTab === "content" ? 0 : -1}
+                data-sidebar-tab="content"
+                className={cx("tabButton", sidebarTab === "content" && "active")}
+                onClick={() => { chooseTab("content"); }}
+                onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "content"); }}
+              >
+                <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="content" purpose="navigation" /></span>
+                <span className="tabLabel">{tabLabels.content}</span>
+              </IslandButton>
+              <IslandButton
+                type={sidebarTab === "knowledge" ? "primary" : "text"}
+                role="tab"
+                aria-selected={sidebarTab === "knowledge"}
+                tabIndex={sidebarTab === "knowledge" ? 0 : -1}
+                data-sidebar-tab="knowledge"
+                className={cx("tabButton", sidebarTab === "knowledge" && "active")}
+                onClick={() => { chooseTab("knowledge"); }}
+                onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "knowledge"); }}
+              >
+                <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="knowledge" purpose="navigation" /></span>
+                <span className="tabLabel">{tabLabels.knowledge}</span>
+              </IslandButton>
+              <IslandButton
+                type={sidebarTab === "projects" ? "primary" : "text"}
+                role="tab"
+                aria-selected={sidebarTab === "projects"}
+                tabIndex={sidebarTab === "projects" ? 0 : -1}
+                data-sidebar-tab="projects"
+                className={cx("tabButton", sidebarTab === "projects" && "active")}
+                onClick={() => { chooseTab("projects"); }}
+                onKeyDown={(event: KeyboardEvent<HTMLButtonElement>) => { moveSidebarTab(event, "projects"); }}
+              >
+                <span className="tabIcon" aria-hidden="true"><WorkbenchIcon name="projects" purpose="navigation" /></span>
+                <span className="tabLabel">{tabLabels.projects}</span>
+              </IslandButton>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        <div className="communityNavigation" data-sidebar-community-entries="" />
+      </div>
 
       <div className="regionArea">
         {slotError !== null && sidebarTab !== "sessions" && <div className="workbenchSlotError" role="alert">中央工作台未能接管当前区域，已保留官方会话界面。{slotError}</div>}
@@ -394,6 +441,7 @@ export function MzSidebarRoot({
         )}
       </div>
 
+      {sessionError !== null && <div className="workbenchSlotError" role="alert" title={sessionError}>{sessionError}</div>}
       <div className="footArea">
         <div className="footerActions">
           {renderSlot("sidebar.footer.action", { wide })}

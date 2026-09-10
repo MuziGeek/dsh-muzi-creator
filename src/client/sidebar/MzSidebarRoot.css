@@ -11,8 +11,7 @@
   background: var(--muzi-island-sidebar);
   color: var(--muzi-island-text);
   box-sizing: border-box;
-  font-family: var(--muzi-island-font);
-  font-size: 14px;
+  font-size: var(--muzi-type-nav-size, 0.875rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed {
@@ -111,15 +110,15 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandText {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  font-weight: var(--muzi-type-card-title-weight, 700);
+  line-height: var(--muzi-type-card-title-line, 1.5rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .mzBrandTagline {
   color: var(--muzi-island-text-muted);
-  font-size: 11px;
-  line-height: 1.2;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .iconButton,
@@ -143,7 +142,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .toggleText {
-  font-size: 12px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .railBrand {
@@ -198,15 +197,22 @@
   display: inline-flex;
   width: 100%;
   min-height: 40px;
+  height: 40px;
   align-items: center;
-  justify-content: center;
-  padding-inline: 12px;
-  text-align: center;
+  justify-content: flex-start;
+  padding: 6px 12px;
+  text-align: left;
+  border-radius: var(--muzi-control-radius, 8px);
   color: var(--muzi-island-text);
   background: transparent;
   border-color: transparent;
   box-shadow: none;
   transform: none;
+}
+
+/* Community entries are direct flex children inserted after the logo row. */
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] > [data-dsh-part="sidebar-entry"] {
+  flex-shrink: 0;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabButton[aria-selected="false"]:hover {
@@ -232,14 +238,13 @@
   width: 100%;
   min-width: 0;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabIcon {
-  position: absolute;
-  inset-inline-start: 0;
   display: grid;
-  width: 32px;
+  width: 24px;
   flex: none;
   place-items: center;
   line-height: 0;
@@ -247,27 +252,27 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .tabLabel {
   min-width: 0;
-  max-width: calc(100% - 116px);
-  padding-block: 2px;
-  line-height: 1.5;
+  flex: 1;
+  padding-block: 0;
+  line-height: var(--muzi-type-nav-line, 1.3125rem);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sessionActivityBadge {
-  position: absolute;
-  inset-inline-end: 0;
   display: inline-flex;
+  flex: none;
+  margin-inline-start: auto;
   max-width: 104px;
   min-width: 0;
   align-items: center;
   gap: 5px;
   overflow: hidden;
   color: var(--muzi-island-text-muted);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 16px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  font-weight: var(--muzi-type-support-weight, 500);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -295,8 +300,8 @@
   border-radius: var(--muzi-radius-md);
   background: var(--animal-error-color-bg);
   color: var(--animal-error-color-active);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .regionArea {

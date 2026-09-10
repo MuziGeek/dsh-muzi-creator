@@ -5,7 +5,8 @@ import { VideoAccountManager } from "../src/client/VideoAccountManager.tsx";
 import { zh, type CreatorKey } from "../src/client/locales.ts";
 import type { VideoAccountFace, VideoAccountManagement, VideoConnection } from "../src/videoAccountSchemas.ts";
 
-vi.mock("@deepseek-ai/dsh-client-ui-primitives", () => ({ IconChevronDownOutline14: () => <svg aria-hidden="true" /> }));
+vi.mock("@deepseek-ai/dsh-client-ui-primitives", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@deepseek-ai/dsh-client-ui-primitives")>(), IconChevronDownOutline14: () => <svg aria-hidden="true" /> }));
 
 const t = (key: CreatorKey) => zh[key];
 const time = "2026-09-08T00:00:00.000Z";

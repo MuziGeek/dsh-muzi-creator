@@ -1,0 +1,25 @@
+body:has(dialog.islandModal[open]) { overflow: hidden; }
+dialog.islandModal {
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--muzi-dialog-radius, 12px);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: var(--muzi-type-body-weight, 500) var(--muzi-type-body-size, 0.875rem)/var(--muzi-type-body-line, 1.3125rem) var(--dsw-font-family, system-ui, sans-serif);
+  overflow-wrap: anywhere;
+}
+dialog.islandModal::backdrop { background: var(--dsw-alias-bg-mask-3); }
+.islandModalHeader { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.islandModalHeader h2 { flex: 1; min-width: 0; margin: 0; font: var(--muzi-type-title-weight, 700) var(--muzi-type-title-size, 1.25rem)/var(--muzi-type-title-line, 1.75rem) var(--dsw-font-family, system-ui, sans-serif); }
+.islandModalClose { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
+.islandModalClose:hover { background: var(--dsw-alias-interactive-bg-hover); }
+.islandModalClose:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px; }
+.islandModalBody { min-width: 0; padding: 20px; }
+.islandModalFooter { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--dsw-alias-border-l1); }
+@media (max-width: 430px) { .islandModalHeader, .islandModalBody, .islandModalFooter { padding: 12px; } }

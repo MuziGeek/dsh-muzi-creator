@@ -4,7 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@deepseek-ai/dsh-client-ui-primitives", () => ({
+vi.mock("@deepseek-ai/dsh-client-ui-primitives", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@deepseek-ai/dsh-client-ui-primitives")>(),
   MarkdownText: ({ text }: { text: string }) => <div>{text}</div>,
 }));
 

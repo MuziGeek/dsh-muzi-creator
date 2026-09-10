@@ -2,6 +2,34 @@
 [data-plugin-modal="dsh-muzi-creator"],
 .muziCreateModal,
 .trellisArchiveModal {
+  --animal-primary-color: var(--dsw-alias-button-primary-fill);
+  --animal-primary-color-hover: var(--dsw-alias-button-primary-hover);
+  --animal-primary-color-active: var(--dsw-alias-button-primary-hover);
+  --animal-primary-color-bg: var(--dsw-alias-button-primary-dimmed);
+  --animal-text-color: var(--dsw-alias-label-primary);
+  --animal-text-color-secondary: var(--dsw-alias-label-secondary);
+  --animal-text-color-muted: var(--dsw-alias-label-secondary);
+  --animal-text-color-disabled: var(--dsw-alias-label-dimmed);
+  --animal-border-color: var(--dsw-alias-border-l2);
+  --animal-border-color-hover: var(--dsw-alias-border-l3);
+  --animal-border-color-light: var(--dsw-alias-border-l1);
+  --animal-bg-color: var(--dsw-alias-bg-layer-1);
+  --animal-bg-color-secondary: var(--dsw-alias-bg-base);
+  --animal-bg-color-disabled: var(--dsw-alias-bg-layer-2);
+  --animal-mask-bg: var(--dsw-alias-bg-mask-3);
+  --animal-font-family: var(--dsw-font-family, inherit);
+  --animal-success-color: var(--dsw-alias-state-success-primary);
+  --animal-success-color-hover: var(--dsw-alias-state-success-primary);
+  --animal-success-color-active: var(--dsw-alias-state-success-primary);
+  --animal-warning-color: var(--dsw-alias-state-warn-primary);
+  --animal-warning-color-hover: var(--dsw-alias-state-warn-primary);
+  --animal-warning-color-active: var(--dsw-alias-state-warn-primary);
+  --animal-error-color: var(--dsw-alias-state-error-primary);
+  --animal-error-color-hover: var(--dsw-alias-state-error-primary);
+  --animal-error-color-active: var(--dsw-alias-state-error-primary);
+  --animal-border-radius-sm: var(--muzi-control-radius, 8px);
+  --animal-border-radius-base: var(--muzi-card-radius, 8px);
+  --animal-border-radius-lg: var(--muzi-dialog-radius, 12px);
   --muzi-island-canvas: var(--animal-bg-color-secondary);
   --muzi-island-paper: var(--animal-bg-color);
   --muzi-island-toolbar: color-mix(in srgb, var(--animal-bg-color) 84%, var(--animal-text-color));
@@ -22,10 +50,10 @@
   --muzi-island-warning-soft: color-mix(in srgb, var(--animal-warning-color) 18%, var(--animal-bg-color));
   --muzi-island-danger: var(--animal-error-color-active);
   --muzi-island-danger-soft: color-mix(in srgb, var(--animal-error-color) 14%, var(--animal-bg-color));
-  --muzi-island-accent-ink: #17473f;
-  --muzi-island-paper-text: #725d42;
-  --muzi-island-paper-danger: #9a3a3a;
-  --muzi-island-focus: var(--animal-warning-color);
+  --muzi-island-accent-ink: var(--dsw-alias-brand-primary-invert);
+  --muzi-island-paper-text: var(--dsw-alias-label-secondary);
+  --muzi-island-paper-danger: var(--dsw-alias-state-error-primary);
+  --muzi-island-focus: var(--dsw-alias-focus, var(--dsw-alias-brand-primary));
   --muzi-island-radius-sm: var(--animal-border-radius-sm);
   --muzi-island-radius-md: var(--animal-border-radius-base);
   --muzi-island-radius-lg: var(--animal-border-radius-lg);
@@ -44,59 +72,6 @@
   --muzi-motion-enter: var(--animal-motion-duration-base);
   --muzi-ease: var(--animal-motion-ease);
   font-family: var(--muzi-island-font);
-}
-
-body[data-ds-dark-theme] [data-plugin="dsh-muzi-creator"],
-body[data-ds-dark-theme] [data-plugin-modal="dsh-muzi-creator"] {
-  --animal-primary-color: #a9d784;
-  --animal-primary-color-hover: #bce49a;
-  --animal-primary-color-active: #8fbd6d;
-  --animal-primary-color-bg: #35452f;
-  --animal-success-color: #9fd29a;
-  --animal-success-color-hover: #b2dda9;
-  --animal-success-color-active: #82b67f;
-  --animal-warning-color: #f0c75b;
-  --animal-warning-color-hover: #f5d67f;
-  --animal-warning-color-active: #d5aa3f;
-  --animal-error-color: #f1a099;
-  --animal-error-color-hover: #f5b9b3;
-  --animal-error-color-active: #d9827b;
-  --animal-text-color: #f5ead7;
-  --animal-text-color-secondary: #d8c8b1;
-  --animal-text-color-muted: #c5b59d;
-  --animal-text-color-disabled: #8d806f;
-  --animal-border-color: #746652;
-  --animal-border-color-hover: #9a876e;
-  --animal-border-color-light: #4c4135;
-  --animal-bg-color: #302820;
-  --animal-bg-color-secondary: #251f1a;
-  --animal-bg-color-disabled: #3a3027;
-  --animal-mask-bg: rgb(18 13 9 / 68%);
-  --muzi-island-accent-ink: #2d471f;
-  --muzi-island-toolbar: var(--animal-bg-color-secondary);
-}
-
-/* Animal Modal 1.6.0 uses a fixed cream shell; portal content deliberately keeps matching light tokens. */
-body[data-ds-dark-theme] .muziCreateModal,
-body[data-ds-dark-theme] .trellisArchiveModal {
-  --animal-primary-color: #19c8b9;
-  --animal-primary-color-hover: #3dd4c6;
-  --animal-primary-color-active: #50b9ab;
-  --animal-primary-color-bg: #e6f9f6;
-  --animal-success-color: #6fba2c;
-  --animal-warning-color: #f5c31c;
-  --animal-error-color: #e05a5a;
-  --animal-text-color: #794f27;
-  --animal-text-color-secondary: #9f927d;
-  --animal-text-color-muted: #794f27;
-  --animal-text-color-disabled: #c4b89e;
-  --animal-border-color: #aaa69d;
-  --animal-border-color-hover: #827157;
-  --animal-border-color-light: #e8e2d6;
-  --animal-bg-color: #f8f8f0;
-  --animal-bg-color-secondary: #f0e8d8;
-  --animal-bg-color-disabled: #f0ece2;
-  color-scheme: light;
 }
 
 [data-plugin="dsh-muzi-creator"] :where(button, input, textarea, select, [tabindex]):focus-visible,

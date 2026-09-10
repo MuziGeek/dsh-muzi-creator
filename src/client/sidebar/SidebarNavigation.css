@@ -1,0 +1,46 @@
+/* Shared by the base sidebar and built-in appearance; row sizing must agree with the viewport. */
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sidebarMenu[data-sidebar-menu] {
+  --muzi-menu-row: 2.75rem;
+  --muzi-menu-gap: 0.25rem;
+  height: calc(4 * var(--muzi-menu-row) + 3 * var(--muzi-menu-gap));
+  min-height: 0;
+  flex: none;
+  margin-bottom: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--muzi-island-line-strong) transparent;
+  scrollbar-gutter: stable;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sidebarMenu[data-sidebar-menu] .tabRow {
+  display: block;
+  margin: 0;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sidebarMenu[data-sidebar-menu] :is(.tabList, .communityNavigation) {
+  display: grid;
+  gap: var(--muzi-menu-gap);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sidebarMenu[data-sidebar-menu] .communityNavigation:not(:empty) {
+  margin-top: var(--muzi-menu-gap);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"] .sidebarMenu[data-sidebar-menu] :is(.tabButton, .communityNavigation > button) {
+  box-sizing: border-box;
+  height: var(--muzi-menu-row);
+  min-height: var(--muzi-menu-row);
+  margin-block: 0;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed .sidebarMenu[data-sidebar-menu] {
+  height: auto;
+  max-height: calc(4 * var(--muzi-menu-row) + 3 * var(--muzi-menu-gap));
+  scrollbar-gutter: auto;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="sidebar"].collapsed .sidebarMenu[data-sidebar-menu] .communityNavigation {
+  margin-top: 0;
+}

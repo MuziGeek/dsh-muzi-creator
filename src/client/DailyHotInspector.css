@@ -16,7 +16,6 @@
   overflow: hidden;
   background: var(--muzi-surface);
   color: var(--muzi-island-text);
-  font-family: var(--muzi-island-font, inherit);
   box-sizing: border-box;
 }
 
@@ -40,9 +39,9 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotInspectorTop > div span {
   overflow: hidden;
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 650;
+  font-size: var(--muzi-type-card-title-size, 1rem);
+  line-height: var(--muzi-type-card-title-line, 1.5rem);
+  font-weight: var(--muzi-type-card-title-weight, 700);
   letter-spacing: -.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -90,8 +89,8 @@
   flex-wrap: wrap;
   gap: 7px;
   color: var(--muzi-island-text-faint);
-  font-size: 11px;
-  line-height: 16px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotHeroMeta > span {
@@ -103,9 +102,9 @@
   max-width: 28ch;
   margin: 0;
   overflow-wrap: anywhere;
-  font-size: 24px;
-  line-height: 32px;
-  font-weight: 680;
+  font-size: var(--muzi-type-title-size, 1.25rem);
+  line-height: var(--muzi-type-title-line, 1.75rem);
+  font-weight: var(--muzi-type-title-weight, 700);
   letter-spacing: -.025em;
   text-wrap: balance;
 }
@@ -114,8 +113,8 @@
   max-width: 68ch;
   margin: 0;
   color: var(--muzi-island-text-soft);
-  font-size: 14px;
-  line-height: 23px;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
   text-wrap: pretty;
 }
 
@@ -127,8 +126,8 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotDomains span {
   color: var(--muzi-island-text-soft);
-  font-size: 11px;
-  line-height: 16px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotLatest {
@@ -146,9 +145,9 @@
 [data-plugin="dsh-muzi-creator"] .dailyHotEvidenceGroup h2 {
   margin: 0;
   color: var(--muzi-island-text-soft);
-  font-size: 12px;
-  line-height: 18px;
-  font-weight: 650;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
+  font-weight: var(--muzi-type-support-weight, 500);
   letter-spacing: .01em;
 }
 
@@ -159,8 +158,8 @@
 [data-plugin="dsh-muzi-creator"] .dailyHotLatest p {
   margin: 0;
   color: var(--muzi-island-text);
-  font-size: 14px;
-  line-height: 23px;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
   text-wrap: pretty;
 }
 
@@ -179,8 +178,8 @@
   max-width: 72ch;
   margin: 0;
   color: var(--muzi-island-text);
-  font-size: 15px;
-  line-height: 26px;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
   white-space: pre-wrap;
   text-wrap: pretty;
 }
@@ -222,8 +221,8 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotFacts dt {
   color: var(--muzi-island-text-faint);
-  font-size: 11px;
-  line-height: 16px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotFacts dd {
@@ -231,8 +230,8 @@
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--muzi-island-text);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotSourceNames ul {
@@ -262,8 +261,8 @@
   background: transparent;
   color: var(--muzi-island-leaf);
   font: inherit;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   cursor: pointer;
 }
 
@@ -291,8 +290,8 @@
   border: 1px solid var(--muzi-border-strong);
   border-radius: var(--muzi-island-radius-sm);
   color: var(--muzi-island-text);
-  font-size: 12px;
-  line-height: 18px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   text-align: center;
   text-decoration: none;
 }
@@ -321,8 +320,8 @@
 
 [data-plugin="dsh-muzi-creator"] .dailyHotDisclaimer p {
   margin: 0;
-  font-size: 12px;
-  line-height: 19px;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
 }
 
 [data-plugin="dsh-muzi-creator"] .dailyHotDisclaimer strong {
@@ -353,8 +352,8 @@
   }
 
   [data-plugin="dsh-muzi-creator"][data-surface="daily-hot-inspector"] .dailyHotHero h1 {
-    font-size: 28px;
-    line-height: 38px;
+    font-size: var(--muzi-type-title-size, 1.25rem);
+    line-height: var(--muzi-type-title-line, 1.75rem);
   }
 
   [data-plugin="dsh-muzi-creator"][data-surface="daily-hot-inspector"] .dailyHotEvidenceRail {
@@ -394,15 +393,15 @@
   }
 
   [data-plugin="dsh-muzi-creator"] .dailyHotHero h1 {
-    font-size: 21px;
-    line-height: 29px;
+    font-size: var(--muzi-type-title-size, 1.25rem);
+    line-height: var(--muzi-type-title-line, 1.75rem);
   }
 
   [data-plugin="dsh-muzi-creator"] .dailyHotHero > p,
   [data-plugin="dsh-muzi-creator"] .dailyHotLatest p,
   [data-plugin="dsh-muzi-creator"] .dailyHotSummaryBody p {
-    font-size: 14px;
-    line-height: 24px;
+    font-size: var(--muzi-type-body-size, 0.875rem);
+    line-height: var(--muzi-type-body-line, 1.3125rem);
   }
 
   [data-plugin="dsh-muzi-creator"] .dailyHotLatest {

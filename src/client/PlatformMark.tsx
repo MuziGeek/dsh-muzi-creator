@@ -4,7 +4,7 @@ import { WorkbenchIcon } from "./ui/WorkbenchIcon.tsx";
 export type { PlatformId };
 
 export function PlatformMark({ id, size = 18 }: { id: PlatformId; size?: number }) {
-  if (id === "article") return <WorkbenchIcon name="content" size={size} />;
+  if (id === "article") return <WorkbenchIcon name="content" purpose="compact" />;
   return (
     <img
       className="platformMark"

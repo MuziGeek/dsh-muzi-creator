@@ -58,6 +58,102 @@ function sidebarProps(sessionSnapshot: SessionActivitySnapshot = EMPTY_SESSIONS)
 }
 
 describe("Muzi Creator sidebar navigation", () => {
+  it("keeps menu scrolling separate, preserves it on navigation and resets it after folding", async () => {
+    act(() => { setSidebarTab("knowledge"); });
+    const props = sidebarProps();
+    const view = render(<MzSidebarRoot {...props} />);
+    const menu = view.container.querySelector<HTMLElement>('[data-sidebar-menu]')!;
+    const host = menu.querySelector('[data-sidebar-community-entries]')!;
+    const region = view.container.querySelector<HTMLElement>('.regionArea')!;
+    expect(menu.scrollTop).toBe(0);
+    expect([...menu.querySelectorAll('[role="tab"]')].map(tab => tab.getAttribute('data-sidebar-tab')))
+      .toEqual(['sessions', 'hot', 'inspiration', 'content', 'knowledge', 'projects']);
+    menu.scrollTop = 80;
+    act(() => { setSidebarTab("content"); });
+    expect(menu.scrollTop).toBe(80);
+    vi.spyOn(menu, 'getBoundingClientRect').mockReturnValue({ top: 100, bottom: 288 } as DOMRect);
+    const projects = screen.getByRole('tab', { name: '项目' });
+    vi.spyOn(projects, 'getBoundingClientRect').mockReturnValue({ top: 296, bottom: 340 } as DOMRect);
+    fireEvent.focus(projects);
+    expect(menu.scrollTop).toBe(132); expect(region.scrollTop).toBe(0);
+    const plugin = document.createElement('button'); host.append(plugin);
+    view.rerender(<MzSidebarRoot {...props} collapsed={true} />);
+    await waitFor(() => expect(view.container.querySelector('.collapsed')).not.toBeNull());
+    expect(plugin.isConnected).toBe(true); expect(screen.queryByRole('tab')).toBeNull();
+    view.rerender(<MzSidebarRoot {...props} />);
+    expect(view.container.querySelector('[data-sidebar-community-entries]')).toBe(host);
+    expect(plugin.isConnected).toBe(true); expect(menu.scrollTop).toBe(0);
+  });
+
+  it("returns to sessions after creating from a feature and preserves its selection", async () => {
+    const user = userEvent.setup();
+    setSidebarTab("hot");
+    const props = sidebarProps();
+    render(<MzSidebarRoot {...props} />);
+    await user.click(screen.getByRole("button", { name: "session.new.label" }));
+    expect(props.startSession).toHaveBeenCalledOnce();
+    expect(getSidebarTab()).toBe("sessions");
+  });
+
+  it.each([false, true])("reports create failures and allows retry with collapsed=%s", async (collapsed) => {
+    const user = userEvent.setup();
+    let reject!: (error: Error) => void;
+    const startSession = vi.fn().mockImplementationOnce(() => new Promise<void>((_resolve, fail) => { reject = fail; })).mockResolvedValue(undefined);
+    render(<MzSidebarRoot {...sidebarProps()} collapsed={collapsed} startSession={startSession} />);
+    const button = document.querySelector<HTMLButtonElement>(collapsed ? ".newSession" : ".topNewSession")!;
+    await user.click(button);
+    await user.click(button);
+    expect(startSession).toHaveBeenCalledOnce();
+    await act(async () => { reject(new Error("连接失败")); });
+    expect(screen.getByRole("alert").textContent).toContain("连接失败");
+    await user.click(button);
+    expect(startSession).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it.each(["sessions", "hot", "inspiration", "content", "knowledge", "projects"] as const)(
+    "provides the community new-session insertion anchor when restored to %s",
+    async (tab) => {
+      act(() => { setSidebarTab(tab); });
+      const props = sidebarProps();
+      const view = render(<MzSidebarRoot {...props} />);
+      const logo = view.container.querySelector('[class*="logoRow"]')!;
+      const anchor = logo.parentElement!.querySelector<HTMLButtonElement>('button[class*="newSession"]');
+      expect(anchor).not.toBeNull();
+      expect(anchor!.closest('[class*="logoRow"]')).toBe(logo);
+      await userEvent.setup().click(anchor!);
+      expect(props.startSession).toHaveBeenCalledOnce();
+      view.rerender(<MzSidebarRoot {...props} collapsed={true} />);
+      await waitFor(() => expect(view.container.querySelector('.collapsed button[class*="newSession"]')).not.toBeNull());
+    },
+  );
+
+  it.each(["ssh", "taskboard"])("closes the active %s panel through its controller action on feature navigation", async (panel) => {
+    const props = sidebarProps();
+    const view = render(<MzSidebarRoot {...props} />);
+    const root = view.container.querySelector('[data-surface="sidebar"]')!;
+    const active = document.createElement("button");
+    active.setAttribute(`data-dsh-${panel}-entry`, "");
+    active.setAttribute("data-active", "true");
+    const close = vi.fn(() => { active.removeAttribute("data-active"); });
+    active.addEventListener("click", close);
+    const inactive = document.createElement("button");
+    inactive.setAttribute(`data-dsh-${panel === "ssh" ? "taskboard" : "ssh"}-entry`, "");
+    const toggle = vi.fn();
+    inactive.addEventListener("click", toggle);
+    root.append(active, inactive);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "内容" }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(getSidebarTab()).toBe("content");
+    await user.click(screen.getByRole("tab", { name: "知识" }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(toggle).not.toHaveBeenCalled();
+    expect(props.startSession).not.toHaveBeenCalled();
+    active.remove();
+    inactive.remove();
+  });
+
   it("clears a restored hotspot identity before its data has loaded", async () => {
     const saved = localStorage.getItem(CREATOR_STORAGE_KEY);
     try {
@@ -187,8 +283,8 @@ describe("Muzi Creator sidebar navigation", () => {
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(["会话", "热点", "灵感", "内容", "知识", "项目"]);
-    expect(tabs.map((tab) => tab.querySelector("img")?.getAttribute("data-workbench-icon"))).toEqual(["sessions", "hotspots", "inspiration", "content", "knowledge", "projects"]);
-    expect(tabs.every((tab) => tab.querySelector("img")?.getAttribute("alt") === "")).toBe(true);
+    expect(tabs.map((tab) => tab.querySelector("[data-workbench-icon]")?.getAttribute("data-workbench-icon"))).toEqual(["sessions", "hotspots", "inspiration", "content", "knowledge", "projects"]);
+    expect(tabs.every((tab) => tab.querySelector("[data-workbench-icon]")?.getAttribute("aria-hidden") === "true")).toBe(true);
     expect(tabs.map((tab) => tab.getAttribute("tabindex"))).toEqual(["0", "-1", "-1", "-1", "-1", "-1"]);
     expect(tabs.map((tab) => tab.getAttribute("data-sidebar-tab"))).toEqual(["sessions", "hot", "inspiration", "content", "knowledge", "projects"]);
     for (const tab of tabs) {

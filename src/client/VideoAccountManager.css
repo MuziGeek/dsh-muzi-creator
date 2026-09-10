@@ -3,9 +3,9 @@
 .videoAccountHeading, .videoAccountIdentity, .videoAccountActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .videoAccountHeading { justify-content: space-between; align-items: flex-start; }
 .videoAccountHeading > div { min-width: 0; flex: 1 1 240px; }
-.videoAccountManager h2 { margin: 0; font-size: 16px; line-height: 1.5; }
-.videoAccountCount { color: var(--muzi-island-text-muted); font-weight: 600; }
-.videoAccountManager p { margin: 6px 0 10px; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.videoAccountManager h2 { margin: 0; font-size: var(--muzi-type-title-size, 1.25rem); line-height: var(--muzi-type-title-line, 1.75rem); }
+.videoAccountCount { color: var(--muzi-island-text-muted); font-weight: var(--muzi-type-support-weight, 500); }
+.videoAccountManager p { margin: 6px 0 10px; font-size: var(--muzi-type-body-size, 0.875rem); line-height: var(--muzi-type-body-line, 1.3125rem); overflow-wrap: anywhere; }
 .videoAccountMessage { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muzi-island-text); }
 .videoAccountMessage.error { color: var(--muzi-island-danger, #953a29); }
 .videoAccountState { padding: 14px 0; color: var(--muzi-island-text-muted); }
@@ -16,18 +16,18 @@
 .videoAccountIdentity { display: grid; grid-template-columns: 20px minmax(0, max-content) max-content; justify-content: start; min-width: 0; align-items: start; }
 .videoAccountIdentity > div { display: grid; min-width: 0; gap: 2px; }
 .videoAccountIdentity strong, .videoAccountIdentity small { overflow-wrap: anywhere; }
-.videoAccountIdentity strong { font-size: 14px; }
-.videoAccountIdentity small { color: var(--muzi-island-text-muted); font-size: 12px; }
+.videoAccountIdentity strong { font-size: var(--muzi-type-card-title-size, 1rem); }
+.videoAccountIdentity small { color: var(--muzi-island-text-muted); font-size: var(--muzi-type-support-size, 0.75rem); }
 .videoAccountIdentity .animal-tag { margin-left: 0; }
 .videoAccountList > li > p { margin: 0; color: var(--muzi-island-text-muted); }
 .videoAccountActions { justify-content: flex-end; }
 .videoAccountActions > button { min-height: 36px; }
 .videoAccountManager > button { padding-inline-start: 0; }
-.videoAccountDialogField { display: grid; gap: 7px; font-size: 13px; }
+.videoAccountDialogField { display: grid; gap: 7px; font-size: var(--muzi-type-body-size, 0.875rem); }
 .videoConnectionStatus { padding: 10px 0; color: var(--muzi-island-text); }
 .videoConnectionStatus p { margin-bottom: 0; }
 .videoAccountProblems { margin-top: 24px; }
-.videoAccountProblems h3 { margin: 0; font-size: 14px; }
+.videoAccountProblems h3 { margin: 0; font-size: var(--muzi-type-card-title-size, 1rem); }
 .videoAccountProblems .videoIssueToggle { display: flex; width: 100%; justify-content: flex-start; gap: 12px; padding: 8px 0; text-align: start; }
 .videoIssueToggle > span { display: flex; width: 100%; align-items: center; gap: 12px; }
 .videoAccountActions .videoAccountRemoveAction { color: var(--muzi-island-danger, #953a29); }

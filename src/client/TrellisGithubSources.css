@@ -8,8 +8,8 @@
 
 [data-plugin="dsh-muzi-creator"] .trellisGithubSources p {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: var(--muzi-type-body-size, 0.875rem);
+  line-height: var(--muzi-type-body-line, 1.3125rem);
   overflow-wrap: anywhere;
 }
 
@@ -27,8 +27,8 @@
 }
 
 [data-plugin="dsh-muzi-creator"] .trellisGithubDevice code {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: var(--muzi-type-title-size, 1.25rem);
+  font-weight: var(--muzi-type-title-weight, 700);
 }
 
 [data-plugin="dsh-muzi-creator"] .trellisGithubSnapshot {
@@ -36,8 +36,8 @@
   flex-wrap: wrap;
   gap: 8px 16px;
   margin: 12px 0;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
   overflow-wrap: anywhere;
 }
 

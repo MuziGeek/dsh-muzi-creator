@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "source": "independent-skin-20260910T015709/plugin/lib/client.js",
+  "sha256": "c21e2ea0c12cca1684fd4ac6dbc5665f83483eb7d9acfa3935d4910a0f6b61cc",
+  "desktop": "2.0.5",
+  "skinCenter": "0.3.18",
+  "appearance": "components.css",
+  "retainedFixes": [
+    "rectangular-market-mask",
+    "market-card-8px",
+    "content-containment",
+    "theme-aware-dialog",
+    "keyboard-navigation",
+    "skin-icon-fallback"
+  ]
+}
