@@ -319,26 +319,37 @@ function searchRank(page: FormalPageRecord, query: string): number | null {
 }
 
 export class AtlasReadService {
-  readonly atlasRoot: string;
+  atlasRoot: string;
   readonly previewMaxBytes: number;
   readonly searchResultLimit: number;
   readonly graphNodeLimit: number;
   readonly graphEdgeLimit: number;
+  private readonly rootProvider: (() => Promise<string | null | undefined>) | undefined;
 
-  constructor(config: Config) {
+  constructor(config: Config, rootProvider?: () => Promise<string | null | undefined>) {
     this.atlasRoot = resolve(config.atlasRoot);
     this.previewMaxBytes = config.previewMaxBytes;
     this.searchResultLimit = config.searchResultLimit;
     this.graphNodeLimit = config.graphNodeLimit;
     this.graphEdgeLimit = config.graphEdgeLimit;
+    this.rootProvider = rootProvider;
+  }
+
+  setLocalRoot(root: string): void {
+    this.atlasRoot = resolve(root);
+  }
+
+  private async activeRoot(): Promise<string | undefined> {
+    const provided = await this.rootProvider?.();
+    return provided === undefined ? this.atlasRoot : provided ?? undefined;
   }
 
   async status(): Promise<KnowledgeStatus> {
-    return (await this.snapshot()).status;
+    return (await this.snapshot(await this.activeRoot())).status;
   }
 
   async home(): Promise<KnowledgeHomeResult> {
-    const snapshot = await this.snapshot();
+    const snapshot = await this.snapshot(await this.activeRoot());
     const directories = CATEGORIES.map((category) => directoryOf(category, snapshot.pages));
     const topics = snapshot.pages
       .filter((page) => page.summary.category === "topics")
@@ -348,7 +359,7 @@ export class AtlasReadService {
   }
 
   async list(request: KnowledgeListRequest): Promise<KnowledgeListResult> {
-    const snapshot = await this.snapshot();
+    const snapshot = await this.snapshot(await this.activeRoot());
     const offset = request.offset ?? 0;
     const limit = Math.min(request.limit ?? this.searchResultLimit, this.searchResultLimit);
     const all = snapshot.pages
@@ -368,7 +379,7 @@ export class AtlasReadService {
   }
 
   async search(request: KnowledgeSearchRequest): Promise<KnowledgeSearchResult> {
-    const snapshot = await this.snapshot();
+    const snapshot = await this.snapshot(await this.activeRoot());
     if (snapshot.status.status === "unavailable") return { status: snapshot.status, items: [] };
     const query = request.query?.trim().toLocaleLowerCase() ?? "";
     const allowed = request.category === undefined
@@ -387,7 +398,7 @@ export class AtlasReadService {
 
   async get(request: KnowledgeGetRequest): Promise<KnowledgePage> {
     if (!request.locator.startsWith("atlas://wiki/")) throw new Error("only formal Wiki locators are allowed");
-    const snapshot = await this.snapshot();
+    const snapshot = await this.snapshot(await this.activeRoot());
     const record = snapshot.pages.find((page) => page.summary.locator === request.locator);
     if (record === undefined) throw new Error("knowledge page is unavailable or outside the formal Wiki categories");
     return {
@@ -398,7 +409,8 @@ export class AtlasReadService {
   }
 
   async listPending(request: PendingKnowledgeListRequest): Promise<PendingKnowledgeListResult> {
-    const [snapshot, records] = await Promise.all([this.snapshot(), this.pendingRecords()]);
+    const root = await this.activeRoot();
+    const [snapshot, records] = await Promise.all([this.snapshot(root), this.pendingRecords(root)]);
     const query = request.query?.trim().toLocaleLowerCase() ?? "";
     const offset = request.offset ?? 0;
     const limit = Math.min(request.limit ?? this.searchResultLimit, this.searchResultLimit);
@@ -416,7 +428,7 @@ export class AtlasReadService {
   }
 
   async getPending(request: PendingKnowledgeGetRequest): Promise<PendingKnowledgeFile> {
-    const record = (await this.pendingRecords()).find((candidate) => candidate.summary.id === request.id);
+    const record = (await this.pendingRecords(await this.activeRoot())).find((candidate) => candidate.summary.id === request.id);
     if (record === undefined) throw new Error("待消化文件已处理、已移动或不存在，请刷新列表");
     const previewKind = record.summary.extension === "md"
       ? "markdown"
@@ -447,7 +459,7 @@ export class AtlasReadService {
   }
 
   async pendingReference(request: PendingKnowledgeGetRequest): Promise<PendingKnowledgeReference> {
-    const record = (await this.pendingRecords()).find((candidate) => candidate.summary.id === request.id);
+    const record = (await this.pendingRecords(await this.activeRoot())).find((candidate) => candidate.summary.id === request.id);
     if (record === undefined) throw new Error("待消化文件已处理、已移动或不存在，请刷新列表");
     if (request.expectedSha256 !== undefined && request.expectedSha256 !== record.sha256) {
       throw new Error("待消化文件内容已变化，请刷新预览后重新发送");
@@ -470,10 +482,12 @@ export class AtlasReadService {
   }
 
   async revision(): Promise<string> {
+    const root = await this.activeRoot();
+    if (root === undefined) return hash("atlas unavailable").slice(0, 16);
     const paths = [
-      join(this.atlasRoot, ".wiki-cache.json"),
-      ...(await pendingFiles(join(this.atlasRoot, "raw"))),
-      ...(await this.formalFiles()),
+      join(root, ".wiki-cache.json"),
+      ...(await pendingFiles(join(root, "raw"))),
+      ...(await this.formalFiles(root)),
     ];
     const rows = await Promise.all(paths.map(async (path) => {
       const info = await stat(path).catch(() => undefined);
@@ -483,8 +497,9 @@ export class AtlasReadService {
   }
 
   async preview(): Promise<KnowledgePreviewResult> {
-    const snapshot = await this.snapshot();
-    const pending = await this.pendingRecords();
+    const root = await this.activeRoot();
+    const snapshot = await this.snapshot(root);
+    const pending = await this.pendingRecords(root);
     const counts = new Map(CATEGORIES.map((category) => [category, directoryOf(category, snapshot.pages).count]));
     const graph = snapshot.status.status === "ready"
       ? buildGraph(snapshot.pages, this.graphNodeLimit, this.graphEdgeLimit)
@@ -504,20 +519,21 @@ export class AtlasReadService {
     };
   }
 
-  private async snapshot(): Promise<AtlasSnapshot> {
+  private async snapshot(root: string | undefined): Promise<AtlasSnapshot> {
     try {
-      const info = await lstat(this.atlasRoot);
+      if (root === undefined) throw new Error("knowledge source is not available");
+      const info = await lstat(root);
       if (!info.isDirectory() || info.isSymbolicLink()) throw new Error("atlasRoot must be a real directory");
-      const schemaText = await readFile(join(this.atlasRoot, ".wiki-schema.md"), "utf8");
+      const schemaText = await readFile(join(root, ".wiki-schema.md"), "utf8");
       const version = /(?:schema(?:\s+version)?|版本)\s*[:：]?\s*([0-9]+(?:\.[0-9]+)?)/i.exec(schemaText)?.[1] ?? null;
       const language = /(?:language|语言)\s*[:：]\s*([^\r\n]+)/i.exec(schemaText)?.[1]?.trim() ?? null;
-      const [rawFiles, formalFiles] = await Promise.all([regularFiles(join(this.atlasRoot, "raw")), this.formalFiles()]);
+      const [rawFiles, formalFiles] = await Promise.all([regularFiles(join(root, "raw")), this.formalFiles(root)]);
       const pages = (await Promise.all(formalFiles.map(async (path): Promise<FormalPageRecord | undefined> => {
         const fileInfo = await stat(path);
         if (fileInfo.size > this.previewMaxBytes) return undefined;
         const markdown = await readFile(path, "utf8");
         const category = categoryOf(path);
-        const locator = locatorOf(this.atlasRoot, path);
+        const locator = locatorOf(root, path);
         return {
           markdown,
           summary: {
@@ -560,8 +576,9 @@ export class AtlasReadService {
     }
   }
 
-  private async pendingRecords(): Promise<PendingRecord[]> {
-    const cachePath = join(this.atlasRoot, ".wiki-cache.json");
+  private async pendingRecords(root: string | undefined): Promise<PendingRecord[]> {
+    if (root === undefined) return [];
+    const cachePath = join(root, ".wiki-cache.json");
     const cacheText = await readFile(cachePath, "utf8");
     let parsed: unknown;
     try {
@@ -570,17 +587,17 @@ export class AtlasReadService {
       throw new Error("llm-wiki 缓存损坏，请先修复 .wiki-cache.json");
     }
     const entries = cacheEntries(parsed);
-    const rawRoot = join(this.atlasRoot, "raw");
+    const rawRoot = join(root, "raw");
     const paths = await pendingFiles(rawRoot);
     const records = (await Promise.all(paths.map(async (path): Promise<PendingRecord | undefined> => {
-      const relativePath = relative(this.atlasRoot, path).replaceAll("\\", "/");
+      const relativePath = relative(root, path).replaceAll("\\", "/");
       const info = await stat(path);
       const sha256 = await fileHash(relativePath, path);
       const entry = entries.get(relativePath);
       let state: PendingKnowledgeState | undefined;
       if (entry === undefined) state = "new";
       else if (entry.hash !== sha256) state = "changed";
-      else if (!await this.sourcePageExists(entry.sourcePage)) state = "source_missing";
+      else if (!await this.sourcePageExists(root, entry.sourcePage)) state = "source_missing";
       if (state === undefined) return undefined;
       const extension = extname(path).slice(1).toLowerCase() as PendingKnowledgeFile["extension"];
       return {
@@ -603,16 +620,16 @@ export class AtlasReadService {
       || left.summary.relativePath.localeCompare(right.summary.relativePath, "zh-CN"));
   }
 
-  private async sourcePageExists(sourcePage: string): Promise<boolean> {
+  private async sourcePageExists(root: string, sourcePage: string): Promise<boolean> {
     if (sourcePage.includes("\\") || sourcePage.startsWith("/") || /^[A-Za-z]:/.test(sourcePage)) return false;
-    const target = resolve(this.atlasRoot, sourcePage);
-    if (!childOf(this.atlasRoot, target)) return false;
+    const target = resolve(root, sourcePage);
+    if (!childOf(root, target)) return false;
     const info = await lstat(target).catch(() => undefined);
     return info !== undefined && info.isFile() && !info.isSymbolicLink();
   }
 
-  private async formalFiles(): Promise<string[]> {
-    const lists = await Promise.all(CATEGORIES.map((category) => regularFiles(join(this.atlasRoot, "wiki", category))));
+  private async formalFiles(root: string): Promise<string[]> {
+    const lists = await Promise.all(CATEGORIES.map((category) => regularFiles(join(root, "wiki", category))));
     return lists.flat().filter((path) => path.toLowerCase().endsWith(".md")).sort();
   }
 }

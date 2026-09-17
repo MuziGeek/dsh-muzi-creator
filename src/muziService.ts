@@ -231,14 +231,25 @@ function atlasReferences(value: unknown): AtlasReference[] {
 }
 
 export class MuziCreatorService {
-  readonly creatorRoot: string;
+  creatorRoot: string;
   readonly previewMaxBytes: number;
   readonly ready: Promise<void>;
+  private readonly rootProvider: (() => Promise<string | null | undefined>) | undefined;
 
-  constructor(config: Config) {
+  constructor(config: Config, rootProvider?: () => Promise<string | null | undefined>) {
     this.creatorRoot = resolve(config.creatorRoot);
     this.previewMaxBytes = config.previewMaxBytes;
+    this.rootProvider = rootProvider;
     this.ready = this.initialize();
+  }
+
+  setLocalRoot(root: string): void {
+    this.creatorRoot = resolve(root);
+  }
+
+  private async activeRoot(): Promise<string | undefined> {
+    const provided = await this.rootProvider?.();
+    return provided === undefined ? this.creatorRoot : provided ?? undefined;
   }
 
   private async initialize(): Promise<void> {
@@ -255,9 +266,11 @@ export class MuziCreatorService {
   }
 
   private async roots(includeArchived: boolean): Promise<Array<{ path: string; archive: boolean }>> {
+    const root = await this.activeRoot();
+    if (root === undefined) return [];
     return [
-      { path: join(this.creatorRoot, "10-active"), archive: false },
-      ...(includeArchived ? [{ path: join(this.creatorRoot, "90-archive"), archive: true }] : []),
+      { path: join(root, "10-active"), archive: false },
+      ...(includeArchived ? [{ path: join(root, "90-archive"), archive: true }] : []),
     ];
   }
 
@@ -444,11 +457,12 @@ export class MuziCreatorService {
       try {
         const registry = JSON.parse(registryText) as unknown;
         if (isRecord(registry) && isRecord(registry.vaults)) {
-          const creatorActual = await realpath(this.creatorRoot);
+          const creatorRoot = await this.activeRoot();
+          const creatorActual = creatorRoot === undefined ? undefined : await realpath(creatorRoot);
           for (const value of Object.values(registry.vaults)) {
             if (!isRecord(value) || typeof value.path !== "string") continue;
             const vaultActual = await realpath(resolve(value.path)).catch(() => undefined);
-            if (vaultActual === creatorActual) {
+            if (creatorActual !== undefined && vaultActual === creatorActual) {
               obsidianReady = true;
               break;
             }
@@ -465,18 +479,20 @@ export class MuziCreatorService {
       obsidianUri: obsidianReady ? `obsidian://open?path=${encodeURIComponent(actualTarget)}` : null,
       message: obsidianReady
         ? null
-        : `请先在 Obsidian 中将 ${this.creatorRoot} 打开为独立仓库，然后重试。`,
+        : `请先在 Obsidian 中将 ${await this.activeRoot() ?? this.creatorRoot} 打开为独立仓库，然后重试。`,
     };
   }
 
   async createProject(request: MuziProjectCreateRequest): Promise<MuziProjectDetail> {
     await this.ready;
     if (!request.confirmed) throw new Error("preview required: ask the user to confirm before creating a project");
+    const creatorRoot = await this.activeRoot();
+    if (creatorRoot === undefined) throw new Error("GitHub 创作内容为只读，请在原仓库中修改并推送后刷新");
     const title = normalizeTitle(request.title);
     const id = `mc_${randomBytes(12).toString("hex")}`;
     const folderName = `${datePrefix()}_${folderSlug(title)}`;
-    const root = join(this.creatorRoot, "10-active", folderName);
-    assertRelativeChild(join(this.creatorRoot, "10-active"), root);
+    const root = join(creatorRoot, "10-active", folderName);
+    assertRelativeChild(join(creatorRoot, "10-active"), root);
     if (await stat(root).catch(() => undefined) !== undefined) throw new Error("creator project folder already exists");
     const now = new Date().toISOString();
     const manifest: ProjectManifest = {
@@ -585,8 +601,10 @@ export class MuziCreatorService {
     const revision = asRevision(located.manifest.revision);
     if (revision !== request.expectedRevision) throw new Error(`revision conflict: expected ${request.expectedRevision}, current ${revision}`);
     await this.patchManifest(located, revision, { stage: "archived" });
-    const target = join(this.creatorRoot, "90-archive", basename(located.root));
-    assertRelativeChild(join(this.creatorRoot, "90-archive"), target);
+    const creatorRoot = await this.activeRoot();
+    if (creatorRoot === undefined) throw new Error("GitHub 创作内容为只读，请在原仓库中修改并推送后刷新");
+    const target = join(creatorRoot, "90-archive", basename(located.root));
+    assertRelativeChild(join(creatorRoot, "90-archive"), target);
     if (await stat(target).catch(() => undefined) !== undefined) throw new Error("archive destination exists");
     await rename(located.root, target);
     return this.getProject({ id: request.id });

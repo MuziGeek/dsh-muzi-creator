@@ -29,6 +29,9 @@ export interface Config {
   trellisGithubSyncTimeoutMs?: number;
   trellisGithubMaxRepositories?: number;
   trellisGithubMaxResponseBytes?: number;
+  githubSourceMaxFiles?: number;
+  githubSourceMaxBytes?: number;
+  githubSourceMaxFileBytes?: number;
   trellisGitExecutable?: string;
   trellisPythonExecutable?: string;
   trellisPythonArgs?: string[];
@@ -163,6 +166,9 @@ export const Config: Schema<Config> = Schema.object({
   trellisGithubClientId: Schema.string().default(""),
   trellisGithubMaxRepositories: Schema.number().min(1).max(2000).default(200),
   trellisGithubMaxResponseBytes: Schema.number().min(1048576).max(33554432).default(8388608),
+  githubSourceMaxFiles: Schema.number().min(1).max(100000).default(10000),
+  githubSourceMaxBytes: Schema.number().min(1048576).max(536870912).default(67108864),
+  githubSourceMaxFileBytes: Schema.number().min(4096).max(67108864).default(8388608),
   trellisProjectsRoot: Schema.string().default(defaultTrellisProjectsRoot()),
   trellisGitExecutable: Schema.string().default("git"),
   trellisPythonExecutable: Schema.string().default(process.platform === "win32" ? "python" : "python3"),

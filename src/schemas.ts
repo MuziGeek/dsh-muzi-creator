@@ -123,6 +123,26 @@ export const librarySettingsSchema = z.object({
   scriptRules: z.string().optional(),
   trellisProjectsRoot: z.string(),
   obsidianExecutable: z.string().optional(),
+  creatorRoot: z.string().optional(),
+  knowledgeRoot: z.string().optional(),
+  creatorSource: z.object({
+    mode: z.enum(["local", "github"]),
+    url: z.string().nullable(),
+    branch: z.string().nullable(),
+    sha: z.string().nullable(),
+    syncedAt: z.string().nullable(),
+    stale: z.boolean(),
+    readOnly: z.boolean(),
+  }).optional(),
+  knowledgeSource: z.object({
+    mode: z.enum(["local", "github"]),
+    url: z.string().nullable(),
+    branch: z.string().nullable(),
+    sha: z.string().nullable(),
+    syncedAt: z.string().nullable(),
+    stale: z.boolean(),
+    readOnly: z.boolean(),
+  }).optional(),
 });
 
 export const listContentsRequestSchema = z.object({
@@ -273,6 +293,14 @@ export const setLibraryRootRequestSchema = z.object({
 });
 
 export const setTrellisProjectsRootRequestSchema = z.object({
+  path: z.string(),
+});
+
+export const setCreatorRootRequestSchema = z.object({
+  path: z.string(),
+});
+
+export const setKnowledgeRootRequestSchema = z.object({
   path: z.string(),
 });
 

@@ -9,7 +9,8 @@ import { COVER_KEY_REFS, SUBTITLE_KEY_REFS } from "../secrets.ts";
 import type { CreatorCapabilities, CreatorProfile, CreatorSecrets, PublishPlatform } from "../types.ts";
 import type { CredentialsClient, SecretDraft } from "./credentialsApi.ts";
 import { applyDescribed, secretDraftOf } from "./credentialsApi.ts";
-import type { CreatorViewFace, TrellisViewFace } from "./face.ts";
+import type { CreatorViewFace, GithubSourceFace, TrellisViewFace } from "./face.ts";
+import { GithubSourceSettings } from "./GithubSourceSettings.tsx";
 import { TrellisGithubSources } from "./TrellisGithubSources.tsx";
 import type { CreatorKey } from "./locales.ts";
 import { CREATOR_SETTINGS_PLATFORMS } from "./publishPlatforms.ts";
@@ -21,8 +22,8 @@ export type CreatorSettingsCardProps =
   & PropsRuntime<"settings.plugin.item">
   & PropsLocale<"dsh.mz.creator">
   & InjectFace<
-    Pick<CreatorViewFace, "accountManagement" | "ready" | "getSettings" | "getCapabilities" | "setLibraryRoot" | "setProfile" | "setScriptRules" | "setTrellisProjectsRoot" | "setObsidianExecutable" | "pickDirectory">
-    & { credentials: CredentialsClient | undefined; projectSources: Pick<TrellisViewFace, "github"> }
+    Pick<CreatorViewFace, "accountManagement" | "ready" | "getSettings" | "getCapabilities" | "setLibraryRoot" | "setCreatorRoot" | "setKnowledgeRoot" | "setProfile" | "setScriptRules" | "setTrellisProjectsRoot" | "setObsidianExecutable" | "pickDirectory">
+    & { credentials: CredentialsClient | undefined; projectSources: Pick<TrellisViewFace, "github">; githubSources?: Pick<GithubSourceFace, "github"> }
   >;
 
 const EMPTY_SECRETS: CreatorSecrets = {
@@ -32,7 +33,7 @@ const EMPTY_SECRETS: CreatorSecrets = {
 
 const EMPTY_PROFILE: CreatorProfile = { enabledPlatforms: [...PUBLISH_PLATFORMS] };
 
-type DirectoryField = "library" | "trellis";
+type DirectoryField = "library" | "trellis" | "creator" | "knowledge";
 
 const CAPABILITY_ROWS: ReadonlyArray<{ id: keyof CreatorCapabilities; label: CreatorKey }> = [
   { id: "library", label: "settings.capability.library" },
@@ -69,6 +70,8 @@ export function CreatorSettingsCard({
   ready,
   getSettings,
   setLibraryRoot,
+  setCreatorRoot,
+  setKnowledgeRoot,
   setTrellisProjectsRoot,
   setObsidianExecutable,
   setProfile,
@@ -78,11 +81,16 @@ export function CreatorSettingsCard({
   credentials,
   accountManagement,
   projectSources,
+  githubSources,
 }: CreatorSettingsCardProps) {
   const [open, setOpen] = useState(false);
   const bodyId = useId();
   const [savedRoot, setSavedRoot] = useState("");
   const [draftRoot, setDraftRoot] = useState("");
+  const [savedCreatorRoot, setSavedCreatorRoot] = useState("");
+  const [draftCreatorRoot, setDraftCreatorRoot] = useState("");
+  const [savedKnowledgeRoot, setSavedKnowledgeRoot] = useState("");
+  const [draftKnowledgeRoot, setDraftKnowledgeRoot] = useState("");
   const [savedProfile, setSavedProfile] = useState<CreatorProfile>(EMPTY_PROFILE);
   const [draftProfile, setDraftProfile] = useState<CreatorProfile>(EMPTY_PROFILE);
   const [savedRules, setSavedRules] = useState("");
@@ -106,6 +114,13 @@ export function CreatorSettingsCard({
   const pickingDirectoryRef = useRef(false);
   const libraryPickErrorId = useId();
   const trellisPickErrorId = useId();
+  const creatorPickErrorId = useId();
+  const knowledgePickErrorId = useId();
+  const environmentSectionId = useId();
+  const sourcesSectionId = useId();
+  const projectsSectionId = useId();
+  const workflowSectionId = useId();
+  const integrationsSectionId = useId();
 
   useEffect(() => {
     if (!ready()) return;
@@ -114,6 +129,10 @@ export function CreatorSettingsCard({
       if (cancelled) return;
       setSavedRoot(settings.libraryRoot);
       setDraftRoot(settings.libraryRoot);
+      setSavedCreatorRoot(settings.creatorRoot ?? "");
+      setDraftCreatorRoot(settings.creatorRoot ?? "");
+      setSavedKnowledgeRoot(settings.knowledgeRoot ?? "");
+      setDraftKnowledgeRoot(settings.knowledgeRoot ?? "");
       setSavedProfile(cloneProfile(settings.profile));
       setDraftProfile(cloneProfile(settings.profile));
       setSavedRules(settings.scriptRules ?? "");
@@ -169,12 +188,14 @@ export function CreatorSettingsCard({
   }, [open, ready, getCapabilities]);
 
   const dirtyRoot = draftRoot !== savedRoot;
+  const dirtyCreatorRoot = draftCreatorRoot !== savedCreatorRoot;
+  const dirtyKnowledgeRoot = draftKnowledgeRoot !== savedKnowledgeRoot;
   const dirtyTrellisRoot = draftTrellisRoot !== savedTrellisRoot;
   const dirtyObsidian = draftObsidian !== savedObsidian;
   const dirtyProfile = !sameProfile(draftProfile, savedProfile);
   const dirtyRules = draftRules !== savedRules;
   const dirtyKeys = secrets.some((item) => item.nextValue.trim() !== "");
-  const dirty = dirtyRoot || dirtyTrellisRoot || dirtyObsidian || dirtyProfile || dirtyRules || dirtyKeys;
+  const dirty = dirtyRoot || dirtyCreatorRoot || dirtyKnowledgeRoot || dirtyTrellisRoot || dirtyObsidian || dirtyProfile || dirtyRules || dirtyKeys;
   const title = t("settings.title" as CreatorKey);
 
   const pickDirectoryFor = async (field: DirectoryField) => {
@@ -187,8 +208,12 @@ export function CreatorSettingsCard({
       if (path === null) return;
       if (field === "library") {
         setDraftRoot(path);
-      } else {
+      } else if (field === "trellis") {
         setDraftTrellisRoot(path);
+      } else if (field === "creator") {
+        setDraftCreatorRoot(path);
+      } else {
+        setDraftKnowledgeRoot(path);
       }
       setSaved(false);
       setFailed(false);
@@ -213,6 +238,8 @@ export function CreatorSettingsCard({
   const onSave = async () => {
     if (!dirty || saving) return;
     if (dirtyRoot && draftRoot === "") return;
+    if (dirtyCreatorRoot && draftCreatorRoot === "") return;
+    if (dirtyKnowledgeRoot && draftKnowledgeRoot === "") return;
     setSaving(true);
     setFailed(false);
     setKeyFailed(false);
@@ -240,6 +267,14 @@ export function CreatorSettingsCard({
       if (dirtyRoot) {
         await setLibraryRoot(draftRoot);
         setSavedRoot(draftRoot);
+      }
+      if (dirtyCreatorRoot) {
+        await setCreatorRoot(draftCreatorRoot);
+        setSavedCreatorRoot(draftCreatorRoot);
+      }
+      if (dirtyKnowledgeRoot) {
+        await setKnowledgeRoot(draftKnowledgeRoot);
+        setSavedKnowledgeRoot(draftKnowledgeRoot);
       }
       if (dirtyTrellisRoot) {
         await setTrellisProjectsRoot(draftTrellisRoot);
@@ -285,163 +320,252 @@ export function CreatorSettingsCard({
       </button>
       {open && (
         <div id={bodyId} className="body">
-          {capabilities !== undefined && (
-            <div className="field">
-              <span className="fieldLabel">{t("settings.capabilities" as CreatorKey)}</span>
-              <span className="fieldHint">{t("settings.capabilitiesHint" as CreatorKey)}</span>
-              <div className="capabilityGrid">
-                {CAPABILITY_ROWS.map((row) => {
-                  const item = capabilities[row.id];
-                  return (
-                    <span key={row.id} className="capabilityItem" title={item.detail}>
-                      <span className="capabilityName">{t(row.label)}</span>
-                      <IslandTag color={capabilityColor(item.state)} size="small" variant="soft">
-                        {t(capabilityStateKey(item.state))}
-                      </IslandTag>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          <div className="field">
-            <span className="fieldLabel">{t("settings.libraryRoot" as CreatorKey)}</span>
-            <span className="fieldHint">{t("settings.libraryRootHint" as CreatorKey)}</span>
-            <span className="pathRow">
-              <span className={draftRoot === "" ? "path empty" : "path"}>
-                {draftRoot === "" ? t("settings.libraryRootEmpty" as CreatorKey) : draftRoot}
-              </span>
-              <IslandButton icon={<WorkbenchIcon name="folder-open" />}
-                type="default"
-                disabled={pickingDirectory !== undefined}
-                aria-describedby={directoryPickError === "library" ? libraryPickErrorId : undefined}
-                onClick={() => { void pickDirectoryFor("library"); }}
-              >
-                {t("settings.pick" as CreatorKey)}
-              </IslandButton>
-            </span>
-            {directoryPickError === "library" && (
-              <span id={libraryPickErrorId} className="pickerFailed" role="alert">
-                {t("settings.pickFailed" as CreatorKey)}
-              </span>
+          <div className="settingsSections">
+            {capabilities !== undefined && (
+              <section className="settingsSection settingsSectionEnvironment" aria-labelledby={environmentSectionId}>
+                <div className="settingsSectionHeader">
+                  <h3 id={environmentSectionId}>{t("settings.section.environment" as CreatorKey)}</h3>
+                  <p>{t("settings.section.environmentHint" as CreatorKey)}</p>
+                </div>
+                <div className="settingsSectionFields">
+                  <div className="field">
+                    <span className="fieldLabel">{t("settings.capabilities" as CreatorKey)}</span>
+                    <span className="fieldHint">{t("settings.capabilitiesHint" as CreatorKey)}</span>
+                    <div className="capabilityGrid">
+                      {CAPABILITY_ROWS.map((row) => {
+                        const item = capabilities[row.id];
+                        return (
+                          <span key={row.id} className="capabilityItem" title={item.detail}>
+                            <span className="capabilityName">{t(row.label)}</span>
+                            <IslandTag color={capabilityColor(item.state)} size="small" variant="soft">
+                              {t(capabilityStateKey(item.state))}
+                            </IslandTag>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </section>
             )}
-          </div>
-          <section className="field" aria-label={t("github.sources")}>
-            <span className="fieldLabel">{t("github.sources")}</span>
-            <TrellisGithubSources face={projectSources} t={t}>
-              <span className="fieldLabel">{t("settings.trellisRoot" as CreatorKey)}</span>
-              <span className="fieldHint">{t("settings.trellisRootHint" as CreatorKey)}</span>
-              <span className="pathRow">
-                <span className={draftTrellisRoot === "" ? "path empty" : "path"}>
-                  {draftTrellisRoot === "" ? t("settings.trellisRootEmpty" as CreatorKey) : draftTrellisRoot}
-                </span>
-                <IslandButton icon={<WorkbenchIcon name="folder-open" />}
-                  type="default"
-                  disabled={pickingDirectory !== undefined}
-                  aria-describedby={directoryPickError === "trellis" ? trellisPickErrorId : undefined}
-                  onClick={() => { void pickDirectoryFor("trellis"); }}
-                >
-                  {t("settings.pick" as CreatorKey)}
-                </IslandButton>
-              </span>
-              {directoryPickError === "trellis" && (
-                <span id={trellisPickErrorId} className="pickerFailed" role="alert">
-                  {t("settings.pickFailed" as CreatorKey)}
-                </span>
-              )}
-            </TrellisGithubSources>
-          </section>
-          {open && accountManagement && <div className="field">
-            <span className="fieldLabel">账号管理</span>
-            <span className="fieldHint">账号连接与身份核验位于内容工作台，发布时只会显示已验证账号。</span>
-            <IslandButton type="default" onClick={() => { setSidebarTab("content"); setContentSelection("content-accounts"); }}>打开账号管理</IslandButton>
-          </div>}
-          <div className="field">
-            <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>
-            <span className="fieldHint">{t("settings.enabledPlatformsHint" as CreatorKey)}</span>
-            {CREATOR_SETTINGS_PLATFORMS.map((platform) => (
-              <IslandCheckbox
-                className="inputLabel"
-                key={platform.key}
-                value={draftProfile.enabledPlatforms.includes(platform.key) ? [platform.key] : []}
-                options={[{ value: platform.key, label: t(platform.label) }]}
-                onChange={(values: Array<string | number>) => { patchProfile(platform.key, values.includes(platform.key)); }}
-              />
-            ))}
-          </div>
-          <div className="field">
-            <span className="fieldLabel">{t("settings.scriptRules" as CreatorKey)}</span>
-            <span className="fieldHint">{t("settings.scriptRulesHint" as CreatorKey)}</span>
-            <IslandTextarea
-              id="muzi-settings-script-rules"
-              className="input textarea"
-              name="script-rules"
-              rows={6}
-              aria-label={t("settings.scriptRules" as CreatorKey)}
-              autoComplete="off"
-              placeholder={t("settings.scriptRulesPlaceholder" as CreatorKey)}
-              value={draftRules}
-              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
-                setDraftRules(event.target.value);
-                setSaved(false);
-                setFailed(false);
-              }}
-            />
-          </div>
-          <div className="field">
-            <span className="fieldLabel">{t("settings.obsidianExecutable" as CreatorKey)}</span>
-            <span className="fieldHint">{t("settings.obsidianExecutableHint" as CreatorKey)}</span>
-            <IslandInput
-              className="input"
-              placeholder={t("settings.obsidianExecutablePlaceholder" as CreatorKey)}
-              value={draftObsidian}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                setDraftObsidian(event.target.value);
-                setSaved(false);
-                setFailed(false);
-              }}
-            />
-          </div>
-          <div className="field">
-            <span className="fieldLabel">{t("settings.secrets" as CreatorKey)}</span>
-            <span className="fieldHint">{t("settings.secretsHint" as CreatorKey)}</span>
-            {secrets.map((item) => (
-              <label className="inputLabel" key={item.kind}>
-                <span className="secretHead">
-                  <span>{t(`settings.secret.${item.kind}` as CreatorKey)}</span>
-                  <IslandTag color={item.loadError ? "app-red" : item.configured ? "lime-green" : "brown"} size="small" variant="soft">
-                    {t((
-                      item.loadError
-                        ? "settings.secret.loadFailed"
-                        : item.configured
-                          ? "settings.secret.configured"
-                          : "settings.secret.missing"
-                    ) as CreatorKey)}
-                  </IslandTag>
-                </span>
-                <span className="fieldHint">{t(`settings.secret.${item.kind}Hint` as CreatorKey)}</span>
-                <IslandInput
-                  className="input"
-                  type="password"
-                  autoComplete="off"
-                  placeholder={t("settings.secret.placeholder" as CreatorKey)}
-                  disabled={!item.writable || saving}
-                  value={item.nextValue}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                    const value = event.target.value;
-                    setSecrets((current) => current.map((row) => (
-                      row.kind === item.kind ? { ...row, nextValue: value } : row
-                    )));
-                    setSaved(false);
-                    setFailed(false);
-                    setKeyFailed(false);
-                  }}
-                />
-                {!item.writable && (
-                  <span className="fieldHint">{t("settings.secret.readOnly" as CreatorKey)}</span>
-                )}
-              </label>
-            ))}
+
+            <section className="settingsSection settingsSectionSources" aria-labelledby={sourcesSectionId}>
+              <div className="settingsSectionHeader">
+                <h3 id={sourcesSectionId}>{t("settings.section.sources" as CreatorKey)}</h3>
+                <p>{t("settings.section.sourcesHint" as CreatorKey)}</p>
+              </div>
+              <div className="settingsSectionFields">
+                <div className="field">
+                  <span className="fieldLabel">{t("settings.libraryRoot" as CreatorKey)}</span>
+                  <span className="fieldHint">{t("settings.libraryRootHint" as CreatorKey)}</span>
+                  <span className="pathRow">
+                    <span className={draftRoot === "" ? "path empty" : "path"}>
+                      {draftRoot === "" ? t("settings.libraryRootEmpty" as CreatorKey) : draftRoot}
+                    </span>
+                    <IslandButton icon={<WorkbenchIcon name="folder-open" />}
+                      type="default"
+                      disabled={pickingDirectory !== undefined}
+                      aria-describedby={directoryPickError === "library" ? libraryPickErrorId : undefined}
+                      onClick={() => { void pickDirectoryFor("library"); }}
+                    >
+                      {t("settings.pick" as CreatorKey)}
+                    </IslandButton>
+                  </span>
+                  {directoryPickError === "library" && (
+                    <span id={libraryPickErrorId} className="pickerFailed" role="alert">
+                      {t("settings.pickFailed" as CreatorKey)}
+                    </span>
+                  )}
+                </div>
+                {githubSources && <div className="settingsSourceGroups">
+                  <section className="settingsSourceGroup" aria-label={t("githubSource.creator" as CreatorKey)}>
+                    <div className="settingsSourceGroupHeader">
+                      <h4>{t("githubSource.creator" as CreatorKey)}</h4>
+                      <span>{t("settings.section.sourceImmediate" as CreatorKey)}</span>
+                    </div>
+                    <GithubSourceSettings face={githubSources} target="creator" t={t}>
+                      <span className="fieldLabel">{t("settings.creatorRoot" as CreatorKey)}</span>
+                      <span className="fieldHint">{t("settings.creatorRootHint" as CreatorKey)}</span>
+                      <span className="pathRow">
+                        <span className={draftCreatorRoot === "" ? "path empty" : "path"}>
+                          {draftCreatorRoot === "" ? t("settings.creatorRootEmpty" as CreatorKey) : draftCreatorRoot}
+                        </span>
+                        <IslandButton icon={<WorkbenchIcon name="folder-open" />} type="default" disabled={pickingDirectory !== undefined}
+                          aria-describedby={directoryPickError === "creator" ? creatorPickErrorId : undefined}
+                          onClick={() => { void pickDirectoryFor("creator"); }}>
+                          {t("settings.pick" as CreatorKey)}
+                        </IslandButton>
+                      </span>
+                      {directoryPickError === "creator" && <span id={creatorPickErrorId} className="pickerFailed" role="alert">{t("settings.pickFailed" as CreatorKey)}</span>}
+                    </GithubSourceSettings>
+                  </section>
+                  <section className="settingsSourceGroup" aria-label={t("githubSource.knowledge" as CreatorKey)}>
+                    <div className="settingsSourceGroupHeader">
+                      <h4>{t("githubSource.knowledge" as CreatorKey)}</h4>
+                      <span>{t("settings.section.sourceImmediate" as CreatorKey)}</span>
+                    </div>
+                    <GithubSourceSettings face={githubSources} target="knowledge" t={t}>
+                      <span className="fieldLabel">{t("settings.knowledgeRoot" as CreatorKey)}</span>
+                      <span className="fieldHint">{t("settings.knowledgeRootHint" as CreatorKey)}</span>
+                      <span className="pathRow">
+                        <span className={draftKnowledgeRoot === "" ? "path empty" : "path"}>
+                          {draftKnowledgeRoot === "" ? t("settings.knowledgeRootEmpty" as CreatorKey) : draftKnowledgeRoot}
+                        </span>
+                        <IslandButton icon={<WorkbenchIcon name="folder-open" />} type="default" disabled={pickingDirectory !== undefined}
+                          aria-describedby={directoryPickError === "knowledge" ? knowledgePickErrorId : undefined}
+                          onClick={() => { void pickDirectoryFor("knowledge"); }}>
+                          {t("settings.pick" as CreatorKey)}
+                        </IslandButton>
+                      </span>
+                      {directoryPickError === "knowledge" && <span id={knowledgePickErrorId} className="pickerFailed" role="alert">{t("settings.pickFailed" as CreatorKey)}</span>}
+                    </GithubSourceSettings>
+                  </section>
+                </div>}
+              </div>
+            </section>
+
+            <section className="settingsSection settingsSectionProjects" aria-labelledby={projectsSectionId}>
+              <div className="settingsSectionHeader">
+                <h3 id={projectsSectionId}>{t("settings.section.projects" as CreatorKey)}</h3>
+                <p>{t("settings.section.projectsHint" as CreatorKey)}</p>
+              </div>
+              <div className="settingsSectionFields">
+                <TrellisGithubSources face={projectSources} t={t}>
+                  <span className="fieldLabel">{t("settings.trellisRoot" as CreatorKey)}</span>
+                  <span className="fieldHint">{t("settings.trellisRootHint" as CreatorKey)}</span>
+                  <span className="pathRow">
+                    <span className={draftTrellisRoot === "" ? "path empty" : "path"}>
+                      {draftTrellisRoot === "" ? t("settings.trellisRootEmpty" as CreatorKey) : draftTrellisRoot}
+                    </span>
+                    <IslandButton icon={<WorkbenchIcon name="folder-open" />}
+                      type="default"
+                      disabled={pickingDirectory !== undefined}
+                      aria-describedby={directoryPickError === "trellis" ? trellisPickErrorId : undefined}
+                      onClick={() => { void pickDirectoryFor("trellis"); }}
+                    >
+                      {t("settings.pick" as CreatorKey)}
+                    </IslandButton>
+                  </span>
+                  {directoryPickError === "trellis" && (
+                    <span id={trellisPickErrorId} className="pickerFailed" role="alert">
+                      {t("settings.pickFailed" as CreatorKey)}
+                    </span>
+                  )}
+                </TrellisGithubSources>
+              </div>
+            </section>
+
+            <section className="settingsSection settingsSectionWorkflow" aria-labelledby={workflowSectionId}>
+              <div className="settingsSectionHeader">
+                <h3 id={workflowSectionId}>{t("settings.section.workflow" as CreatorKey)}</h3>
+                <p>{t("settings.section.workflowHint" as CreatorKey)}</p>
+              </div>
+              <div className="settingsSectionFields">
+                {accountManagement && <div className="field">
+                  <span className="fieldLabel">账号管理</span>
+                  <span className="fieldHint">账号连接与身份核验位于内容工作台，发布时只会显示已验证账号。</span>
+                  <IslandButton type="default" onClick={() => { setSidebarTab("content"); setContentSelection("content-accounts"); }}>打开账号管理</IslandButton>
+                </div>}
+                <div className="field">
+                  <span className="fieldLabel">{t("settings.enabledPlatforms" as CreatorKey)}</span>
+                  <span className="fieldHint">{t("settings.enabledPlatformsHint" as CreatorKey)}</span>
+                  <div className="platformGrid">
+                    {CREATOR_SETTINGS_PLATFORMS.map((platform) => (
+                      <IslandCheckbox
+                        className="inputLabel platformOption"
+                        key={platform.key}
+                        value={draftProfile.enabledPlatforms.includes(platform.key) ? [platform.key] : []}
+                        options={[{ value: platform.key, label: t(platform.label) }]}
+                        onChange={(values: Array<string | number>) => { patchProfile(platform.key, values.includes(platform.key)); }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="field">
+                  <span className="fieldLabel">{t("settings.scriptRules" as CreatorKey)}</span>
+                  <span className="fieldHint">{t("settings.scriptRulesHint" as CreatorKey)}</span>
+                  <IslandTextarea
+                    id="muzi-settings-script-rules"
+                    className="input textarea"
+                    name="script-rules"
+                    rows={6}
+                    aria-label={t("settings.scriptRules" as CreatorKey)}
+                    autoComplete="off"
+                    placeholder={t("settings.scriptRulesPlaceholder" as CreatorKey)}
+                    value={draftRules}
+                    onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                      setDraftRules(event.target.value);
+                      setSaved(false);
+                      setFailed(false);
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="settingsSection settingsSectionIntegrations" aria-labelledby={integrationsSectionId}>
+              <div className="settingsSectionHeader">
+                <h3 id={integrationsSectionId}>{t("settings.section.integrations" as CreatorKey)}</h3>
+                <p>{t("settings.section.integrationsHint" as CreatorKey)}</p>
+              </div>
+              <div className="settingsSectionFields">
+                <div className="field">
+                  <span className="fieldLabel">{t("settings.obsidianExecutable" as CreatorKey)}</span>
+                  <span className="fieldHint">{t("settings.obsidianExecutableHint" as CreatorKey)}</span>
+                  <IslandInput
+                    className="input"
+                    placeholder={t("settings.obsidianExecutablePlaceholder" as CreatorKey)}
+                    value={draftObsidian}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                      setDraftObsidian(event.target.value);
+                      setSaved(false);
+                      setFailed(false);
+                    }}
+                  />
+                </div>
+                <div className="field">
+                  <span className="fieldLabel">{t("settings.secrets" as CreatorKey)}</span>
+                  <span className="fieldHint">{t("settings.secretsHint" as CreatorKey)}</span>
+                  {secrets.map((item) => (
+                    <label className="inputLabel" key={item.kind}>
+                      <span className="secretHead">
+                        <span>{t(`settings.secret.${item.kind}` as CreatorKey)}</span>
+                        <IslandTag color={item.loadError ? "app-red" : item.configured ? "lime-green" : "brown"} size="small" variant="soft">
+                          {t((
+                            item.loadError
+                              ? "settings.secret.loadFailed"
+                              : item.configured
+                                ? "settings.secret.configured"
+                                : "settings.secret.missing"
+                          ) as CreatorKey)}
+                        </IslandTag>
+                      </span>
+                      <span className="fieldHint">{t(`settings.secret.${item.kind}Hint` as CreatorKey)}</span>
+                      <IslandInput
+                        className="input"
+                        type="password"
+                        autoComplete="off"
+                        placeholder={t("settings.secret.placeholder" as CreatorKey)}
+                        disabled={!item.writable || saving}
+                        value={item.nextValue}
+                        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                          const value = event.target.value;
+                          setSecrets((current) => current.map((row) => (
+                            row.kind === item.kind ? { ...row, nextValue: value } : row
+                          )));
+                          setSaved(false);
+                          setFailed(false);
+                          setKeyFailed(false);
+                        }}
+                      />
+                      {!item.writable && (
+                        <span className="fieldHint">{t("settings.secret.readOnly" as CreatorKey)}</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </section>
           </div>
           <div className="footer">
             {failed && <p className="failed" role="status">{t("settings.saveFailed" as CreatorKey)}</p>}
@@ -453,6 +577,8 @@ export function CreatorSettingsCard({
                 disabled={!dirty || saving || !loaded}
                 onClick={() => {
                   setDraftRoot(savedRoot);
+                  setDraftCreatorRoot(savedCreatorRoot);
+                  setDraftKnowledgeRoot(savedKnowledgeRoot);
                   setDraftTrellisRoot(savedTrellisRoot);
                   setDraftObsidian(savedObsidian);
                   setDraftProfile(cloneProfile(savedProfile));
@@ -467,7 +593,7 @@ export function CreatorSettingsCard({
               </IslandButton>
               <IslandButton
                 type="primary"
-                disabled={!dirty || saving || (dirtyRoot && draftRoot === "")}
+                disabled={!dirty || saving || (dirtyRoot && draftRoot === "") || (dirtyCreatorRoot && draftCreatorRoot === "") || (dirtyKnowledgeRoot && draftKnowledgeRoot === "")}
                 onClick={() => { void onSave(); }}
               >
                 {t((saving ? "settings.saving" : "settings.save") as CreatorKey)}

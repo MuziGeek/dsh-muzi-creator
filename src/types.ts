@@ -108,6 +108,28 @@ export interface CreatorProfile {
   enabledPlatforms: PublishPlatform[];
 }
 
+export type GithubSourceMode = "local" | "github";
+
+export interface GithubSourceSnapshot {
+  url: string;
+  branch: string;
+  sha: string;
+  syncedAt: string;
+  stale: boolean;
+  fileCount: number;
+  bytes: number;
+}
+
+export interface GithubSourceSettings {
+  mode: GithubSourceMode;
+  url: string | null;
+  branch: string | null;
+  sha: string | null;
+  syncedAt: string | null;
+  stale: boolean;
+  readOnly: boolean;
+}
+
 export interface LibrarySettings {
   libraryRoot: string;
   profile: CreatorProfile;
@@ -115,6 +137,10 @@ export interface LibrarySettings {
   scriptRules?: string;
   trellisProjectsRoot: string;
   obsidianExecutable?: string;
+  creatorRoot?: string;
+  knowledgeRoot?: string;
+  creatorSource?: GithubSourceSettings;
+  knowledgeSource?: GithubSourceSettings;
 }
 
 export type CreatorCapabilityState = "ready" | "missing" | "unsupported";
@@ -220,6 +246,14 @@ export interface SetTrellisProjectsRootRequest {
   path: string;
 }
 
+export interface SetCreatorRootRequest {
+  path: string;
+}
+
+export interface SetKnowledgeRootRequest {
+  path: string;
+}
+
 export interface SetObsidianExecutableRequest {
   path: string;
 }
@@ -298,6 +332,8 @@ export interface SyncPublishResult {
 export interface OverlayStore {
   schemaVersion: 1;
   libraryRoot?: string;
+  creatorRoot?: string;
+  knowledgeRoot?: string;
   profile?: CreatorProfile;
   scriptRules?: string;
   trellisProjectsRoot?: string;

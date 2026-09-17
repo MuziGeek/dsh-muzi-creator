@@ -5,7 +5,7 @@ import { PublishFlowService } from "./publishFlow.ts";
 import type { PublishFlowPrepare, PublishFlowAction } from "./publishFlowSchemas.ts";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
+import { lstat, mkdir, readdir, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 
 import type { Context } from "@deepseek-ai/cordis";
@@ -126,6 +126,8 @@ import type {
   StopInspirationRunRequest,
 } from "./inspirationTypes.ts";
 import { MuziCreatorService } from "./muziService.ts";
+import { GithubSourceService } from "./githubSourceService.ts";
+import type { GithubSourceRequest, GithubSourceResult } from "./githubSourceSchemas.ts";
 import { VideoPublisherService } from "./videoPublisher.ts";
 import { TrellisGithubService } from "./trellisGithubService.ts";
 import type { GithubRequest, GithubResult } from "./trellisGithubSchemas.ts";
@@ -199,6 +201,8 @@ import type {
   OverlayItem,
   OverlayStore,
   SetContentStageRequest,
+  SetCreatorRootRequest,
+  SetKnowledgeRootRequest,
   LibrarySettings,
   ListContentsRequest,
   ListContentsResult,
@@ -242,6 +246,7 @@ export class MzCreatorService extends TypertRemoteService {
   videos = new Map<string, { url: string; path: string; close: () => void }>();
   articles = new Map<string, { origin: string; root: string; close: () => void }>();
   readonly muzi: MuziCreatorService;
+  readonly githubSources: GithubSourceService;
   readonly videoPublisher: VideoPublisherService;
   readonly publishFlow: PublishFlowService;
   readonly videoConnectionTimeoutMs: number;
@@ -265,14 +270,21 @@ export class MzCreatorService extends TypertRemoteService {
     this.dataDir = resolveUserPath(resolveDataDir(config));
     this.subtitleSkillDirConfig = config.subtitleSkillDir;
     this.coverSkillDirConfig = config.coverSkillDir;
-    this.muzi = new MuziCreatorService(config);
+    this.githubSources = new GithubSourceService(ctx, this.dataDir, config);
+    this.muzi = new MuziCreatorService(config, async () => {
+      if (await this.githubSources.mode("creator") !== "github") return undefined;
+      return await this.githubSources.root("creator") ?? null;
+    });
     this.videoPublisher = new VideoPublisherService(config, this.dataDir, this.muzi);
     this.videoConnectionTimeoutMs = config.videoConnectionTimeoutMs ?? 600_000;
     this.videoConnectionPollIntervalMs = config.videoConnectionPollIntervalMs ?? 2000;
     this.videoAccountCapabilitiesTimeoutMs = config.videoAccountCapabilitiesTimeoutMs ?? 5000;
     this.publishFlow = new PublishFlowService(this.dataDir, this.muzi, this.videoPublisher, () => this.externalActionsEnabled);
     ctx.effect(() => () => this.publishFlow.dispose());
-    this.atlas = new AtlasReadService(config);
+    this.atlas = new AtlasReadService(config, async () => {
+      if (await this.githubSources.mode("knowledge") !== "github") return undefined;
+      return await this.githubSources.root("knowledge") ?? null;
+    });
     this.trellis = new TrellisProjectService(ctx, config);
     this.trellisGithub = new TrellisGithubService(ctx, this.dataDir, config);
     this.dailyHot = createDailyHotLoader();
@@ -286,6 +298,7 @@ export class MzCreatorService extends TypertRemoteService {
     this.obsidianExecutable = config.obsidianExecutable;
     void loadOverlay(this.dataDir).then((overlay) => { this.rememberOverlay(overlay); });
     ctx.effect(() => async () => {
+      this.githubSources.dispose();
       this.trellisGithub.dispose();
       this.stopWatch();
       this.stopExportWaiters();
@@ -311,42 +324,61 @@ export class MzCreatorService extends TypertRemoteService {
 
   async createMuziProject(request: MuziProjectCreateRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
     signal.throwIfAborted();
+    await this.assertCreatorWritable();
     return this.muzi.createProject(request);
   }
 
   async saveMuziDocument(request: MuziDocumentSaveRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
     signal.throwIfAborted();
+    await this.assertCreatorWritable();
     return this.muzi.saveDocument(request);
   }
 
   async setMuziProjectStatus(request: MuziProjectStatusRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
     signal.throwIfAborted();
+    await this.assertCreatorWritable();
     return this.muzi.setProjectStatus(request);
   }
 
   async setMuziPublication(request: MuziPublicationSetRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
     signal.throwIfAborted();
+    await this.assertCreatorWritable();
     return this.muzi.setPublication(request);
   }
 
   async archiveMuziProject(request: MuziArchiveRequest, signal: AbortSignal): Promise<MuziProjectDetail> {
     signal.throwIfAborted();
+    await this.assertCreatorWritable();
     return this.muzi.archiveProject(request);
   }
 
   async deleteMuziProject(request: MuziArchiveRequest, signal: AbortSignal): Promise<MuziDeleteResult> {
     signal.throwIfAborted();
+    await this.assertCreatorWritable();
     return this.muzi.deleteProject(request);
   }
 
   async getMuziWorkspaceRevision(_request: Record<string, never>, signal: AbortSignal): Promise<MuziWorkspaceRevision> {
     signal.throwIfAborted();
-    const [creator, knowledge] = await Promise.all([this.muzi.revision(), this.atlas.revision()]);
+    const [creator, knowledge] = await Promise.all([
+      this.muzi.revision().then((value) => `${value}:${this.githubSources.currentRevision}`),
+      this.atlas.revision().then((value) => `${value}:${this.githubSources.currentRevision}`),
+    ]);
     return { creator, knowledge, trellis: this.trellis.trellisRevision + this.trellisGithub.currentRevision };
+  }
+
+  async manageGithubSource(request: GithubSourceRequest, signal: AbortSignal): Promise<GithubSourceResult> {
+    return this.githubSources.manage(request, signal);
   }
 
   async manageTrellisGithub(request: GithubRequest, signal: AbortSignal): Promise<GithubResult> {
     return this.trellisGithub.manage(request, signal);
+  }
+
+  private async assertCreatorWritable(): Promise<void> {
+    if (await this.githubSources.mode("creator") === "github") {
+      throw new Error("GitHub 创作内容为只读，请在原仓库中修改并推送后刷新");
+    }
   }
 
   async listTrellisProjects(_request: Record<string, never>, signal: AbortSignal): Promise<TrellisProjectListResult> {
@@ -901,6 +933,46 @@ export class MzCreatorService extends TypertRemoteService {
       this.stopWatch();
       this.invalidateCatalog();
       return this.settingsOf(libraryRoot, overlay);
+    });
+  }
+
+  async setCreatorRoot(
+    request: SetCreatorRootRequest,
+    signal: AbortSignal,
+  ): Promise<LibrarySettings> {
+    signal.throwIfAborted();
+    const creatorRoot = resolveUserPath(request.path.trim());
+    const info = await lstat(creatorRoot).catch(() => undefined);
+    if (info === undefined || !info.isDirectory() || info.isSymbolicLink()) {
+      throw new Error(`Creator Studio 内容目录不是文件夹：${creatorRoot}`);
+    }
+    return withOverlayLock(this.dataDir, async () => {
+      await mkdir(join(creatorRoot, "10-active"), { recursive: true });
+      await mkdir(join(creatorRoot, "90-archive"), { recursive: true });
+      const overlay = await loadOverlay(this.dataDir);
+      overlay.creatorRoot = creatorRoot;
+      await saveOverlay(this.dataDir, overlay);
+      this.muzi.setLocalRoot(creatorRoot);
+      return this.settingsOf(overlay.libraryRoot ?? this.libraryRoot, overlay);
+    });
+  }
+
+  async setKnowledgeRoot(
+    request: SetKnowledgeRootRequest,
+    signal: AbortSignal,
+  ): Promise<LibrarySettings> {
+    signal.throwIfAborted();
+    const knowledgeRoot = resolveUserPath(request.path.trim());
+    const info = await lstat(knowledgeRoot).catch(() => undefined);
+    if (info === undefined || !info.isDirectory() || info.isSymbolicLink()) {
+      throw new Error(`知识库目录不是文件夹：${knowledgeRoot}`);
+    }
+    return withOverlayLock(this.dataDir, async () => {
+      const overlay = await loadOverlay(this.dataDir);
+      overlay.knowledgeRoot = knowledgeRoot;
+      await saveOverlay(this.dataDir, overlay);
+      this.atlas.setLocalRoot(knowledgeRoot);
+      return this.settingsOf(overlay.libraryRoot ?? this.libraryRoot, overlay);
     });
   }
 
@@ -1587,13 +1659,28 @@ export class MzCreatorService extends TypertRemoteService {
     this.cachedScriptRules = overlay.scriptRules;
     this.cachedEnabledPlatforms = overlay.profile?.enabledPlatforms ?? emptyProfile().enabledPlatforms;
     this.obsidianExecutable = overlay.obsidianExecutable ?? this.obsidianExecutableConfig;
+    if (overlay.creatorRoot !== undefined) this.muzi.setLocalRoot(overlay.creatorRoot);
+    if (overlay.knowledgeRoot !== undefined) this.atlas.setLocalRoot(overlay.knowledgeRoot);
     this.trellis.applyProjectsRoot(overlay.trellisProjectsRoot);
   }
 
   async settingsOf(
     libraryRoot: string,
-    overlay: { profile?: LibrarySettings["profile"]; scriptRules?: string },
+    overlay: Pick<OverlayStore, "profile" | "scriptRules" | "creatorRoot" | "knowledgeRoot">,
   ): Promise<LibrarySettings> {
+    let sourceViews: Pick<LibrarySettings, "creatorSource" | "knowledgeSource"> = {};
+    if (this.githubSources !== undefined) {
+      const [creatorSource, knowledgeSource] = await Promise.all([
+        this.githubSources.manage({ target: "creator", action: "status" }, new AbortController().signal),
+        this.githubSources.manage({ target: "knowledge", action: "status" }, new AbortController().signal),
+      ]);
+      sourceViews = {
+        creatorSource: sourceViewOf(creatorSource),
+        knowledgeSource: sourceViewOf(knowledgeSource),
+      };
+    }
+    const creatorRoot = overlay.creatorRoot ?? this.muzi?.creatorRoot;
+    const knowledgeRoot = overlay.knowledgeRoot ?? this.atlas?.atlasRoot;
     return {
       libraryRoot,
       profile: overlay.profile ?? emptyProfile(),
@@ -1601,6 +1688,9 @@ export class MzCreatorService extends TypertRemoteService {
       ...(overlay.scriptRules === undefined ? {} : { scriptRules: overlay.scriptRules }),
       trellisProjectsRoot: this.trellis.projectsRoot,
       ...(this.obsidianExecutable === undefined ? {} : { obsidianExecutable: this.obsidianExecutable }),
+      ...(creatorRoot === undefined ? {} : { creatorRoot }),
+      ...(knowledgeRoot === undefined ? {} : { knowledgeRoot }),
+      ...sourceViews,
     };
   }
 
@@ -1626,6 +1716,18 @@ function resolveUserPath(path: string): string {
   const expanded = expandHomePath(path);
   if (!isAbsolute(expanded)) throw new Error(`path must be absolute: ${path}`);
   return expanded;
+}
+
+function sourceViewOf(source: GithubSourceResult): NonNullable<LibrarySettings["creatorSource"]> {
+  return {
+    mode: source.mode,
+    url: source.snapshot?.url ?? (source.selection === null ? null : `https://github.com/${source.selection.owner}/${source.selection.repo}`),
+    branch: source.selection?.branch ?? null,
+    sha: source.snapshot?.sha ?? null,
+    syncedAt: source.snapshot?.syncedAt ?? null,
+    stale: source.snapshot?.stale ?? false,
+    readOnly: source.mode === "github",
+  };
 }
 
 function envForGenerateStep(

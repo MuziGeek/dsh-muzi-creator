@@ -111,7 +111,7 @@ import {
 } from "./contentSelection.ts";
 import type { CredentialsClient } from "./credentialsApi.ts";
 import { CreatorSettingsCard } from "./CreatorSettingsCard.tsx";
-import type { CreatorViewFace, DailyHotViewFace, InspirationViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
+import type { CreatorViewFace, DailyHotViewFace, GithubSourceFace, InspirationViewFace, MuziViewFace, TrellisViewFace } from "./face.ts";
 import { en, NS, type CreatorKey, zh } from "./locales.ts";
 import { inspirationEn, inspirationZh, type InspirationCopyKey } from "./inspiration/index.ts";
 import { MzSidebarRoot } from "./sidebar/MzSidebarRoot.tsx";
@@ -169,6 +169,8 @@ interface MzCreatorRemote {
   getCapabilities: (request: Record<string, never>) => Promise<RemoteAnswer<{ capabilities: CreatorCapabilities }>>;
   getRevision: (request: Record<string, never>) => Promise<RemoteAnswer<{ revision: number }>>;
   setLibraryRoot: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
+  setCreatorRoot: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
+  setKnowledgeRoot: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
   setTrellisProjectsRoot: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
   setObsidianExecutable: (request: { path: string }) => Promise<RemoteAnswer<LibrarySettings>>;
   setProfile: (request: { profile: CreatorProfile }) => Promise<RemoteAnswer<LibrarySettings>>;
@@ -237,6 +239,7 @@ interface MzCreatorRemote {
   getMuziWorkspaceRevision: (request: Record<string, never>) => Promise<RemoteAnswer<MuziWorkspaceRevision>>;
   openMuziDocumentInObsidian: (request: { id: string; document: MuziDocumentSaveRequest["document"] }) => Promise<RemoteAnswer<{ opened: true }>>;
   manageTrellisGithub: (request: import("../trellisGithubSchemas.ts").GithubRequest) => Promise<RemoteAnswer<import("../trellisGithubSchemas.ts").GithubResult>>;
+  manageGithubSource: (request: import("../githubSourceSchemas.ts").GithubSourceRequest) => Promise<RemoteAnswer<import("../githubSourceSchemas.ts").GithubSourceResult>>;
   listTrellisProjects: (request: Record<string, never>) => Promise<RemoteAnswer<TrellisProjectListResult>>;
   getTrellisProject: (request: GetTrellisProjectRequest) => Promise<RemoteAnswer<TrellisProjectDetail>>;
   prepareTrellisTaskArchive: (request: PrepareTrellisTaskArchiveRequest) => Promise<RemoteAnswer<TrellisArchivePreview>>;
@@ -402,6 +405,18 @@ export function apply(ctx: ClientContext): void {
       const remote = remoteOf();
       if (remote === undefined) throw new Error("remote unavailable");
       unwrap(await remote.setLibraryRoot({ path }), "set root failed");
+      bumpLibrary();
+    },
+    setCreatorRoot: async (path) => {
+      const remote = remoteOf();
+      if (remote === undefined || typeof remote.setCreatorRoot !== "function") throw new Error("Creator Studio 内容目录接口尚未加载，请更新工作台后重试");
+      unwrap(await remote.setCreatorRoot({ path }), "set creator root failed");
+      bumpLibrary();
+    },
+    setKnowledgeRoot: async (path) => {
+      const remote = remoteOf();
+      if (remote === undefined || typeof remote.setKnowledgeRoot !== "function") throw new Error("知识库目录接口尚未加载，请更新工作台后重试");
+      unwrap(await remote.setKnowledgeRoot({ path }), "set knowledge root failed");
       bumpLibrary();
     },
     setTrellisProjectsRoot: async (path) => {
@@ -752,6 +767,20 @@ export function apply(ctx: ClientContext): void {
     },
     openPath: (path) => ctx.workspaces.openPath(path),
   };
+
+  const githubSourceFace: GithubSourceFace = {
+    github: async (request) => {
+      const remote = remoteOf();
+      if (remote === undefined || typeof remote.manageGithubSource !== "function") throw new Error("GitHub 内容来源接口尚未加载，请更新工作台后重试");
+      const result = unwrap(await remote.manageGithubSource(request), "GitHub 内容来源操作失败");
+      if (["connect", "refresh", "remove", "mode"].includes(request.action)) bumpLibrary();
+      return result;
+    },
+    ready: () => {
+      const remote = remoteOf();
+      return remote !== undefined && typeof remote.manageGithubSource === "function";
+    },
+  };
   const dailyHotFace: DailyHotViewFace = {
     ready: () => dailyHotRemoteOf() !== undefined,
     getDailyHot: async (refresh) => {
@@ -1070,6 +1099,7 @@ export function apply(ctx: ClientContext): void {
           inject: () => ({
             ...face(),
             projectSources: trellisFace,
+            githubSources: githubSourceFace,
             credentials: credentialsOf(ctx),
           }),
         },

@@ -18,6 +18,38 @@ export function parseGithubRepository(input: string): { owner: string; repo: str
   return { owner: parsed.data.owner, repo: parsed.data.repo };
 }
 
+const githubUsernameSchema = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$/);
+
+/** Normalized input used to choose between one repository and a user's repositories. */
+export type GithubBrowseQuery =
+  | { kind: "repository"; owner: string; repo: string }
+  | { kind: "user"; username: string }
+  | { kind: "empty" };
+
+/** Accepts a repository identifier, a repository URL, a GitHub profile URL, or a username. */
+export function parseGithubBrowseQuery(input: string): GithubBrowseQuery {
+  const value = input.trim();
+  if (value === "") return { kind: "empty" };
+  if (value.startsWith("https://")) {
+    const url = new URL(value);
+    if (url.origin !== "https://github.com" || url.username || url.password || url.search || url.hash) {
+      throw new Error("请输入 github.com 用户主页或仓库链接，不要包含凭据、查询参数或片段");
+    }
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length === 1) return { kind: "user", username: parseGithubUsername(parts[0]!) };
+    if (parts.length === 2) return { kind: "repository", ...parseGithubRepository(value) };
+    throw new Error("请输入 https://github.com/用户名 或 https://github.com/用户名/仓库名");
+  }
+  if (value.includes("/")) return { kind: "repository", ...parseGithubRepository(value) };
+  return { kind: "user", username: parseGithubUsername(value) };
+}
+
+function parseGithubUsername(input: string): string {
+  const parsed = githubUsernameSchema.safeParse(input);
+  if (!parsed.success) throw new Error("请输入 GitHub 用户名或仓库链接");
+  return parsed.data;
+}
+
 export const githubRepoResponse = z.object({
   name: z.string(), owner: z.object({ login: z.string() }), default_branch: z.string(), private: z.boolean(),
 });
@@ -51,7 +83,12 @@ export class GithubApi {
 
   /** Public files use a commit-pinned raw URL without authorization headers. */
   async publicFile(path: string, signal: AbortSignal): Promise<string> {
-    return this.text(`https://raw.githubusercontent.com${path}`, {}, signal);
+    return (await this.publicFileBytes(path, signal)).toString("utf8");
+  }
+
+  /** Read a public commit-pinned file without sending repository credentials. */
+  async publicFileBytes(path: string, signal: AbortSignal): Promise<Buffer> {
+    return this.bytes(`https://raw.githubusercontent.com${path}`, {}, signal);
   }
 
   private async json(url: string, init: RequestInit, signal: AbortSignal): Promise<unknown> {
@@ -61,6 +98,10 @@ export class GithubApi {
   }
 
   private async text(url: string, init: RequestInit, signal: AbortSignal): Promise<string> {
+    return (await this.bytes(url, init, signal)).toString("utf8");
+  }
+
+  private async bytes(url: string, init: RequestInit, signal: AbortSignal): Promise<Buffer> {
     const bounded = AbortSignal.any([signal, AbortSignal.timeout(this.timeoutMs)]);
     let response: Response;
     try { response = await this.fetcher(url, { ...init, redirect: "error", signal: bounded }); }
@@ -91,6 +132,6 @@ export class GithubApi {
       try { await reader.cancel(); } catch { /* An errored response stream is already closed. */ }
       reader.releaseLock();
     }
-    return Buffer.concat(chunks).toString("utf8");
+    return Buffer.concat(chunks);
   }
 }

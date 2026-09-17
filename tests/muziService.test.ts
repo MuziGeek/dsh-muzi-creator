@@ -36,6 +36,14 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 describe("muzi.creator/2", () => {
+  it("does not fall back to the local creator root when a remote source is unavailable", async () => {
+    const cfg = await config();
+    const local = new MuziCreatorService(cfg);
+    await local.createProject({ title: "本地项目", primaryDocument: "mother", confirmed: true });
+    const remote = new MuziCreatorService(cfg, async () => null);
+    expect(await remote.listProjects({ includeArchived: true })).toEqual({ items: [] });
+  });
+
   it("requires preview confirmation and optimistic revisions", async () => {
     const service = new MuziCreatorService(await config());
     await expect(service.createProject({ title: "主题", primaryDocument: "mother", confirmed: false })).rejects.toThrow("preview required");

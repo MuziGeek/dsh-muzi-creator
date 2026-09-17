@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Config } from "../src/config.ts";
-import { GithubApi, parseGithubRepository } from "../src/trellisGithubApi.ts";
+import { GithubApi, parseGithubBrowseQuery, parseGithubRepository } from "../src/trellisGithubApi.ts";
 import { githubProjectId } from "../src/trellisGithubReader.ts";
 import { TrellisGithubService } from "../src/trellisGithubService.ts";
 import { githubResultSchema } from "../src/trellisGithubSchemas.ts";
@@ -50,6 +50,20 @@ describe("GitHub project connections", () => {
     for (const value of ["https://evil.test/a/b", "https://token@github.com/a/b", "https://github.com/a/b?token=x", "a/..", "a/b/tree/main", "file:///tmp/project", "a/b#x"]) {
       expect(() => parseGithubRepository(value)).toThrow();
     }
+  });
+
+  it("recognizes GitHub profile URLs as repository-list queries", () => {
+    expect(parseGithubBrowseQuery("https://github.com/MuziGeek")).toEqual({ kind: "user", username: "MuziGeek" });
+    expect(parseGithubBrowseQuery("MuziGeek")).toEqual({ kind: "user", username: "MuziGeek" });
+    expect(parseGithubBrowseQuery("MuziGeek/repository")).toEqual({ kind: "repository", owner: "MuziGeek", repo: "repository" });
+    expect(parseGithubBrowseQuery("")).toEqual({ kind: "empty" });
+  });
+
+  it("lists repositories when given a GitHub profile URL", async () => {
+    const f = await fixture();
+    f.responses.set("/users/sample/repos?sort=updated&per_page=100&page=1", [{ owner: { login: "sample" }, name: "project", default_branch: selection.branch, private: false }]);
+    const result = await f.service.manage({ action: "browse", query: "https://github.com/sample" }, f.signal);
+    expect(result.repositories?.map((item) => item.fullName)).toEqual(["sample/project"]);
   });
 
   it("connects, restores and removes a commit-pinned project with the existing task model", async () => {

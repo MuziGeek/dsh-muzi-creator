@@ -55,7 +55,7 @@ Muzi Creator 加载后会把 DSH Web 内容统一为 Animal Island 视觉：侧�
 
 右边输入 `@`，可以选择「当前详情」或搜以前的片子。发出去的是那一期的文件夹路径，封面、脚本、字幕都在里面，按 [files.md](files.md) 自己去列、去读。`/current content` 同样只带当前打开那条的文件夹路径。
 
-设置在 Harness 的设置 → 插件 → 个人内容工作台。「项目来源」集中配置本地项目目录与 GitHub 仓库，操作与保存方式见 [项目来源](github-projects.md)。这里也可以配置影片目录、`enabledPlatforms`、脚本规则（人设）和凭据。影片目录默认是 `~/Movies/视频项目`。`enabledPlatforms` 有小红书、抖音、B 站、视频号四个开关，默认全部启用；AI 发布和数据同步只处理启用的平台，全部关闭时不执行这两项操作。脚本规则是写 `script.md` 时 AI 必须遵循的语气、结构和禁忌，也可以直接在对话里让 AI 记录，AI 会用 `mz_script_rules` 存到同一个地方。字幕转录使用百炼 `DASHSCOPE_API_KEY`，封面使用 ZenMux `ZENMUX_API_KEY`，两者和视觉识别共用官方凭据；页面只显示已配置或未配置，不会把 Key 读回来。
+设置在 Harness 的设置 → 插件 → 个人内容工作台。「创作内容来源」和「知识来源」分别支持本地目录或 GitHub 仓库，配置方式见 [GitHub 内容与知识来源](github-sources.md)；「项目来源」仍按 [GitHub 项目来源](github-projects.md) 配置。这里也可以配置影片目录、`enabledPlatforms`、脚本规则（人设）和凭据。影片目录默认是 `~/Movies/视频项目`。`enabledPlatforms` 有小红书、抖音、B 站、视频号四个开关，默认全部启用；AI 发布和数据同步只处理启用的平台，全部关闭时不执行这两项操作。脚本规则是写 `script.md` 时 AI 必须遵循的语气、结构和禁忌，也可以直接在对话里让 AI 记录，AI 会用 `mz_script_rules` 存到同一个地方。字幕转录使用百炼 `DASHSCOPE_API_KEY`，封面使用 ZenMux `ZENMUX_API_KEY`，两者和视觉识别共用官方凭据；页面只显示已配置或未配置，不会把 Key 读回来。
 
 宿主皮肤固定针对 DSH Desktop 2.0.4 / 内置 Harness 0.1.2-alpha.1。升级 Desktop 前先在隔离 Lab 重新检查会话、输入、审批、设置、菜单和弹层；固定版本选择器不匹配时应停止验收，而不是继续扩大 CSS 覆盖。
 

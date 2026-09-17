@@ -36,12 +36,10 @@ export function DeleteCardButton({ title, onDelete, disabled = false, t = (key) 
     finally { pending.current = false; setBusy(false); }
   };
   return <div className="cardDeleteActions">
-    <IslandButton icon={<WorkbenchIcon name="remove" />} type="text" size="small" danger disabled={disabled || busy}
+    <IslandButton icon={<WorkbenchIcon name="remove" />} type="default" size="small" danger className="cardDeleteButton" disabled={disabled || busy}
       aria-label={`${text("cardDelete.label")}：${title}`}
       title={disabled ? text("cardDelete.stopFirst") : text("cardDelete.keepFiles")}
-      onClick={() => { setError(null); setOpen(true); }}>
-      {text(busy ? "cardDelete.busy" : "cardDelete.label")}
-    </IslandButton>
+      onClick={() => { setError(null); setOpen(true); }} />
     {open && <IslandModal
       open
       className="cardDeleteModal"

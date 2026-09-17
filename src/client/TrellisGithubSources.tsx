@@ -53,7 +53,7 @@ export function TrellisGithubSources({ face, t, children }: { face: Pick<Trellis
       setBranch(preferred && options.includes(preferred) ? preferred : options[0] ?? "");
     }
   };
-  return <div className="trellisGithubSources" aria-busy={busy}>
+  return <div className="trellisGithubSources settingsSourceControls" aria-busy={busy}>
     <IslandSelect aria-label={t("github.sources")} value={status?.mode ?? "local"} disabled={busy || !status}
       options={[{ key: "github", label: t("github.remote") }, { key: "local", label: t("github.local") }]}
       onChange={(value: string | number) => { void request({ action: "mode", mode: value === "github" ? "github" : "local" }); }} />

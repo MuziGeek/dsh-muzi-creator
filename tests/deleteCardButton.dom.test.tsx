@@ -16,6 +16,8 @@ it("blocks duplicate deletion and exposes failure for retry", async () => {
   const remove = vi.fn(() => new Promise<void>((_, reject) => { fail = reject; }));
   render(<DeleteCardButton title="测试" onDelete={remove} />);
   const button = screen.getByRole("button", { name: "删除：测试" });
+  expect(button.textContent?.trim()).toBe("");
+  expect(button.querySelector('[data-workbench-icon="remove"]')).not.toBeNull();
   fireEvent.click(button);
   const confirm = screen.getByRole("button", { name: "删除" });
   fireEvent.click(confirm); fireEvent.click(confirm);

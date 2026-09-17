@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import type { Config } from "./config.ts";
-import { GithubApi, githubRepoResponse, parseGithubRepository, repositoryOf } from "./trellisGithubApi.ts";
+import { GithubApi, githubRepoResponse, parseGithubBrowseQuery, parseGithubRepository, repositoryOf } from "./trellisGithubApi.ts";
 import { githubProjectId, readGithubTrellis } from "./trellisGithubReader.ts";
 import { githubRequestSchema, githubSelectionSchema, type GithubRequest, type GithubResult, type GithubRepository, type GithubSelection } from "./trellisGithubSchemas.ts";
 import type { TrellisProjectDetail, TrellisProjectId, TrellisProjectListResult } from "./trellisTypes.ts";
@@ -174,13 +174,13 @@ export class TrellisGithubService {
   }
 
   private async browse(query: string, token: string | undefined, signal: AbortSignal): Promise<GithubRepository[]> {
-    if (query.includes("/")) {
-      const { owner, repo } = parseGithubRepository(query);
+    const parsed = parseGithubBrowseQuery(query);
+    if (parsed.kind === "repository") {
+      const { owner, repo } = parsed;
       return [repositoryOf(githubRepoResponse.parse(await this.api.request(`/repos/${owner}/${repo}`, token, signal)))];
     }
-    if (query) {
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$/.test(query)) throw new Error("请输入 GitHub 用户名或仓库链接");
-      return (await this.pages(`/users/${query}/repos?sort=updated`, token, signal, z.array(githubRepoResponse), (data) => data)).map(repositoryOf);
+    if (parsed.kind === "user") {
+      return (await this.pages(`/users/${encodeURIComponent(parsed.username)}/repos?sort=updated`, token, signal, z.array(githubRepoResponse), (data) => data)).map(repositoryOf);
     }
     if (!token) throw new Error("请粘贴公开仓库链接、输入 GitHub 用户名，或先绑定账号");
     const installations = await this.pages("/user/installations", token, signal, z.object({ installations: z.array(z.object({ id: z.number().int().positive() })) }), (data) => data.installations);

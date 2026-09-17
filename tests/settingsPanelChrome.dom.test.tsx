@@ -136,6 +136,11 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(expanded.getAttribute("aria-expanded")).toBe("true");
     expect(bodyId === null ? null : document.getElementById(bodyId)?.className).toBe("body");
     expect(expanded.querySelector("svg.chevron.open")).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 3, name: zh["settings.section.sources"] })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 3, name: zh["settings.section.projects"] })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 3, name: zh["settings.section.workflow"] })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 3, name: zh["settings.section.integrations"] })).toBeTruthy();
+    expect(document.querySelector(".settingsSourceControls")).not.toBeNull();
 
     unmount();
     render(<CreatorSettingsCard {...settingsCardProps(en)} />);
@@ -198,6 +203,9 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(settingsCss).toContain("background: var(--dsw-alias-bg-layer-3)");
     expect(settingsCss).toContain("padding: 14px 16px");
     expect(settingsCss).toContain("transition: transform 0.16s");
+    expect(settingsCss).toContain(".settingsSection");
+    expect(settingsCss).toContain(".platformGrid");
+    expect(settingsCss).toMatch(/\.settingsSourceControls[\s\S]*position: static !important/);
     expect(panelsCss).toMatch(/\.muziViewDisclosure\s*\{[\s\S]*?margin:\s*0 12px 8px 4px/);
     expect(panelsCss).not.toMatch(/\.muziViewDisclosure\s*\{[^}]*position:\s*(?:absolute|fixed)/);
   });

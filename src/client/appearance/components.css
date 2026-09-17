@@ -979,10 +979,32 @@ html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] .cardWithA
   pointer-events: auto;
   transform: translate3d(0, -50%, 0);
 }
-html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] .cardDeleteActions button {
-  background: var(--muzi-island-paper, var(--animal-bg-color));
-  border-radius: var(--animal-border-radius-sm, 16px);
-  color: var(--muzi-island-paper-danger);
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] .cardDeleteActions .islandButton.cardDeleteButton {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: var(--muzi-button-danger-soft, var(--muzi-island-danger-soft));
+  color: var(--muzi-button-danger-text, var(--muzi-island-paper-danger));
+  box-shadow: 0 3px 10px color-mix(in srgb, currentColor 26%, transparent);
+}
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] .cardDeleteActions .islandButton.cardDeleteButton:hover:not(:disabled) {
+  background: var(--muzi-button-danger-soft-hover, var(--muzi-island-danger-soft));
+  border-color: currentColor;
+  box-shadow: 0 4px 12px color-mix(in srgb, currentColor 34%, transparent);
+  transform: translateY(-1px);
+}
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] .cardDeleteActions .islandButton.cardDeleteButton:active:not(:disabled) {
+  background: var(--muzi-button-danger-soft-active, var(--muzi-island-danger-soft));
+  transform: translateY(0);
+  box-shadow: 0 2px 6px color-mix(in srgb, currentColor 26%, transparent);
+}
+html[data-muzi-workbench-appearance] [data-plugin="dsh-muzi-creator"] .cardDeleteActions .islandButton.cardDeleteButton .muziWorkbenchIcon {
+  width: 20px;
+  height: 20px;
 }
 
 @media (hover: none) {

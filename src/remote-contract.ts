@@ -1,6 +1,7 @@
 import type { InvocationDescriptor } from "@deepseek-ai/dsh-typert-protocol";
 import { z } from "zod";
 import { githubRequestSchema, githubResultSchema } from "./trellisGithubSchemas.ts";
+import { githubSourceRequestSchema, githubSourceResultSchema } from "./githubSourceSchemas.ts";
 import { addVideoAccountSchema, setVideoAccountEnabledSchema, videoAccountLoginSchema, videoAccountManagementSchema, videoConnectionRequestSchema, videoConnectionReopenSchema } from "./videoAccountSchemas.ts";
 import { publishFlowSchema, publishFlowGetSchema, publishFlowPrepareSchema, publishFlowActionSchema } from "./publishFlowSchemas.ts";
 
@@ -14,6 +15,8 @@ import {
   listContentsRequestSchema,
   listContentsResultSchema,
   setLibraryRootRequestSchema,
+  setCreatorRootRequestSchema,
+  setKnowledgeRootRequestSchema,
   setObsidianExecutableRequestSchema,
   setTrellisProjectsRootRequestSchema,
   createContentRequestSchema,
@@ -180,6 +183,8 @@ export const MZ_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("getCapabilities", emptyObjectSchema, capabilitiesResultSchema),
   invocation("getRevision", emptyObjectSchema, revisionResultSchema),
   invocation("setLibraryRoot", setLibraryRootRequestSchema, librarySettingsSchema),
+  invocation("setCreatorRoot", setCreatorRootRequestSchema, librarySettingsSchema),
+  invocation("setKnowledgeRoot", setKnowledgeRootRequestSchema, librarySettingsSchema),
   invocation("setTrellisProjectsRoot", setTrellisProjectsRootRequestSchema, librarySettingsSchema),
   invocation("setObsidianExecutable", setObsidianExecutableRequestSchema, librarySettingsSchema),
   invocation("refreshCatalog", emptyObjectSchema, listContentsResultSchema),
@@ -242,6 +247,7 @@ export const MZ_CREATOR_INVOCATIONS: readonly InvocationDescriptor[] = [
   invocation("openInspirationReportInObsidian", openInspirationReportRequestSchema, openedInspirationReportSchema),
   invocation("serializeInspirationReference", serializeInspirationReferenceRequestSchema, inspirationReferenceSchema),
   invocation("manageTrellisGithub", githubRequestSchema, githubResultSchema),
+  invocation("manageGithubSource", githubSourceRequestSchema, githubSourceResultSchema),
   invocation("listTrellisProjects", emptyObjectSchema, trellisProjectListResultSchema),
   invocation("getTrellisProject", getTrellisProjectRequestSchema, trellisProjectDetailSchema),
   invocation("prepareTrellisTaskArchive", prepareTrellisTaskArchiveRequestSchema, trellisArchivePreviewSchema),

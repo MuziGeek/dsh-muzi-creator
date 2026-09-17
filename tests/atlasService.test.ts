@@ -52,6 +52,12 @@ afterEach(async () => {
 });
 
 describe("llm-wiki read projection", () => {
+  it("does not fall back to the local knowledge root when a remote source is unavailable", async () => {
+    const config = await fixture();
+    const service = new AtlasReadService(config, async () => null);
+    expect((await service.home()).status.status).toBe("unavailable");
+  });
+
   it("builds a topic-first home without expanding entities or sources", async () => {
     const service = new AtlasReadService(await fixture());
     const home = await service.home();

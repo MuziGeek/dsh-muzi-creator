@@ -1,6 +1,7 @@
 import { WorkbenchIcon } from "../ui/WorkbenchIcon.tsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { DeleteCardButton } from "../DeleteCardButton.tsx";
 import type { TrellisProjectListResult, TrellisProjectSummary } from "../../trellisTypes.ts";
 import type { TrellisViewFace } from "../face.ts";
 import type { CreatorKey } from "../locales.ts";
@@ -34,7 +35,7 @@ export interface TrellisProjectPanelProps {
   resource: ReadonlyResource<TrellisProjectListResult>;
 }
 
-export function TrellisProjectPanel({ t, resource }: TrellisProjectPanelProps) {
+export function TrellisProjectPanel({ face, t, resource }: TrellisProjectPanelProps) {
   const [query, setQuery] = useState("");
   const { data: listed, loading, error } = useResourceSnapshot(resource);
   const selection = useTrellisSelection();
@@ -80,15 +81,15 @@ export function TrellisProjectPanel({ t, resource }: TrellisProjectPanelProps) {
           const selected = selection.projectId === project.projectId;
           const counts = project.counts;
           return (
-            <IslandSelectableCard
-              key={project.projectId}
-              id={sidebarItemElementId("projects", project.projectId)}
-              className={`trellisProjectCard trellisProjectMain${selected ? " selected" : ""}`}
-              selected={selected}
-              onSelect={() => {
-                selectTrellisProject(project.projectId);
-              }}
-            >
+            <div className="cardWithActions" key={project.projectId}>
+              <IslandSelectableCard
+                id={sidebarItemElementId("projects", project.projectId)}
+                className={`trellisProjectCard trellisProjectMain${selected ? " selected" : ""}`}
+                selected={selected}
+                onSelect={() => {
+                  selectTrellisProject(project.projectId);
+                }}
+              >
                 <span className={`trellisConnectionMark ${project.status}`} aria-hidden="true" />
                 <span className="trellisProjectBody">
                   <span className="trellisProjectHeading"><strong>{project.title}</strong><small>{projectStateLabel(project, t)}</small></span>
@@ -102,7 +103,17 @@ export function TrellisProjectPanel({ t, resource }: TrellisProjectPanelProps) {
                     </span>
                   )}
                 </span>
-            </IslandSelectableCard>
+              </IslandSelectableCard>
+              {project.github !== undefined && face.github !== undefined && <DeleteCardButton
+                title={project.title}
+                t={(key) => t(key as CreatorKey)}
+                onDelete={async () => {
+                  await face.github!({ action: "remove", projectId: project.projectId });
+                  if (getSelectedTrellisProjectId() === project.projectId) selectTrellisProject(null);
+                  await resource.refreshAfterMutation();
+                }}
+              />}
+            </div>
           );
         })}
       </div>

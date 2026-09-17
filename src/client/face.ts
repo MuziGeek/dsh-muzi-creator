@@ -93,6 +93,8 @@ export interface CreatorViewFace {
   getSettings: () => Promise<LibrarySettings>;
   getCapabilities: () => Promise<CreatorCapabilities>;
   setLibraryRoot: (path: string) => Promise<void>;
+  setCreatorRoot: (path: string) => Promise<void>;
+  setKnowledgeRoot: (path: string) => Promise<void>;
   setTrellisProjectsRoot: (path: string) => Promise<void>;
   setObsidianExecutable: (path: string) => Promise<void>;
   setProfile: (profile: CreatorProfile) => Promise<void>;
@@ -171,6 +173,11 @@ export interface TrellisViewFace {
   prepareArchive: (projectId: TrellisProjectId, taskKey: TrellisTaskKey) => Promise<TrellisArchivePreview>;
   archiveTask: (token: TrellisArchiveToken) => Promise<TrellisArchiveResult>;
   openPath: (path: string) => Promise<void>;
+}
+
+export interface GithubSourceFace {
+  github: (request: import("../githubSourceSchemas.ts").GithubSourceRequest) => Promise<import("../githubSourceSchemas.ts").GithubSourceResult>;
+  ready: () => boolean;
 }
 
 /** Read-only client face for the AIHOT aggregate. */

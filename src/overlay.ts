@@ -71,6 +71,12 @@ export function decodeOverlay(value: unknown): OverlayStore {
   if (typeof raw.libraryRoot === "string" && raw.libraryRoot.length > 0) {
     store.libraryRoot = raw.libraryRoot;
   }
+  if (typeof raw.creatorRoot === "string" && raw.creatorRoot.trim() !== "") {
+    store.creatorRoot = raw.creatorRoot.trim();
+  }
+  if (typeof raw.knowledgeRoot === "string" && raw.knowledgeRoot.trim() !== "") {
+    store.knowledgeRoot = raw.knowledgeRoot.trim();
+  }
   if (typeof raw.scriptRules === "string" && raw.scriptRules.trim() !== "") {
     store.scriptRules = raw.scriptRules.trim();
   }

@@ -158,7 +158,7 @@ Creator Studio 保存正文和明确状态，Muzi Atlas 提供只读知识。内
 
 ### 项目：进度来自 Trellis 文件
 
-项目页支持本地目录与 GitHub 仓库来源，在「设置 → 插件 → 个人内容工作台 → 项目来源」统一配置。本地模式读取配置目录中的一级 Git 项目；GitHub 模式通过仓库链接或用户名选择仓库及分支，读取 `.trellis/tasks` 并显示提交与同步时间。任务按状态分组，支持筛选、组内滚动与详情定位，不生成主观完成百分比。远程任务只读；公开链接无需授权，私有仓库需管理员配置 GitHub App 后连接账号。参见 [GitHub 项目来源](docs/github-projects.md)。
+内容和知识支持独立的本地目录或 GitHub 仓库来源，在「设置 → 插件 → 个人内容工作台」分别配置；远程快照固定到提交并保持只读。项目页仍支持本地目录与 GitHub 仓库来源，在「项目来源」配置；GitHub 模式通过仓库链接或用户名选择仓库及分支，读取 `.trellis/tasks` 并显示提交与同步时间。公开链接无需授权，私有仓库需管理员配置 GitHub App 后连接账号。参见 [GitHub 内容与知识来源](docs/github-sources.md) 和 [GitHub 项目来源](docs/github-projects.md)。
 
 归档先预览具体影响，再确认执行；状态漂移或校验失败会阻止操作。归档只调用项目自己的 `task.py archive --no-commit`，不自动提交或推送。[查看项目操作说明](docs/usage.md)
 

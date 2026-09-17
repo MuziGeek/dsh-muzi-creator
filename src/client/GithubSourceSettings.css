@@ -1,0 +1,102 @@
+[data-plugin="dsh-muzi-creator"] .githubSourceSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSettings > p,
+[data-plugin="dsh-muzi-creator"] .githubSourceAuth p,
+[data-plugin="dsh-muzi-creator"] .githubSourceReadonly {
+  margin: 0;
+  color: var(--muzi-island-text-muted);
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSettings form {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px 8px;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSettings form > span {
+  grid-column: 1 / -1;
+  color: var(--muzi-island-text-muted);
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSettings form > .islandField.islandInput {
+  min-width: 0;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSettings form > button {
+  min-height: 40px;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSnapshot,
+[data-plugin="dsh-muzi-creator"] .githubSourceAuth,
+[data-plugin="dsh-muzi-creator"] .githubSourceDevice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceAuth {
+  padding-top: 12px;
+  border-top: 1px solid var(--muzi-island-border, var(--muzi-island-line));
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSnapshot {
+  padding: 8px 10px;
+  border: 1px solid var(--muzi-island-line);
+  border-radius: var(--muzi-island-radius-md);
+  color: var(--muzi-island-text-muted);
+  font-size: var(--muzi-type-support-size, 0.75rem);
+  line-height: var(--muzi-type-support-line, 1.125rem);
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSnapshotTitle {
+  color: var(--muzi-island-text);
+  font-weight: 600;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceSnapshot code,
+[data-plugin="dsh-muzi-creator"] .githubSourceDevice code {
+  color: var(--muzi-island-text);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceDevice {
+  padding: 8px 10px;
+  border-radius: var(--muzi-island-radius-md);
+  background: var(--dsw-alias-bg-module-platform);
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceDevice a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--dsw-alias-brand-primary);
+}
+
+@media (max-width: 520px) {
+  [data-plugin="dsh-muzi-creator"] .githubSourceSettings form {
+    grid-template-columns: 1fr;
+  }
+
+  [data-plugin="dsh-muzi-creator"] .githubSourceSettings form > button {
+    width: 100%;
+  }
+}
