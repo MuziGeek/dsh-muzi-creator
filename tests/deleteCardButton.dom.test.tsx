@@ -3,14 +3,18 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, expect, it, vi } from "vitest";
 import { MuziContentPanel } from "../src/client/sidebar/MuziContentPanel.tsx";
 import { getContentSelection, setContentSelection } from "../src/client/contentSelection.ts";
-import type { MuziViewFace } from "../src/client/face.ts";
+import { TrellisProjectPanel } from "../src/client/sidebar/TrellisProjectPanel.tsx";
+import type { MuziViewFace, TrellisViewFace } from "../src/client/face.ts";
 import { DeleteCardButton } from "../src/client/DeleteCardButton.tsx";
 import { ContentOverview } from "../src/client/workbench/WorkbenchOverviews.tsx";
 import { ReadonlyResource } from "../src/client/workbench/WorkbenchData.ts";
 import { contentOverviewProject } from "./helpers/contentOverviewFixture.ts";
 import { deleteEn } from "../src/client/deleteCopy.ts";
+import { zh } from "../src/client/locales.ts";
+import { selectTrellisProject } from "../src/client/trellisSelection.ts";
+import type { TrellisProjectListResult, TrellisProjectSummary } from "../src/trellisTypes.ts";
 import { userEvent } from "@testing-library/user-event";
-afterEach(() => { cleanup(); setContentSelection(null); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); setContentSelection(null); selectTrellisProject(null); vi.restoreAllMocks(); });
 it("blocks duplicate deletion and exposes failure for retry", async () => {
   let fail!: (error: Error) => void;
   const remove = vi.fn(() => new Promise<void>((_, reject) => { fail = reject; }));
@@ -72,6 +76,48 @@ it("removes the selected content card after confirmation and reloads the list", 
   expect(face.deleteProject).toHaveBeenCalledWith(project.id,project.revision);
   expect(getContentSelection()).toBeNull();
   expect(shared.getSnapshot().data?.items).toEqual([]);
+});
+
+it("removes a GitHub project card after confirmation and refreshes the list", async () => {
+  const project = {
+    projectId: "github_project-1",
+    title: "远程项目",
+    rootPath: null,
+    github: {
+      url: "https://github.com/owner/project",
+      branch: "main",
+      sha: null,
+      syncedAt: null,
+      stale: false,
+    },
+    status: "ready",
+    statusMessage: "已同步",
+    counts: { planning: 0, inProgress: 1, completed: 0, unknown: 0, archived: 0, verifiedArchived: 0, invalid: 0 },
+    issues: [],
+  } as unknown as TrellisProjectSummary;
+  let projects: TrellisProjectSummary[] = [project];
+  const github = vi.fn(async () => {
+    projects = [];
+    return { mode: "github", authAvailable: false, connected: false, login: null, pending: null };
+  });
+  const face = { github, ready: () => true } as unknown as TrellisViewFace;
+  const resource = new ReadonlyResource<TrellisProjectListResult>(async () => ({
+    projects,
+    projectsRoot: "GitHub",
+    trellisRevision: 0,
+  }));
+
+  render(<TrellisProjectPanel face={face} resource={resource} t={(key) => zh[key]} />);
+  const trigger = await screen.findByRole("button", { name: "删除：远程项目" });
+  expect(trigger.classList.contains("cardDeleteButton")).toBe(true);
+  expect(trigger.closest(".cardWithActions")).not.toBeNull();
+
+  await act(async () => { fireEvent.click(trigger); });
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "删除" })); });
+  await waitFor(() => expect(screen.queryByRole("button", { name: "删除：远程项目" })).toBeNull());
+
+  expect(github).toHaveBeenCalledWith({ action: "remove", projectId: project.projectId });
+  expect(resource.getSnapshot().data?.projects).toEqual([]);
 });
 
 it("focuses cancel and restores the trigger after native cancellation without deleting", async () => {
