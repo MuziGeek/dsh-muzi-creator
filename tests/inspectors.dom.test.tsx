@@ -21,6 +21,7 @@ import { DailyHotInspector } from "../src/client/DailyHotInspector.tsx";
 import { selectDailyHotItem } from "../src/client/dailyHotSelection.ts";
 import { MuziInspector } from "../src/client/MuziInspector.tsx";
 import { TrellisProjectInspector } from "../src/client/TrellisProjectInspector.tsx";
+import { destroyMuziNotifications } from "../src/client/ui/MuziNotification.ts";
 import {
   getSelectedTrellisTaskKey,
   selectTrellisProject,
@@ -119,6 +120,7 @@ describe("central detail bodies", () => {
   });
 
   afterEach(() => {
+    destroyMuziNotifications();
     cleanup();
     selectDailyHotItem(null);
     selectTrellisProject(null);

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { VideoAccountManager } from "../src/client/VideoAccountManager.tsx";
 import { zh, type CreatorKey } from "../src/client/locales.ts";
+import { destroyMuziNotifications } from "../src/client/ui/MuziNotification.ts";
 import type { VideoAccountFace, VideoAccountManagement, VideoConnection } from "../src/videoAccountSchemas.ts";
 
 vi.mock("@deepseek-ai/dsh-client-ui-primitives", async (importOriginal) => ({
@@ -20,7 +21,7 @@ function setup(initial = management()) {
   const api: VideoAccountFace = { list: vi.fn(async () => current), add: vi.fn(async () => current), remove: vi.fn(async () => current), setEnabled: vi.fn(async () => current), openLogin: vi.fn(async () => current), checkLogin: vi.fn(async () => current), reconnect: vi.fn(async () => current), pollConnection: vi.fn(async () => current), cancelConnection: vi.fn(async () => current), reopenConnection: vi.fn(async () => current) };
   return { api, set: (value: VideoAccountManagement) => { current = value; } };
 }
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { destroyMuziNotifications(); cleanup(); vi.restoreAllMocks(); });
 
 describe("account connection UI", () => {
   it("shows only recently verified bindings in the paper list and keeps stopped accounts", async () => {
@@ -91,7 +92,8 @@ describe("account connection UI", () => {
     const connection = pending(); const { api } = setup(management({ accounts: [], loginStatuses: [], connections: [connection], connection }));
     vi.mocked(api.pollConnection).mockImplementation(() => new Promise(() => undefined)); vi.mocked(api.cancelConnection).mockRejectedValue(new Error("取消失败"));
     render(<VideoAccountManager api={api} t={t} initialPlatform="douyin" />); await waitFor(() => expect(api.pollConnection).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("button", { name: "新建连接" })); await screen.findByText("取消失败");
+    fireEvent.click(screen.getByRole("button", { name: "新建连接" }));
+    await within(await screen.findByRole("dialog", { name: "连接创作者账号" })).findByText("取消失败");
     expect(api.add).not.toHaveBeenCalled(); expect(screen.getByRole("button", { name: "取消连接" })).toBeTruthy();
   });
   it("prefers the newly returned connection over an older active record", async () => {
@@ -127,7 +129,11 @@ describe("account connection UI", () => {
   it("uses a confirmation before removal and exposes cleanup retry in 账号连接问题", async () => {
     const { api, set } = setup(); vi.mocked(api.remove).mockImplementation(async () => { const next = management({ accounts: [{ ...account, enabled: false, removalPending: true }] }); set(next); throw new Error("隔离登录清理未完成"); });
     render(<VideoAccountManager api={api} t={t} />); fireEvent.click(await screen.findByRole("button", { name: "管理" })); fireEvent.click(screen.getByRole("button", { name: "移除账号" })); expect(api.remove).not.toHaveBeenCalled();
-    fireEvent.click(within(screen.getByRole("dialog", { name: "确认移除账号" })).getByRole("button", { name: "确认移除" })); await screen.findByText("隔离登录清理未完成"); await screen.findByRole("button", { name: "账号连接问题 (1)" }); fireEvent.click(screen.getByRole("button", { name: "账号连接问题 (1)" })); expect(screen.getByRole("button", { name: "重试移除" })).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("dialog", { name: "确认移除账号" })).getByRole("button", { name: "确认移除" }));
+    const issueToggle = await screen.findByRole("button", { name: "账号连接问题 (1)" });
+    await waitFor(() => expect(document.querySelector(".videoAccountMessage.error")?.textContent).toContain("隔离登录清理未完成"));
+    fireEvent.click(issueToggle);
+    expect(screen.getByRole("button", { name: "重试移除" })).toBeTruthy();
   });
   it("expands problem accounts inline with eligible actions and removal confirmation", async () => {
     const legacy = { ...account, platformAccountId: null, connectedAt: null };
@@ -173,7 +179,8 @@ describe("account connection UI", () => {
     const onConnected = vi.fn(); render(<VideoAccountManager api={api} t={t} onConnected={onConnected} />);
     await screen.findByRole("button", { name: "取消连接" }); expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("button", { name: /账号连接问题/ }).getAttribute("aria-expanded")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "取消连接" })); await screen.findByText("暂时无法取消");
+    fireEvent.click(screen.getByRole("button", { name: "取消连接" }));
+    await within(screen.getByRole("region", { name: /账号连接问题/ })).findByText("暂时无法取消");
     expect(screen.queryByRole("dialog")).toBeNull(); expect(api.reconnect).not.toHaveBeenCalled();
     const cancelled = { ...connection, state: "cancelled" as const }; const cancelledData = management({ loginStatuses: [], connection: cancelled, connections: [cancelled] });
     vi.mocked(api.cancelConnection).mockImplementation(async () => { set(cancelledData); return cancelledData; });
@@ -196,8 +203,10 @@ describe("account connection UI", () => {
     const { api, set } = setup(management({ loginStatuses: [] }));
     vi.mocked(api.reconnect).mockRejectedValueOnce(new Error("无法打开专用浏览器"));
     render(<VideoAccountManager api={api} t={t} />); fireEvent.click(await screen.findByRole("button", { name: /账号连接问题/ }));
-    fireEvent.click(screen.getByRole("button", { name: "重新连接" })); await screen.findByText("无法打开专用浏览器");
-    const region = screen.getByRole("region", { name: /账号连接问题/ }); expect(within(region).getByRole("alert").textContent).toContain("无法打开专用浏览器"); expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "重新连接" }));
+    const region = screen.getByRole("region", { name: /账号连接问题/ });
+    await within(region).findByText("无法打开专用浏览器");
+    expect(within(region).getByRole("alert").textContent).toContain("无法打开专用浏览器"); expect(screen.queryByRole("dialog")).toBeNull();
     const connection = pending(); const next = management({ loginStatuses: [], connection, connections: [connection] });
     vi.mocked(api.reconnect).mockImplementation(async () => { set(next); return next; });
     fireEvent.click(screen.getByRole("button", { name: "重新连接" })); await screen.findByRole("button", { name: "取消连接" });

@@ -15,6 +15,7 @@ import { TrellisGithubSources } from "./TrellisGithubSources.tsx";
 import type { CreatorKey } from "./locales.ts";
 import { CREATOR_SETTINGS_PLATFORMS } from "./publishPlatforms.ts";
 import { IslandButton, IslandCheckbox, IslandInput, IslandTag, IslandTextarea } from "./ui/IslandControls.tsx";
+import { showMuziNotification } from "./ui/MuziNotification.ts";
 import { setContentSelection, setSidebarTab } from "./contentSelection.ts";
 import "./CreatorSettingsCard.css";
 
@@ -107,7 +108,6 @@ export function CreatorSettingsCard({
   const [capabilities, setCapabilities] = useState<CreatorCapabilities | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [keyFailed, setKeyFailed] = useState(false);
   const [pickingDirectory, setPickingDirectory] = useState<DirectoryField | undefined>(undefined);
   const [directoryPickError, setDirectoryPickError] = useState<DirectoryField | undefined>(undefined);
@@ -215,10 +215,20 @@ export function CreatorSettingsCard({
       } else {
         setDraftKnowledgeRoot(path);
       }
-      setSaved(false);
       setFailed(false);
+      showMuziNotification({
+        kind: "success",
+        message: t("settings.pickSuccess" as CreatorKey),
+        description: path,
+        key: `settings-picker-${field}`,
+      });
     } catch {
       setDirectoryPickError(field);
+      showMuziNotification({
+        kind: "error",
+        message: t("settings.pickFailed" as CreatorKey),
+        key: `settings-picker-${field}-error`,
+      });
     } finally {
       pickingDirectoryRef.current = false;
       setPickingDirectory(undefined);
@@ -231,7 +241,6 @@ export function CreatorSettingsCard({
         : current.enabledPlatforms.filter((item) => item !== platform);
       return { enabledPlatforms: normalizeEnabledPlatforms(enabledPlatforms) };
     });
-    setSaved(false);
     setFailed(false);
   };
 
@@ -243,11 +252,15 @@ export function CreatorSettingsCard({
     setSaving(true);
     setFailed(false);
     setKeyFailed(false);
-    setSaved(false);
     try {
       if (dirtyKeys) {
         if (credentials === undefined) {
           setKeyFailed(true);
+          showMuziNotification({
+            kind: "error",
+            message: t("settings.secret.saveFailed" as CreatorKey),
+            key: "settings-save-error",
+          });
           return;
         }
         for (const item of secrets) {
@@ -255,6 +268,11 @@ export function CreatorSettingsCard({
           if (value === "") continue;
           if (!(await credentials.set({ ref: item.ref, value })).result.ok) {
             setKeyFailed(true);
+            showMuziNotification({
+              kind: "error",
+              message: t("settings.secret.saveFailed" as CreatorKey),
+              key: "settings-save-error",
+            });
             return;
           }
         }
@@ -292,9 +310,18 @@ export function CreatorSettingsCard({
         await setScriptRules(draftRules);
         setSavedRules(draftRules);
       }
-      setSaved(true);
+      showMuziNotification({
+        kind: "success",
+        message: t("settings.saved" as CreatorKey),
+        key: "settings-save-success",
+      });
     } catch {
       setFailed(true);
+      showMuziNotification({
+        kind: "error",
+        message: t("settings.saveFailed" as CreatorKey),
+        key: "settings-save-error",
+      });
     } finally {
       setSaving(false);
     }
@@ -372,7 +399,7 @@ export function CreatorSettingsCard({
                     </IslandButton>
                   </span>
                   {directoryPickError === "library" && (
-                    <span id={libraryPickErrorId} className="pickerFailed" role="alert">
+                    <span id={libraryPickErrorId} className="settingsFeedback settingsFeedbackError pickerFailed" role="alert">
                       {t("settings.pickFailed" as CreatorKey)}
                     </span>
                   )}
@@ -396,7 +423,7 @@ export function CreatorSettingsCard({
                           {t("settings.pick" as CreatorKey)}
                         </IslandButton>
                       </span>
-                      {directoryPickError === "creator" && <span id={creatorPickErrorId} className="pickerFailed" role="alert">{t("settings.pickFailed" as CreatorKey)}</span>}
+                      {directoryPickError === "creator" && <span id={creatorPickErrorId} className="settingsFeedback settingsFeedbackError pickerFailed" role="alert">{t("settings.pickFailed" as CreatorKey)}</span>}
                     </GithubSourceSettings>
                   </section>
                   <section className="settingsSourceGroup" aria-label={t("githubSource.knowledge" as CreatorKey)}>
@@ -417,7 +444,7 @@ export function CreatorSettingsCard({
                           {t("settings.pick" as CreatorKey)}
                         </IslandButton>
                       </span>
-                      {directoryPickError === "knowledge" && <span id={knowledgePickErrorId} className="pickerFailed" role="alert">{t("settings.pickFailed" as CreatorKey)}</span>}
+                      {directoryPickError === "knowledge" && <span id={knowledgePickErrorId} className="settingsFeedback settingsFeedbackError pickerFailed" role="alert">{t("settings.pickFailed" as CreatorKey)}</span>}
                     </GithubSourceSettings>
                   </section>
                 </div>}
@@ -447,7 +474,7 @@ export function CreatorSettingsCard({
                     </IslandButton>
                   </span>
                   {directoryPickError === "trellis" && (
-                    <span id={trellisPickErrorId} className="pickerFailed" role="alert">
+                    <span id={trellisPickErrorId} className="settingsFeedback settingsFeedbackError pickerFailed" role="alert">
                       {t("settings.pickFailed" as CreatorKey)}
                     </span>
                   )}
@@ -495,7 +522,6 @@ export function CreatorSettingsCard({
                     value={draftRules}
                     onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
                       setDraftRules(event.target.value);
-                      setSaved(false);
                       setFailed(false);
                     }}
                   />
@@ -518,7 +544,6 @@ export function CreatorSettingsCard({
                     value={draftObsidian}
                     onChange={(event: ChangeEvent<HTMLInputElement>) => {
                       setDraftObsidian(event.target.value);
-                      setSaved(false);
                       setFailed(false);
                     }}
                   />
@@ -553,7 +578,6 @@ export function CreatorSettingsCard({
                           setSecrets((current) => current.map((row) => (
                             row.kind === item.kind ? { ...row, nextValue: value } : row
                           )));
-                          setSaved(false);
                           setFailed(false);
                           setKeyFailed(false);
                         }}
@@ -568,9 +592,8 @@ export function CreatorSettingsCard({
             </section>
           </div>
           <div className="footer">
-            {failed && <p className="failed" role="status">{t("settings.saveFailed" as CreatorKey)}</p>}
-            {keyFailed && <p className="failed" role="status">{t("settings.secret.saveFailed" as CreatorKey)}</p>}
-            {saved && !dirty && <p className="ok" role="status">{t("settings.saved" as CreatorKey)}</p>}
+            {failed && <p className="settingsFeedback settingsFeedbackError failed" role="alert">{t("settings.saveFailed" as CreatorKey)}</p>}
+            {keyFailed && <p className="settingsFeedback settingsFeedbackError failed" role="alert">{t("settings.secret.saveFailed" as CreatorKey)}</p>}
             <div className="settingsActionBar">
               <IslandButton
                 type="default"
@@ -586,7 +609,6 @@ export function CreatorSettingsCard({
                   setSecrets((current) => current.map((item) => ({ ...item, nextValue: "" })));
                   setFailed(false);
                   setKeyFailed(false);
-                  setSaved(false);
                 }}
               >
                 {t("settings.discard" as CreatorKey)}

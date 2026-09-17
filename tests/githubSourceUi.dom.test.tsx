@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GithubSourceSettings } from "../src/client/GithubSourceSettings.tsx";
 import { zh } from "../src/client/locales.ts";
+import { destroyMuziNotifications } from "../src/client/ui/MuziNotification.ts";
 import type { GithubSourceRequest, GithubSourceResult } from "../src/githubSourceSchemas.ts";
 
 function result(mode: "local" | "github" = "local"): GithubSourceResult {
@@ -22,7 +23,10 @@ function result(mode: "local" | "github" = "local"): GithubSourceResult {
 }
 
 describe("GithubSourceSettings", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    destroyMuziNotifications();
+    cleanup();
+  });
 
   it("switches to a repository, selects a branch, and connects the source", async () => {
     const user = userEvent.setup();
@@ -79,6 +83,7 @@ describe("GithubSourceSettings", () => {
     expect(source.getByRole("combobox", { name: zh["githubSource.branch"] })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: zh["githubSource.connect"] }));
     await waitFor(() => expect(github).toHaveBeenCalledWith({ target: "creator", action: "connect", repository: "owner/repo", branch: "main" }));
+    await waitFor(() => expect(document.querySelector('[data-notification-key="github-source-creator-connect"]')).not.toBeNull());
     expect(await screen.findByText("a".repeat(40))).toBeTruthy();
   });
 });

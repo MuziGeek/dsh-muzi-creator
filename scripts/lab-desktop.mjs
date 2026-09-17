@@ -14,9 +14,9 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-export const DSH_DESKTOP_VERSION = "2.0.4";
-export const DSH_DESKTOP_FILE_VERSION = "2.0.4";
-export const DSH_DESKTOP_PRODUCT_VERSION = "2.0.4.0";
+export const DSH_DESKTOP_VERSION = "2.0.10";
+export const DSH_DESKTOP_FILE_VERSION = "2.0.10";
+export const DSH_DESKTOP_PRODUCT_VERSION = "2.0.10.0";
 export const DSH_DESKTOP_PRODUCT_NAME = "DSH Desktop";
 
 async function powershellJson(script, desktop, label) {
@@ -75,7 +75,7 @@ export async function inspectDesktopExecutable(desktop) {
   return powershellJson(script, desktop, "版本资源");
 }
 
-/** Rejects any executable other than the fixed Desktop 2.0.4 Windows build identity. */
+/** Rejects any executable other than the fixed Desktop 2.0.10 Windows build identity. */
 export function assertDesktopExecutableIdentity(identity) {
   if (
     identity?.fileVersion !== DSH_DESKTOP_FILE_VERSION
@@ -128,7 +128,7 @@ export async function startDesktop({
       .filter((value) => Number.isInteger(value))
       .join(", ");
     throw new Error(
-      `检测到同一 DSH Desktop 2.0.4 正在运行${processIds.length > 0 ? `（PID ${processIds}）` : ""}；`
+      `检测到同一 DSH Desktop 2.0.10 正在运行${processIds.length > 0 ? `（PID ${processIds}）` : ""}；`
       + "请先正常关闭现有窗口，再启动隔离验收，避免 Electron 把请求交给正式 Profile。",
     );
   }

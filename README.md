@@ -83,7 +83,7 @@ npx @deepseek-ai/dsh plugin --profile web add github:MuziGeek/dsh-muzi-creator
 木子外观、字体和图标随插件内置，无需额外安装皮肤中心。保留 DSH 的浅色、深色和跟随系统设置；固定木子外观不与其他换肤管理器同时启用。[外观与迁移说明](docs/theme-skin.md)
 
 > [!IMPORTANT]
-> 运行依赖以 **Harness `0.1.2-alpha.1`、Node.js `22.19+`** 为基线，已有 Windows x64 Desktop 2.0.4 集成记录；内置外观的宿主选择器以 Desktop 2.0.5 登记。Desktop 2.0.5 全功能验收仍待完成，组件预览与安装成功不代表实机验收。集成的 Animal Island UI 用于个人、非商业用途，详见 [NOTICE](NOTICE)。
+> 运行依赖以 **Harness `0.1.2-alpha.1`、Node.js `22.19+`** 为基线，Windows x64 DSH Desktop 2.0.10 是当前集成验收版本；内置外观的宿主选择器仍以 Desktop 2.0.5 登记，和可执行文件验收版本分开管理。组件预览与安装成功不代表实机验收。集成的 Animal Island UI 用于个人、非商业用途，详见 [NOTICE](NOTICE)。
 
 <details>
 <summary>从源码安装</summary>

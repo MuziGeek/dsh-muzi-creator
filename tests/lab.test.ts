@@ -324,7 +324,7 @@ describe("isolated UI Lab", () => {
     await expect(assertLabConfiguration(paths)).rejects.toThrow("未指向当前源码 checkout");
   });
 
-  it("starts Desktop with isolated user data and the selected Web profile", async () => {
+  it("starts Desktop with isolated state while preserving Windows path identity", async () => {
     const { paths } = await writeLabConfig(repositoryRoot);
     const fakeDesktop = join(repositoryRoot, "fake-desktop.exe");
     await writeFile(fakeDesktop, "fixture\n", "utf8");
@@ -346,15 +346,17 @@ describe("isolated UI Lab", () => {
     expect(invocation.args).toEqual([`--user-data-dir=${paths.desktopUserData}`]);
     expect(invocation.cwd).toBe(paths.root);
     expect(invocation.env.DSH_HOME).toBe(paths.desktopHome);
-    expect(invocation.env.HOME).toBe(paths.desktopHome);
-    expect(invocation.env.USERPROFILE).toBe(paths.desktopHome);
+    expect(invocation.env.HOME).toBe(process.env.HOME);
+    expect(invocation.env.USERPROFILE).toBe(process.env.USERPROFILE);
+    expect(invocation.env.HOMEDRIVE).toBe(process.env.HOMEDRIVE);
+    expect(invocation.env.HOMEPATH).toBe(process.env.HOMEPATH);
     expect(invocation.env.APPDATA).toBe(paths.desktopUserData);
     expect(invocation.env.DSH_TELEMETRY_DISABLED).toBe("1");
     expect(invocation.env.DSH_EXTERNAL_ACTIONS_ENABLED).toBe("0");
     expect(invocation.env.DEEPSEEK_API_KEY).toBe("");
   }, 15_000);
 
-  it("fails closed before launch when the executable is not Desktop 2.0.4", async () => {
+  it("fails closed before launch when the executable is not Desktop 2.0.10", async () => {
     await writeLabConfig(repositoryRoot);
     const fakeDesktop = join(repositoryRoot, "fake-desktop.exe");
     await writeFile(fakeDesktop, "fixture\n", "utf8");
@@ -368,7 +370,7 @@ describe("isolated UI Lab", () => {
         productVersion: "2.0.2.0",
         productName: DSH_DESKTOP_PRODUCT_NAME,
       }),
-    })).rejects.toThrow("要求 DSH Desktop 2.0.4");
+    })).rejects.toThrow("要求 DSH Desktop 2.0.10");
   }, 15_000);
 
   it("fails closed when Electron could hand the launch to an existing Desktop instance", async () => {
@@ -410,7 +412,7 @@ describe("isolated UI Lab", () => {
     await expect(assertDesktopLabConfiguration(paths)).rejects.toThrow("未严格选择 web Profile");
   }, 15_000);
 
-  it("accepts Desktop 2.0.4 persisted safe settings and rejects unsafe changes", async () => {
+  it("accepts Desktop 2.0.10 persisted safe settings and rejects unsafe changes", async () => {
     const { paths } = await writeLabConfig(repositoryRoot);
     await writeFile(paths.desktopSettings, [
       "dsh-desktop:",

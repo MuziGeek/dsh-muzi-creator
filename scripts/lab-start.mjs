@@ -73,7 +73,9 @@ export function isolatedEnvironment(paths, baseEnvironment = process.env) {
 /** Returns Desktop's isolated process environment and private Electron user-data root. */
 export function isolatedDesktopEnvironment(paths, baseEnvironment = process.env) {
   return {
-    ...isolatedEnvironment({ ...paths, home: paths.desktopHome }, baseEnvironment),
+    // Electron resolves Windows appData through the real user identity. Keep
+    // those OS variables inherited while DSH_HOME and Electron state stay in Lab.
+    ...protectedEnvironment(baseEnvironment, paths.desktopHome),
     APPDATA: paths.desktopUserData,
     LOCALAPPDATA: paths.desktopUserData,
     XDG_CONFIG_HOME: paths.desktopUserData,

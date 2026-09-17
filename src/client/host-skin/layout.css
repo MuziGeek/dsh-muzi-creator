@@ -1,4 +1,4 @@
-/* Desktop 2.0.4 WorkspaceBrowser exposes no language-neutral control marker.
+/* Desktop 2.0.10 WorkspaceBrowser exposes no language-neutral control marker.
    These rules stay inside the registered slot and the plugin-owned wrapper. */
 [data-plugin="dsh-muzi-creator"][data-surface="sidebar"] [data-surface="session-browser"] {
   container: muzi-workspace / inline-size;

@@ -6,7 +6,17 @@ import type { GithubSourceRequest, GithubSourceResult, GithubSourceTarget } from
 import type { GithubRepository } from "../trellisGithubSchemas.ts";
 import type { CreatorKey } from "./locales.ts";
 import { IslandButton, IslandInput, IslandSelect, IslandState } from "./ui/IslandControls.tsx";
+import { showMuziNotification } from "./ui/MuziNotification.ts";
 import "./GithubSourceSettings.css";
+
+const GITHUB_SOURCE_ACTION_COPY: Partial<Record<GithubSourceRequest["action"], CreatorKey>> = {
+  beginAuth: "githubSource.bind",
+  pollAuth: "githubSource.check",
+  disconnect: "githubSource.unbind",
+  connect: "githubSource.connect",
+  refresh: "githubSource.refresh",
+  remove: "githubSource.remove",
+};
 
 /** Configures one read-only GitHub snapshot source for a workbench root. */
 export function GithubSourceSettings({
@@ -29,7 +39,6 @@ export function GithubSourceSettings({
   const [action, setAction] = useState<GithubSourceRequest["action"] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef(false);
   const alive = useRef(true);
   const label = t((target === "creator" ? "githubSource.creator" : "githubSource.knowledge") as CreatorKey);
@@ -40,19 +49,33 @@ export function GithubSourceSettings({
     setAction(input.action);
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await face.github(input);
       if (!alive.current) return undefined;
       setStatus(result);
-      setNotice(result.message ?? null);
+      const copyKey = GITHUB_SOURCE_ACTION_COPY[input.action];
+      if (copyKey !== undefined) {
+        showMuziNotification({
+          kind: input.action === "beginAuth" || input.action === "pollAuth" ? "info" : "success",
+          message: result.message ?? t(copyKey),
+          key: `github-source-${target}-${input.action}`,
+        });
+      }
       if (result.selection !== null) {
         setRepository(`${result.selection.owner}/${result.selection.repo}`);
         setBranch(result.selection.branch);
       }
       return result;
     } catch (cause) {
-      if (alive.current) setError(cause instanceof Error ? cause.message : t("githubSource.failed" as CreatorKey));
+      if (alive.current) {
+        const message = cause instanceof Error ? cause.message : t("githubSource.failed" as CreatorKey);
+        setError(message);
+        showMuziNotification({
+          kind: "error",
+          message,
+          key: `github-source-${target}-${input.action}-error`,
+        });
+      }
     } finally {
       inFlight.current = false;
       if (alive.current) setBusy(false);
@@ -185,7 +208,6 @@ export function GithubSourceSettings({
       </div>
       {busy && (action === "connect" || action === "refresh") && <p role="status">{t("githubSource.syncing" as CreatorKey)}</p>}
     </>}
-    {error && <p role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
+    {error && <p className="githubSourceFeedback githubSourceFeedbackError" role="alert">{error}</p>}
   </div>;
 }

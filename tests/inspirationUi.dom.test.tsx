@@ -20,6 +20,7 @@ import {
 } from "../src/client/inspirationSelection.ts";
 import { ReadonlyResource } from "../src/client/workbench/WorkbenchData.ts";
 import { inspirationEn } from "../src/client/inspiration/copy.ts";
+import { destroyMuziNotifications } from "../src/client/ui/MuziNotification.ts";
 
 const SPEC = {
   topic: "AI 写作工作流",
@@ -139,6 +140,7 @@ function face(detail: InspirationDetail = DETAIL): InspirationViewFace {
 const t = (key: string): string => key;
 
 afterEach(() => {
+  destroyMuziNotifications();
   cleanup();
   setInspirationSelection(null);
   vi.restoreAllMocks();
@@ -571,9 +573,7 @@ describe("inspiration research UI", () => {
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: "重新搜索" }));
-    expect((await screen.findByRole("alert")).textContent).toContain(
-      "网络暂不可用",
-    );
+    await waitFor(() => expect(document.querySelector('[data-notification-key="inspiration-action-error"]')?.textContent).toContain("网络暂不可用"));
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: "重新搜索" }));

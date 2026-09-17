@@ -133,6 +133,12 @@
 
 [data-plugin="dsh-muzi-creator"] .trellisNotice { position: absolute; right: 16px; bottom: 16px; left: 16px; display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--muzi-border); background: var(--muzi-surface); font-size: var(--trellis-font-label); line-height: var(--trellis-line-caption); }
 [data-plugin="dsh-muzi-creator"] .trellisNotice button { flex: none; }
+[data-plugin="dsh-muzi-creator"] .trellisNoticeCritical {
+  border-color: color-mix(in srgb, var(--muzi-island-danger) 45%, var(--muzi-island-line));
+  background: var(--muzi-island-danger-soft);
+  color: var(--muzi-island-danger);
+}
+[data-plugin="dsh-muzi-creator"] .trellisNoticeCritical::before { width: 7px; height: 7px; flex: none; border-radius: 50%; background: currentColor; content: ""; }
 .trellisArchiveModal { color-scheme: light dark; }
 .trellisArchiveModal [class*="animal-body"] { align-items: stretch; font-size: var(--trellis-font-body); font-weight: var(--muzi-type-body-weight, 500); }
 .trellisArchiveTitle { display: flex; align-items: center; gap: 12px; color: var(--muzi-island-text); }

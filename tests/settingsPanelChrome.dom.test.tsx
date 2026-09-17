@@ -16,6 +16,7 @@ import { pickSettingsDirectory } from "../src/client/directoryPicker.ts";
 import { en, zh, type CreatorKey } from "../src/client/locales.ts";
 import { PanelSectionHeader } from "../src/client/sidebar/PanelSectionHeader.tsx";
 import { IslandCheckbox } from "../src/client/ui/IslandControls.tsx";
+import { destroyMuziNotifications } from "../src/client/ui/MuziNotification.ts";
 import type { GithubRequest, GithubResult } from "../src/trellisGithubSchemas.ts";
 
 function settingsCardProps(locale: typeof zh | typeof en) {
@@ -63,6 +64,7 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(sources.queryByRole("textbox", { name: zh["github.query"] })).toBeNull();
     expect(sources.queryByRole("button", { name: zh["github.bind"] })).toBeNull();
     await user.click(sources.getByRole("button", { name: zh["settings.pick"] }));
+    await waitFor(() => expect(document.querySelector('[data-notification-key="settings-picker-trellis"]')).not.toBeNull());
     expect(props.setTrellisProjectsRoot).not.toHaveBeenCalled();
     await user.click(sources.getByRole("combobox", { name: zh["github.sources"] }));
     await user.click(screen.getByRole("option", { name: zh["github.remote"] }));
@@ -72,18 +74,19 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(sources.getByRole("textbox", { name: zh["github.query"] })).toBeTruthy();
     await user.click(sources.getByRole("combobox", { name: zh["github.sources"] }));
     await user.click(screen.getByRole("option", { name: zh["github.local"] }));
-    expect(sources.getByText("D:\\Projects")).toBeTruthy();
+    expect(sources.getByText("D:\\Projects", { selector: ".path" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: zh["settings.discard"] }));
-    expect(sources.queryByText("D:\\Projects")).toBeNull();
+    expect(sources.queryByText("D:\\Projects", { selector: ".path" })).toBeNull();
     expect(status.mode).toBe("local");
     await user.click(sources.getByRole("button", { name: zh["settings.pick"] }));
     await user.click(screen.getByRole("button", { name: zh["settings.save"] }));
     await waitFor(() => expect(props.setTrellisProjectsRoot).toHaveBeenCalledWith("D:\\Projects"));
+    await waitFor(() => expect(document.querySelector('[data-notification-key="settings-save-success"]')).not.toBeNull());
     await user.click(screen.getByRole("button", { name: zh["settings.collapse"] }));
     await user.click(screen.getByRole("button", { name: zh["settings.expand"] }));
     await waitFor(() => expect(github.mock.calls.filter(([request]) => request.action === "status")).toHaveLength(2));
     expect(screen.getByRole("combobox", { name: zh["github.sources"] }).textContent).toContain(zh["github.local"]);
-    expect(screen.getByText("D:\\Projects")).toBeTruthy();
+    expect(screen.getByText("D:\\Projects", { selector: ".path" })).toBeTruthy();
   });
 
   it("shows source status errors without guessing which configuration to display", async () => {
@@ -116,6 +119,7 @@ describe("settings and content-panel disclosure chrome", () => {
   });
 
   afterEach(() => {
+    destroyMuziNotifications();
     cleanup();
     vi.unstubAllGlobals();
   });
@@ -250,7 +254,7 @@ describe("settings and content-panel disclosure chrome", () => {
     expect(pickDirectory).toHaveBeenCalledTimes(1);
 
     resolvePick?.("D:\\New Creator");
-    await screen.findByText("D:\\New Creator");
+    await waitFor(() => expect(document.querySelector('[data-surface="settings-card"] .path')?.textContent).toBe("D:\\New Creator"));
     expect(setLibraryRoot).not.toHaveBeenCalled();
     expect(setTrellisProjectsRoot).not.toHaveBeenCalled();
     expect(pickButtons[0]!.hasAttribute("disabled")).toBe(false);

@@ -4,7 +4,15 @@ import type { GithubRepository, GithubRequest, GithubResult } from "../trellisGi
 import type { TrellisViewFace } from "./face.ts";
 import type { CreatorKey } from "./locales.ts";
 import { IslandButton, IslandInput, IslandSelect, IslandState } from "./ui/IslandControls.tsx";
+import { showMuziNotification } from "./ui/MuziNotification.ts";
 import "./TrellisGithubSources.css";
+
+const TRELLIS_GITHUB_ACTION_COPY: Partial<Record<GithubRequest["action"], CreatorKey>> = {
+  beginAuth: "github.bind",
+  pollAuth: "github.check",
+  disconnect: "github.unbind",
+  connect: "github.add",
+};
 
 /** Project source controls apply changes immediately, independently of the settings draft. */
 export function TrellisGithubSources({ face, t, children }: { face: Pick<TrellisViewFace, "github">; t: (key: CreatorKey) => string; children?: ReactNode }) {
@@ -17,18 +25,35 @@ export function TrellisGithubSources({ face, t, children }: { face: Pick<Trellis
   const [action, setAction] = useState<GithubRequest["action"] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const inFlight = useRef(false);
   const alive = useRef(true);
   const request = async (input: GithubRequest): Promise<GithubResult | undefined> => {
     if (inFlight.current || !face.github) return undefined;
-    inFlight.current = true; setAction(input.action); setBusy(true); setError(null); setNotice(null);
+    inFlight.current = true; setAction(input.action); setBusy(true); setError(null);
     try {
       const result = await face.github(input);
       if (!alive.current) return undefined;
-      setStatus(result); setNotice(result.message ?? null);
+      setStatus(result);
+      const copyKey = TRELLIS_GITHUB_ACTION_COPY[input.action];
+      if (copyKey !== undefined) {
+        showMuziNotification({
+          kind: input.action === "beginAuth" || input.action === "pollAuth" ? "info" : "success",
+          message: result.message ?? t(copyKey),
+          key: `trellis-github-${input.action}`,
+        });
+      }
       return result;
-    } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : t("github.failed")); }
+    } catch (cause) {
+      if (alive.current) {
+        const message = cause instanceof Error ? cause.message : t("github.failed");
+        setError(message);
+        showMuziNotification({
+          kind: "error",
+          message,
+          key: `trellis-github-${input.action}-error`,
+        });
+      }
+    }
     finally { inFlight.current = false; if (alive.current) setBusy(false); }
     return undefined;
   };
@@ -92,7 +117,6 @@ export function TrellisGithubSources({ face, t, children }: { face: Pick<Trellis
       </div>}
       {busy && action === "connect" && <p role="status">{t("github.syncing")}</p>}
     </>}
-    {error && <p role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
+    {error && <p className="trellisGithubFeedback trellisGithubFeedbackError" role="alert">{error}</p>}
   </div>;
 }

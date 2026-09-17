@@ -107,12 +107,47 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionHeader {
   display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  column-gap: 8px;
   min-width: 0;
-  gap: 4px;
+  row-gap: 4px;
   margin-bottom: 12px;
 }
 
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionHeader::before {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: start;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--muzi-island-leaf);
+  content: "";
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionEnvironment .settingsSectionHeader::before {
+  background: var(--muzi-island-leaf);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionSources .settingsSectionHeader::before {
+  background: var(--muzi-island-leaf-dark);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionProjects .settingsSectionHeader::before {
+  background: var(--muzi-island-warning);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionWorkflow .settingsSectionHeader::before {
+  background: var(--muzi-island-success);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionIntegrations .settingsSectionHeader::before {
+  background: var(--muzi-island-danger);
+}
+
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionHeader h3 {
+  grid-column: 2;
   min-width: 0;
   margin: 0;
   color: var(--muzi-island-text);
@@ -122,9 +157,10 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsSectionHeader p {
+  grid-column: 2;
   min-width: 0;
   margin: 0;
-  color: var(--muzi-island-text-muted);
+  color: var(--muzi-island-text-soft);
   font-size: var(--muzi-type-support-size, 0.75rem);
   line-height: var(--muzi-type-support-line, 1.125rem);
   overflow-wrap: anywhere;
@@ -223,7 +259,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .fieldHint {
-  color: var(--muzi-island-text-muted);
+  color: var(--muzi-island-text-soft);
   font-size: var(--muzi-type-support-size, 0.75rem);
   line-height: var(--muzi-type-support-line, 1.125rem);
 }
@@ -233,7 +269,7 @@
   flex-direction: column;
   gap: 4px;
   margin-top: 8px;
-  color: var(--muzi-island-text-muted);
+  color: var(--muzi-island-text-soft);
   font-size: var(--muzi-type-support-size, 0.75rem);
   line-height: var(--muzi-type-support-line, 1.125rem);
 }
@@ -273,6 +309,7 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .pickerFailed {
+  margin-top: 4px;
   color: var(--muzi-island-danger);
   font-size: var(--muzi-type-support-size, 0.75rem);
   line-height: var(--muzi-type-support-line, 1.125rem);
@@ -299,7 +336,8 @@
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .failed,
-[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .ok {
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .ok,
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsFeedback {
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -313,6 +351,31 @@
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .ok {
   color: var(--muzi-island-leaf-dark);
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsFeedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--muzi-island-line);
+  border-radius: var(--muzi-island-radius-sm);
+  overflow-wrap: anywhere;
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsFeedback::before {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+[data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .settingsFeedbackError {
+  border-color: color-mix(in srgb, var(--muzi-island-danger) 45%, var(--muzi-island-line));
+  background: var(--muzi-island-danger-soft);
 }
 
 [data-plugin="dsh-muzi-creator"][data-surface="settings-card"] .capabilityGrid {

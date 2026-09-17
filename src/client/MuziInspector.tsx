@@ -66,6 +66,7 @@ import { PublishFlowPanel } from "./PublishFlowPanel.tsx";
 import type { PublishFlowFace } from "../publishFlowSchemas.ts";
 import { useVideoAccountEpoch } from "./videoAccountState.ts";
 import type { VideoAccount } from "../videoAccountSchemas.ts";
+import { showMuziNotification } from "./ui/MuziNotification.ts";
 import "./MuziInspector.css";
 
 const DOCUMENTS: Array<{ key: MuziDocumentKey; label: string }> = [
@@ -329,6 +330,14 @@ export function MuziInspector({
   const [focusPlatform, setFocusPlatform] = useState<MuziVideoPlatform | null>(null);
   const publishManagementRef = useRef<HTMLElement>(null);
   const publishFlow = (muziFace as MuziViewFace & { publishFlow?: PublishFlowFace }).publishFlow;
+  const setCriticalNotice = (message: string, kind: "warning" | "error" = "warning", key = "muzi-inspector-critical"): void => {
+    setNotice(message);
+    showMuziNotification({ kind, message, key });
+  };
+  const setAcceptanceIssue = (message: string, kind: "warning" | "error" = "warning"): void => {
+    setAcceptanceBlocker(message);
+    showMuziNotification({ kind, message, key: "muzi-acceptance-blocker" });
+  };
 
   useEffect(() => {
     setPublishManagementOpen(false);
@@ -372,6 +381,7 @@ export function MuziInspector({
     setAcceptanceSession(null);
     setAcceptanceMetricsCollectedSessionId(null);
     setAcceptanceBlocker(null);
+    setNotice(null);
     setTab("overview");
     const load = isKnowledgePreviewSelection(selectedId)
       ? muziFace.getKnowledgePreview().then((value) => { if (!cancelled) setKnowledgePreview(value); })
@@ -398,7 +408,7 @@ export function MuziInspector({
     void muziFace.getVideoPublishStatus(project.id).then((value) => {
       if (!cancelled) setVideoPublish(value);
     }, (cause: unknown) => {
-      if (!cancelled) setNotice(cause instanceof Error ? cause.message : "视频发布状态不可用");
+      if (!cancelled) setCriticalNotice(cause instanceof Error ? cause.message : "视频发布状态不可用", "error", "muzi-video-status-error");
     });
     return () => { cancelled = true; };
   }, [muziFace, project?.id]);
@@ -460,7 +470,11 @@ export function MuziInspector({
     try {
       await muziFace.openDocumentInObsidian(project.id, document);
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "无法在 Obsidian 中定位文件");
+      showMuziNotification({
+        kind: "error",
+        message: cause instanceof Error ? cause.message : "无法在 Obsidian 中定位文件",
+        key: "muzi-obsidian-error",
+      });
     }
   };
 
@@ -517,7 +531,7 @@ export function MuziInspector({
   const prepareVideoPublish = async (): Promise<void> => {
     if (project === null) return;
     const enabled = VIDEO_TARGETS.filter((item) => publishIntents[item.key].enabled);
-    if (enabled.length === 0) { setNotice("请至少选择一个视频平台"); return; }
+    if (enabled.length === 0) { setCriticalNotice("请至少选择一个视频平台", "warning", "muzi-publish-blocker"); return; }
     try {
       const intents = enabled.map((item) => {
         const draft = publishIntents[item.key];
@@ -543,9 +557,15 @@ export function MuziInspector({
         originalRightsConfirmed,
       });
       setVideoPublish({ id: project.id, task, metrics: videoPublish?.metrics ?? {} });
-      setNotice(task.ok ? "页面准备完成；需要提交的平台仍需逐个平台确认" : "部分平台未准备完成，请查看阻塞原因");
+      const message = task.ok ? "页面准备完成；需要提交的平台仍需逐个平台确认" : "部分平台未准备完成，请查看阻塞原因";
+      if (task.ok) {
+        setNotice(null);
+        showMuziNotification({ kind: "info", message, key: "muzi-publish-prepare-success" });
+      } else {
+        setCriticalNotice(message, "warning", "muzi-publish-prepare-blocker");
+      }
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "视频页面准备失败");
+      setCriticalNotice(cause instanceof Error ? cause.message : "视频页面准备失败", "error", "muzi-publish-prepare-error");
     } finally {
       setPublishBusy(null);
     }
@@ -558,13 +578,13 @@ export function MuziInspector({
     const label = VIDEO_TARGETS.find((item) => item.key === platform)?.label ?? platform;
     const approval = row.approvalSummary;
     if (approval === null || approval === undefined) {
-      setNotice(`${label} 缺少可复核的授权摘要，请重新准备。`);
+      setCriticalNotice(`${label} 缺少可复核的授权摘要，请重新准备。`, "warning", "muzi-publish-commit-blocker");
       return;
     }
     const capability = row.mode === "schedule" ? "schedule" : "publish_now";
     const account = accountFor(videoCapabilities, platform, row.accountProfile);
     if (!capabilityEnabled(account, capability)) {
-      setNotice(`${label} 无法提交：${capabilityReason(account, capability)}`);
+      setCriticalNotice(`${label} 无法提交：${capabilityReason(account, capability)}`, "warning", "muzi-publish-commit-blocker");
       return;
     }
     const action = approval.mode === "schedule" ? "定时发布" : "立即发布";
@@ -583,10 +603,15 @@ export function MuziInspector({
         confirmed: true,
       });
       await refreshVideoPublish(videoPublish.task.taskId);
-      setNotice(committed.ok ? "平台最终操作已完成并取得结果证据" : "最终操作结果未知；不会自动重试");
+      if (committed.ok) {
+        setNotice(null);
+        showMuziNotification({ kind: "success", message: "平台最终操作已完成并取得结果证据", key: "muzi-publish-commit-success" });
+      } else {
+        setCriticalNotice("最终操作结果未知；不会自动重试", "warning", "muzi-publish-commit-unknown");
+      }
     } catch (cause) {
       await muziFace.getVideoPublishStatus(project.id, videoPublish.task.taskId).then(setVideoPublish, () => undefined);
-      setNotice(cause instanceof Error ? cause.message : "最终操作结果未知；不会自动重试");
+      setCriticalNotice(cause instanceof Error ? cause.message : "最终操作结果未知；不会自动重试", "warning", "muzi-publish-commit-unknown");
     } finally {
       setPublishBusy(null);
     }
@@ -602,9 +627,10 @@ export function MuziInspector({
       setPublishBusy("sync");
       const result = await muziFace.syncVideoMetrics({ id: project.id, expectedRevision: project.revision, platforms, accountProfiles, confirmed: true });
       await refreshVideoPublish(videoPublish?.task?.taskId);
-      setNotice(result.cached ? "已读取 90 秒缓存数据" : "播放数据同步完成");
+      setNotice(null);
+      showMuziNotification({ kind: "success", message: result.cached ? "已读取 90 秒缓存数据" : "播放数据同步完成", key: "muzi-metrics-sync-success" });
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : "播放数据同步失败");
+      showMuziNotification({ kind: "error", message: cause instanceof Error ? cause.message : "播放数据同步失败", key: "muzi-metrics-sync-error" });
     } finally {
       setPublishBusy(null);
     }
@@ -613,12 +639,12 @@ export function MuziInspector({
   const beginVideoAcceptance = async (): Promise<void> => {
     if (project === null) return;
     const account = accountFor(videoCapabilities, acceptancePlatform, acceptanceAccountProfile);
-    if (account === undefined || !account.enabled) { setAcceptanceBlocker("请选择已登记且已启用的账号"); return; }
+    if (account === undefined || !account.enabled) { setAcceptanceIssue("请选择已登记且已启用的账号"); return; }
     let scheduledAt: string | undefined;
     try {
       scheduledAt = acceptanceCapability === "schedule" ? shanghaiRfc3339(acceptanceScheduledAt) : undefined;
     } catch (cause) {
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "验收时间无效");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "验收时间无效");
       return;
     }
     if (!window.confirm(`将打开 ${VIDEO_TARGETS.find((item) => item.key === acceptancePlatform)?.label ?? acceptancePlatform} 的隔离验收页面，核验账号“${account.displayName}”的 ${VIDEO_CAPABILITY_LABELS[acceptanceCapability]} 能力；不会上传或提交内容。是否继续？`)) return;
@@ -641,7 +667,7 @@ export function MuziInspector({
     } catch (cause) {
       setAcceptanceSession(null);
       setAcceptanceMetricsCollectedSessionId(null);
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "无法开始能力验收");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "无法开始能力验收", "error");
     } finally {
       setPublishBusy(null);
     }
@@ -650,18 +676,18 @@ export function MuziInspector({
   const prepareVideoAcceptance = async (): Promise<void> => {
     if (project === null || acceptanceSession === null || acceptanceSession.capability === "metrics") return;
     if (Date.parse(acceptanceSession.expiresAt) <= Date.now()) {
-      setAcceptanceBlocker("验收会话已过期，请重新开始");
+      setAcceptanceIssue("验收会话已过期，请重新开始");
       return;
     }
     if (!originalRightsConfirmed) {
-      setAcceptanceBlocker("请先确认本次测试素材拥有所需原创或发布权利");
+      setAcceptanceIssue("请先确认本次测试素材拥有所需原创或发布权利");
       return;
     }
     let scheduledAt: string | undefined;
     try {
       scheduledAt = acceptanceSession.capability === "schedule" ? shanghaiRfc3339(acceptanceScheduledAt) : undefined;
     } catch (cause) {
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "验收时间无效");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "验收时间无效");
       return;
     }
     const label = VIDEO_TARGETS.find((item) => item.key === acceptanceSession.platform)?.label ?? acceptanceSession.platform;
@@ -685,14 +711,16 @@ export function MuziInspector({
       setVideoPublish({ id: project.id, task, metrics: videoPublish?.metrics ?? {} });
       const row = task.platforms[acceptanceSession.platform];
       if (row?.acceptanceSessionId !== acceptanceSession.sessionId || row.acceptanceEvidence == null) {
-        setAcceptanceBlocker(row?.commitBlocker?.message ?? "准备完成，但没有取得与本会话绑定的结构化验收证据");
+        setAcceptanceIssue(row?.commitBlocker?.message ?? "准备完成，但没有取得与本会话绑定的结构化验收证据", "error");
       } else {
-        setNotice(acceptanceSession.capability === "prepare_only"
+        const message = acceptanceSession.capability === "prepare_only"
           ? "仅准备证据已取得；请核对页面和局部截图后完成验收"
-          : "页面准备证据已取得；最终动作仍需单独确认");
+          : "页面准备证据已取得；最终动作仍需单独确认";
+        setNotice(null);
+        showMuziNotification({ kind: "info", message, key: "muzi-acceptance-prepare-success" });
       }
     } catch (cause) {
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "验收准备失败");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "验收准备失败", "error");
     } finally {
       setPublishBusy(null);
     }
@@ -704,7 +732,7 @@ export function MuziInspector({
     const approval = row?.approvalSummary;
     if (row === undefined || approval === null || approval === undefined || row.authorizationDigest === null
       || row.acceptanceSessionId !== acceptanceSession.sessionId) {
-      setAcceptanceBlocker("本验收会话没有可用的一次性最终授权，请重新执行验收准备");
+      setAcceptanceIssue("本验收会话没有可用的一次性最终授权，请重新执行验收准备");
       return;
     }
     const label = VIDEO_TARGETS.find((item) => item.key === acceptanceSession.platform)?.label ?? acceptanceSession.platform;
@@ -728,13 +756,14 @@ export function MuziInspector({
       setVideoPublish({ id: project.id, task, metrics: videoPublish.metrics });
       const committed = task.platforms[acceptanceSession.platform];
       if (committed?.status === "COMMIT_UNKNOWN") {
-        setAcceptanceBlocker("最终动作已经触发但结果不明；系统不会自动重试，请先在平台侧人工核对");
+        setAcceptanceIssue("最终动作已经触发但结果不明；系统不会自动重试，请先在平台侧人工核对", "error");
       } else {
-        setNotice("最终动作取得可靠结果证据；请人工复核后完成验收");
+        setNotice(null);
+        showMuziNotification({ kind: "info", message: "最终动作取得可靠结果证据；请人工复核后完成验收", key: "muzi-acceptance-commit-success" });
       }
     } catch (cause) {
       await muziFace.getVideoPublishStatus(project.id, videoPublish.task.taskId).then(setVideoPublish, () => undefined);
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "最终操作结果未知；系统不会自动重试");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "最终操作结果未知；系统不会自动重试", "error");
     } finally {
       setPublishBusy(null);
     }
@@ -761,10 +790,11 @@ export function MuziInspector({
       }
       setAcceptanceMetricsCollectedSessionId(acceptanceSession.sessionId);
       await refreshVideoPublish(videoPublish?.task?.taskId);
-      setNotice("播放数据验收证据已取得；请核对结果后完成验收");
+      setNotice(null);
+      showMuziNotification({ kind: "info", message: "播放数据验收证据已取得；请核对结果后完成验收", key: "muzi-acceptance-metrics-success" });
     } catch (cause) {
       setAcceptanceMetricsCollectedSessionId(null);
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "播放数据验收失败");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "播放数据验收失败", "error");
     } finally {
       setPublishBusy(null);
     }
@@ -776,19 +806,19 @@ export function MuziInspector({
     try {
       await mzFace.openPath(evidencePath);
     } catch (cause) {
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "无法打开本地验收证据");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "无法打开本地验收证据", "error");
     }
   };
 
   const finalizeVideoAcceptance = async (): Promise<void> => {
     if (project === null || acceptanceSession === null) return;
     if (!sessionCanFinalize) {
-      setAcceptanceBlocker("会话尚未取得该能力要求的完整结果证据，不能完成验收");
+      setAcceptanceIssue("会话尚未取得该能力要求的完整结果证据，不能完成验收");
       return;
     }
     const taskId = acceptanceSession.capability === "metrics" ? undefined : videoPublish?.task?.taskId;
     if (acceptanceSession.capability !== "metrics" && taskId === undefined) {
-      setAcceptanceBlocker("验收任务标识缺失，不能完成验收");
+      setAcceptanceIssue("验收任务标识缺失，不能完成验收");
       return;
     }
     if (!window.confirm(`确认已复核 ${acceptanceSession.account.label} 的 ${VIDEO_CAPABILITY_LABELS[acceptanceSession.capability]} 结果及局部证据。完成后只启用该账号的这一项能力，不会创建发布授权。是否完成验收？`)) return;
@@ -806,11 +836,12 @@ export function MuziInspector({
       });
       await refreshVideoCapabilities();
       await refreshVideoPublish(videoPublish?.task?.taskId);
-      setNotice("能力验收已完成，账号能力已刷新");
+      setNotice(null);
+      showMuziNotification({ kind: "success", message: "能力验收已完成，账号能力已刷新", key: "muzi-acceptance-finished" });
       setAcceptanceSession(null);
       setAcceptanceMetricsCollectedSessionId(null);
     } catch (cause) {
-      setAcceptanceBlocker(cause instanceof Error ? cause.message : "无法完成能力验收");
+      setAcceptanceIssue(cause instanceof Error ? cause.message : "无法完成能力验收", "error");
     } finally {
       setPublishBusy(null);
     }
@@ -874,12 +905,12 @@ export function MuziInspector({
       {error !== null && <div className="muziInspectorEmpty error">{error}</div>}
       {error === null && page !== null && <KnowledgeDetail page={page} onDiscuss={() => {
         void startKnowledgeDiscussion(page).catch((cause: unknown) => {
-          setNotice(cause instanceof Error ? cause.message : "无法创建讨论会话");
+          showMuziNotification({ kind: "error", message: cause instanceof Error ? cause.message : "无法创建讨论会话", key: "muzi-discussion-error" });
         });
       }} />}
       {error === null && pending !== null && <PendingKnowledgeDetail file={pending} onProcess={() => {
         void startPendingProcessing(pending).catch((cause: unknown) => {
-          setNotice(cause instanceof Error ? cause.message : "无法创建处理会话");
+          showMuziNotification({ kind: "error", message: cause instanceof Error ? cause.message : "无法创建处理会话", key: "muzi-processing-error" });
         });
       }} />}
       {error === null && knowledgePreview !== null && <KnowledgePreview result={knowledgePreview} onRefresh={refreshKnowledgePreview} />}
@@ -947,7 +978,7 @@ export function MuziInspector({
           />
         </>
       )}
-      {notice !== null && <div className="muziNotice" role="status" aria-live="polite"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
+      {notice !== null && <div className="muziNotice muziNoticeCritical" role="alert" aria-live="assertive"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
     </article>
   );
 }

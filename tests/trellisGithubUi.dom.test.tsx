@@ -3,9 +3,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, expect, it, vi } from "vitest";
 import { TrellisGithubSources } from "../src/client/TrellisGithubSources.tsx";
 import { zh } from "../src/client/locales.ts";
+import { destroyMuziNotifications } from "../src/client/ui/MuziNotification.ts";
 import type { GithubRequest, GithubResult } from "../src/trellisGithubSchemas.ts";
 
-afterEach(cleanup);
+afterEach(() => {
+  destroyMuziNotifications();
+  cleanup();
+});
 
 it("keeps the current configuration after a failed source switch and preserves the GitHub draft when toggled", async () => {
   let mode: GithubResult["mode"] = "github";
@@ -26,6 +30,7 @@ it("keeps the current configuration after a failed source switch and preserves t
   };
   await changeMode(zh["github.local"]);
   expect((await screen.findByRole("alert")).textContent).toBe("Cannot save source");
+  expect(document.querySelector('[data-notification-key="trellis-github-mode-error"]')).not.toBeNull();
   expect(screen.queryByText("Local directory settings")).toBeNull();
   expect(screen.getByRole("textbox", { name: zh["github.query"] })).toBeTruthy();
   failSwitch = false;
@@ -58,6 +63,7 @@ it("offers public repository selection while explaining the unavailable GitHub A
   await screen.findByRole("combobox", { name: zh["github.branch"] });
   fireEvent.click(screen.getByRole("button", { name: zh["github.add"] }));
   await screen.findByText("Connected sample/project");
+  expect(document.querySelector('[data-notification-key="trellis-github-connect"]')).not.toBeNull();
   expect(github).toHaveBeenCalledWith({ action: "connect", repository: "sample/project", branch: "main" });
   fireEvent.change(screen.getByRole("textbox", { name: zh["github.query"] }), { target: { value: "new/repo" } });
   expect(screen.queryByRole("button", { name: zh["github.add"] })).toBeNull();

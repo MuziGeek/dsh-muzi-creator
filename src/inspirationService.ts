@@ -48,7 +48,7 @@ const ALLOWED_TOOLS = new Set([
 ]);
 const MAX_REPORT_BYTES = 64 * 1024;
 
-/** Structural session API used by DSH Desktop 2.0.4 and test doubles. */
+/** Structural session API used by DSH Desktop 2.0.10 and test doubles. */
 export interface InspirationSessionController {
   create(input: { title: string; workingDirectory: string }): Promise<string | { id: string; agentId?: string }>;
   resolve?(sessionId: string): Promise<{ id: string; agentId: string } | null>;

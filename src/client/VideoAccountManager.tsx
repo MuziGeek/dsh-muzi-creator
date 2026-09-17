@@ -7,6 +7,7 @@ import type { MuziVideoPlatform } from "../muziTypes.ts";
 import type { CreatorKey } from "./locales.ts";
 import { PlatformMark, type PlatformId } from "./PlatformMark.tsx";
 import { IslandButton, IslandModal, IslandSelect, IslandTag } from "./ui/IslandControls.tsx";
+import { showMuziNotification } from "./ui/MuziNotification.ts";
 import { isVerifiedVideoAccount, notifyVideoAccountsChanged, useVideoAccountEpoch } from "./videoAccountState.ts";
 import "./VideoAccountManager.css";
 
@@ -46,7 +47,7 @@ export function VideoAccountManager({ api, t, onConnected, initialPlatform, disa
   const actionBusy = useRef(false); const checkBusy = useRef(false); const checkingConnection = useRef<string | null>(null); const checkEpoch = useRef(0);
   const selectedConnectionRef = useRef<string | null>(null); const dataRef = useRef<VideoAccountManagement | null>(null); const pausedRef = useRef(false);
   const restored = useRef(false); const cancelledConnectionIds = useRef(new Set<string>()); const ignoreOwnEpoch = useRef(false);
-  const [data, setData] = useState<VideoAccountManagement | null>(null); const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
+  const [data, setData] = useState<VideoAccountManagement | null>(null); const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false); const [checking, setChecking] = useState(false); const [connecting, setConnecting] = useState(false);
   const [platform, setPlatform] = useState<MuziVideoPlatform>("bilibili"); const [selectedConnection, setSelectedConnection] = useState<string | null>(null); const [connectionPaused, setConnectionPaused] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false); const [managed, setManaged] = useState<VideoAccount | null>(null); const [removing, setRemoving] = useState<VideoAccount | null>(null);
@@ -70,13 +71,31 @@ export function VideoAccountManager({ api, t, onConnected, initialPlatform, disa
   const refreshAfterAction = async (requestScope: number, requestMutation: number): Promise<VideoAccountManagement | undefined> => {
     const request = ++loadRequest.current;
     try { const next = await api.list(); if (!current(requestScope, requestMutation) || request !== loadRequest.current) return undefined; apply(next, true); return next; }
-    catch (cause) { if (current(requestScope, requestMutation)) setError(cause instanceof Error ? cause.message : t("accounts.actionFailed")); return undefined; }
+    catch (cause) {
+      if (current(requestScope, requestMutation)) {
+        const message = cause instanceof Error ? cause.message : t("accounts.actionFailed");
+        setError(message);
+        showMuziNotification({ kind: "error", message, key: "accounts-action-error" });
+      }
+      return undefined;
+    }
   };
   const runAction = async (work: () => Promise<VideoAccountManagement>, message?: string): Promise<VideoAccountManagement | undefined> => {
     if (disabled || actionBusy.current) return undefined;
-    const requestScope = scope.current; const requestMutation = ++mutation.current; actionBusy.current = true; setBusy(true); setError(null); setNotice(null);
-    try { const result = await work(); if (!current(requestScope, requestMutation)) return undefined; apply(result, true); if (message !== undefined) setNotice(message); return result; }
-    catch (cause) { if (!current(requestScope, requestMutation)) return undefined; setError(cause instanceof Error ? cause.message : t("accounts.actionFailed")); return await refreshAfterAction(requestScope, requestMutation); }
+    const requestScope = scope.current; const requestMutation = ++mutation.current; actionBusy.current = true; setBusy(true); setError(null);
+    try {
+      const result = await work();
+      if (!current(requestScope, requestMutation)) return undefined;
+      apply(result, true);
+      if (message !== undefined) showMuziNotification({ kind: "success", message, key: "accounts-action-success" });
+      return result;
+    } catch (cause) {
+      if (!current(requestScope, requestMutation)) return undefined;
+      const failure = cause instanceof Error ? cause.message : t("accounts.actionFailed");
+      setError(failure);
+      showMuziNotification({ kind: "error", message: failure, key: "accounts-action-error" });
+      return await refreshAfterAction(requestScope, requestMutation);
+    }
     finally { if (current(requestScope, requestMutation)) setBusy(false); actionBusy.current = false; }
   };
   const finishIfConnected = (next: VideoAccountManagement | undefined, connectionId: string, requestScope: number, requestMutation: number, check: number): void => {
@@ -85,7 +104,9 @@ export function VideoAccountManager({ api, t, onConnected, initialPlatform, disa
     const connectedAccount = connection.account; if (connectedAccount === null) return;
     const actualAccount = next.accounts.find((account) => accountKey(account) === accountKey(connectedAccount));
     if (actualAccount === undefined || !isVerifiedVideoAccount(next, actualAccount)) return;
-    selectConnection(null); selectIssue(null); pauseConnection(false); setConnecting(false); setError(null); setNotice("账号已验证并连接。"); onConnected?.(actualAccount);
+    selectConnection(null); selectIssue(null); pauseConnection(false); setConnecting(false); setError(null);
+    showMuziNotification({ kind: "success", message: "账号已验证并连接。", key: "accounts-connected" });
+    onConnected?.(actualAccount);
   };
   const checkSelected = async (): Promise<void> => {
     const connectionId = selectedConnectionRef.current;
@@ -93,7 +114,13 @@ export function VideoAccountManager({ api, t, onConnected, initialPlatform, disa
     const requestScope = scope.current; const requestMutation = mutation.current; const check = ++checkEpoch.current;
     checkBusy.current = true; checkingConnection.current = connectionId; setChecking(true); setError(null);
     try { await api.pollConnection({ connectionId }); if (!current(requestScope, requestMutation) || check !== checkEpoch.current) return; finishIfConnected(await refreshAfterAction(requestScope, requestMutation), connectionId, requestScope, requestMutation, check); }
-    catch (cause) { if (!current(requestScope, requestMutation) || check !== checkEpoch.current) return; setError(cause instanceof Error ? cause.message : t("accounts.actionFailed")); finishIfConnected(await refreshAfterAction(requestScope, requestMutation), connectionId, requestScope, requestMutation, check); }
+    catch (cause) {
+      if (!current(requestScope, requestMutation) || check !== checkEpoch.current) return;
+      const message = cause instanceof Error ? cause.message : t("accounts.actionFailed");
+      setError(message);
+      showMuziNotification({ kind: "error", message, key: "accounts-check-error" });
+      finishIfConnected(await refreshAfterAction(requestScope, requestMutation), connectionId, requestScope, requestMutation, check);
+    }
     finally { if (checkingConnection.current === connectionId) { checkBusy.current = false; checkingConnection.current = null; if (mounted.current) setChecking(false); } }
   };
   const clearForNewConnection = async (): Promise<boolean> => {
@@ -106,11 +133,16 @@ export function VideoAccountManager({ api, t, onConnected, initialPlatform, disa
       if (!current(requestScope, requestMutation)) return false;
       apply(result, true); restored.current = true; cancelledConnectionIds.current.add(connectionId); checkBusy.current = false; checkingConnection.current = null; setChecking(false); pauseConnection(false); selectConnection(null); return true;
     } catch (cause) {
-      if (current(requestScope, requestMutation)) { setError(cause instanceof Error ? cause.message : t("accounts.actionFailed")); if (issueTargetRef.current === null) setConnecting(true); else setIssuesOpen(true); }
+      if (current(requestScope, requestMutation)) {
+        const message = cause instanceof Error ? cause.message : t("accounts.actionFailed");
+        setError(message);
+        showMuziNotification({ kind: "error", message, key: "accounts-connection-error" });
+        if (issueTargetRef.current === null) setConnecting(true); else setIssuesOpen(true);
+      }
       return false;
     } finally { actionBusy.current = false; if (current(requestScope, requestMutation)) setBusy(false); }
   };
-  const cancelSelected = async (): Promise<void> => { if (await clearForNewConnection()) { setConnecting(false); setError(null); setNotice("连接已取消。"); } };
+  const cancelSelected = async (): Promise<void> => { if (await clearForNewConnection()) { setConnecting(false); setError(null); showMuziNotification({ kind: "info", message: "连接已取消。", key: "accounts-connection-cancelled" }); } };
   const startConnection = async (): Promise<void> => {
     if (hasInlineConnection() || startingConnection.current) return;
     startingConnection.current = true;
@@ -138,7 +170,7 @@ export function VideoAccountManager({ api, t, onConnected, initialPlatform, disa
 
   useEffect(() => {
     mounted.current = true; scope.current += 1; mutation.current += 1; loadRequest.current += 1; checkEpoch.current += 1; restored.current = false; cancelledConnectionIds.current.clear(); selectConnection(null); dataRef.current = null; pauseConnection(false);
-    setData(null); selectIssue(null); setError(null); setNotice(null); setBusy(false); setChecking(false); setConnecting(initialPlatform !== undefined); setIssuesOpen(false); setManaged(null); setRemoving(null); if (initialPlatform !== undefined) setPlatform(initialPlatform); void load(false, true);
+    setData(null); selectIssue(null); setError(null); setBusy(false); setChecking(false); setConnecting(initialPlatform !== undefined); setIssuesOpen(false); setManaged(null); setRemoving(null); if (initialPlatform !== undefined) setPlatform(initialPlatform); void load(false, true);
     return () => { const connectionId = checkingConnection.current; mounted.current = false; scope.current += 1; checkEpoch.current += 1; if (connectionId !== null) void api.cancelConnection({ connectionId }).catch(() => undefined); };
   }, [api]);
   useEffect(() => { if (ignoreOwnEpoch.current) { ignoreOwnEpoch.current = false; return; } if (data !== null) void load(); }, [epoch]);
@@ -168,7 +200,6 @@ export function VideoAccountManager({ api, t, onConnected, initialPlatform, disa
   return <section className="videoAccountManager" aria-labelledby={id + "-title"} aria-busy={busy}>
     <header className="videoAccountHeading"><div><h2 id={id + "-title"}>{t("accounts.title")} {data !== null && <span className="videoAccountCount">({verified.length})</span>}</h2><p>只有最近验证通过的账号会显示在这里。</p></div><IslandButton icon={<WorkbenchIcon name="connect" />} type="primary" size="small" disabled={locked || data === null || inlineActive} onClick={() => { selectIssue(null); setConnecting(true); pauseConnection(false); setError(null); }}>{inlineActive ? "正在连接" : issueTarget !== null ? "连接账号" : hasPausedConnection ? "继续连接" : hasTerminalConnection ? "新建连接" : "连接账号"}</IslandButton></header>
     {error !== null && !connecting && !issueErrorVisible && <div className="videoAccountMessage error" role="alert">{error}<IslandButton icon={<WorkbenchIcon name="refresh" />} type="text" size="small" disabled={locked} onClick={() => { void load(false, true); }}>重新读取</IslandButton></div>}
-    {notice !== null && <p className="videoAccountMessage" role="status">{notice}</p>}
     {data === null ? error === null && <p className="videoAccountState" role="status">{t("accounts.loading")}</p> : verified.length === 0 ? <p className="videoAccountState" role="status">暂无已验证账号。连接并完成验证后会显示在这里。</p> : <div className="videoAccountPaper"><ul className="videoAccountList">{verified.map((account) => { const login = loginFor(data, account); return <li key={accountKey(account)}><div className="videoAccountIdentity"><PlatformMark id={platformIcon[account.platform]} size={20} /><div><strong>{account.displayName}</strong><small>{label(account.platform)} · {account.platformAccountId}</small></div><IslandTag size="small" color={account.enabled ? "app-green" : "brown"}>{account.enabled ? "已启用" : "已停用"}</IslandTag></div><p>最近验证：<time dateTime={login?.checkedAt ?? undefined}>{new Date(login?.checkedAt ?? "").toLocaleString()}</time></p><div className="videoAccountActions"><IslandButton icon={<WorkbenchIcon name="external-link" />} type="default" size="small" disabled={locked || inlineActive || !account.enabled} onClick={() => { void runAction(() => api.openLogin({ platform: account.platform, accountProfile: account.accountProfile, confirmed: true }), "已打开平台页面。"); }}>打开平台</IslandButton><IslandButton type="text" size="small" disabled={locked || inlineActive} onClick={() => { setManaged(account); }}>管理</IslandButton></div></li>; })}</ul></div>}
     {issues.length > 0 && <section className="videoAccountProblems">
       <h3><IslandButton type="text" className="videoIssueToggle" id={id + "-issues-toggle"} aria-expanded={issuesOpen} aria-controls={id + "-issues"} onClick={() => { setIssuesOpen((open) => !open); }}>

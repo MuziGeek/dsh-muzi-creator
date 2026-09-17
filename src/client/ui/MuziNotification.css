@@ -1,0 +1,91 @@
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] {
+  z-index: 2100;
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] [data-position="top"] {
+  top: 16px;
+  gap: 8px;
+  max-width: calc(100vw - 24px);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification {
+  width: min(420px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid var(--muzi-island-line-strong);
+  border-radius: var(--muzi-island-radius-md);
+  background: var(--muzi-island-paper);
+  color: var(--muzi-island-text);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--muzi-island-text) 18%, transparent);
+  font-family: var(--muzi-island-font);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification > div:first-child {
+  background: var(--muzi-island-canvas);
+  color: var(--muzi-island-text-soft);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification > div:nth-child(2) > div:first-child {
+  color: var(--muzi-island-text);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification > div:nth-child(2) > div:nth-child(2) {
+  color: var(--muzi-island-text-soft);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification > button {
+  color: var(--muzi-island-text-soft);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification > button:hover {
+  background: color-mix(in srgb, var(--muzi-island-text) 12%, transparent);
+  color: var(--muzi-island-text);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-success {
+  border-color: var(--muzi-island-success);
+  background: var(--muzi-island-success-soft);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-success > div:first-child {
+  background: color-mix(in srgb, var(--muzi-island-success) 18%, var(--muzi-island-paper));
+  color: var(--muzi-island-success);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-info {
+  border-color: var(--muzi-island-leaf);
+  background: var(--muzi-island-leaf-soft);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-info > div:first-child {
+  background: color-mix(in srgb, var(--muzi-island-leaf) 18%, var(--muzi-island-paper));
+  color: var(--muzi-island-leaf-dark);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-warning {
+  border-color: var(--muzi-island-warning);
+  background: var(--muzi-island-warning-soft);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-warning > div:first-child {
+  background: color-mix(in srgb, var(--muzi-island-warning) 18%, var(--muzi-island-paper));
+  color: var(--muzi-island-warning);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-error {
+  border-color: var(--muzi-island-danger);
+  background: var(--muzi-island-danger-soft);
+}
+
+html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification-error > div:first-child {
+  background: color-mix(in srgb, var(--muzi-island-danger) 18%, var(--muzi-island-paper));
+  color: var(--muzi-island-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-muzi-workbench-appearance] [data-animal-notification-root][data-plugin="dsh-muzi-creator"] .muziNotification {
+    transition: none;
+  }
+}

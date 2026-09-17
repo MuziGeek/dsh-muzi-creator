@@ -33,6 +33,7 @@ import type {
 } from "../inspirationTypes.ts";
 import { startLibraryLiveSync } from "./catalogSync.ts";
 import { remountPluginCss, releasePluginCss } from "./pluginCss.ts";
+import { destroyMuziNotifications } from "./ui/MuziNotification.ts";
 import { releaseShellChrome } from "./contentSelection.ts";
 import { registerMuziTriggers } from "./contentTriggers.ts";
 import { stageSessionHandoff } from "./sessionHandoff.ts";
@@ -295,6 +296,7 @@ export function apply(ctx: ClientContext): void {
     remountPluginCss();
     const releaseAppearance = mountWorkbenchAppearance(document);
     return () => {
+      destroyMuziNotifications();
       releaseAppearance();
       releasePluginCss();
       releaseShellChrome();

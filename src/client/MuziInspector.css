@@ -250,6 +250,8 @@
 [data-plugin="dsh-muzi-creator"] .productionCheck small { color: var(--animal-warning-color-active); }
 [data-plugin="dsh-muzi-creator"] .muziNotice { position: absolute; right: 16px; bottom: 16px; left: 16px; display: flex; min-height: 38px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 9px 8px 12px; border: 1px solid var(--muzi-border); border-radius: var(--muzi-radius-sm); background: var(--muzi-surface); font-size: 11px; }
 [data-plugin="dsh-muzi-creator"] .muziNotice button { flex: none; }
+[data-plugin="dsh-muzi-creator"] .muziNoticeCritical { border-color: color-mix(in srgb, var(--muzi-island-danger) 45%, var(--muzi-border)); background: var(--muzi-island-danger-soft); color: var(--muzi-island-danger); }
+[data-plugin="dsh-muzi-creator"] .muziNoticeCritical::before { width: 7px; height: 7px; flex: none; border-radius: 50%; background: currentColor; content: ""; }
 [data-plugin="dsh-muzi-creator"] .muziInspectorEmpty { padding: 40px 18px; color: var(--muzi-island-text-muted); text-align: center; }
 [data-plugin="dsh-muzi-creator"] .muziInspectorEmpty.error { color: var(--muzi-island-danger); }
 @keyframes muziOverviewReveal {

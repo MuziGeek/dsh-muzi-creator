@@ -28,6 +28,7 @@ import {
   IslandSkeleton,
   IslandTag,
 } from "./ui/IslandControls.tsx";
+import { showMuziNotification } from "./ui/MuziNotification.ts";
 import "./TrellisProjectInspector.css";
 
 function displayDate(value: string | null): string {
@@ -242,6 +243,20 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
     ...priorities.map((value) => ({ key: value, label: value })),
   ], [priorities, t]);
 
+  const openProjectFolder = async (path: string): Promise<void> => {
+    try {
+      await face.openPath(path);
+      showMuziNotification({
+        kind: "success",
+        message: t("projects.folderOpened"),
+        key: "trellis-project-folder-opened",
+      });
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      showMuziNotification({ kind: "error", message, key: "trellis-project-folder-error" });
+    }
+  };
+
   const prepareArchive = async (): Promise<void> => {
     if (selection.projectId === null || selectedTask === null) return;
     setArchiveBusy(true);
@@ -249,7 +264,9 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
     try {
       setArchivePreview(await face.prepareArchive(selection.projectId, selectedTask.key));
     } catch (cause) {
-      setNotice(String(cause));
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setNotice(message);
+      showMuziNotification({ kind: "error", message, key: "trellis-archive-prepare-error" });
     } finally {
       setArchiveBusy(false);
     }
@@ -261,11 +278,20 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
     setArchiveError(null);
     try {
       const result = await face.archiveTask(archivePreview.token);
-      setNotice(`${result.message}${result.stderr.trim() === "" ? "" : ` · ${result.stderr.trim()}`}`);
+      const message = `${result.message}${result.stderr.trim() === "" ? "" : ` · ${result.stderr.trim()}`}`;
+      if (result.state === "archived") {
+        setNotice(null);
+        showMuziNotification({ kind: "success", message, key: "trellis-archive-success" });
+      } else {
+        setNotice(message);
+        showMuziNotification({ kind: "warning", message, key: "trellis-archive-result" });
+      }
       setArchivePreview(null);
       await load();
     } catch (cause) {
-      setArchiveError(String(cause));
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setArchiveError(message);
+      showMuziNotification({ kind: "error", message, key: "trellis-archive-error" });
     } finally {
       setArchiveBusy(false);
     }
@@ -281,7 +307,7 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
         <div><span>{detail?.project.title ?? t("projects.detail")}</span></div>
         <div className="trellisTopActions">
           <IslandButton icon={<WorkbenchIcon name="refresh" />} type="text" size="small" aria-label={t("projects.refresh")} onClick={() => { void load(); }}>{t("projects.refresh")}</IslandButton>
-          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton icon={<WorkbenchIcon name="folder-open" />} type="text" size="small" aria-label={t("projects.openFolder")} onClick={() => { void face.openPath(detail.project.rootPath ?? ""); }}>{t("projects.openFolder")}</IslandButton>}
+          {detail?.project.rootPath !== null && detail?.project.rootPath !== undefined && <IslandButton icon={<WorkbenchIcon name="folder-open" />} type="text" size="small" aria-label={t("projects.openFolder")} onClick={() => { void openProjectFolder(detail.project.rootPath ?? ""); }}>{t("projects.openFolder")}</IslandButton>}
         </div>
       </div>
 
@@ -291,7 +317,7 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
         <div className="trellisInspectorScroll">
           <header className="trellisProjectHero">
             <div className="trellisHeroHeading"><IslandTag className={`trellisProjectState ${detail.project.status}`} color={detail.project.status === "ready" ? "app-green" : detail.project.status === "degraded" ? "app-yellow" : "app-red"} size="small" variant="soft">{detail.project.status === "ready" ? t("projects.ready") : detail.project.status === "degraded" ? t("projects.degraded") : t("projects.unavailable")}</IslandTag><h1 id="muzi-workbench-detail-title" tabIndex={-1}>{detail.project.title}</h1><p>{detail.project.statusMessage}</p></div>
-            {detail.project.github && <div className="trellisGithubSnapshot">
+          {detail.project.github && <div className="trellisGithubSnapshot">
               <a href={detail.project.github.url} target="_blank" rel="noreferrer"><WorkbenchIcon name="external-link" />{t("github.open")}</a>
               <span>{detail.project.github.branch}</span>
               <code title={detail.project.github.sha ?? ""}>{detail.project.github.sha?.slice(0, 12) ?? "—"}</code>
@@ -299,7 +325,14 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
               {detail.project.github.stale && <strong role="status">{t("github.stale")}</strong>}
               <p>{t("github.readonly")}</p>
               {face.github && <IslandButton icon={<WorkbenchIcon name="remove" />} type="text" size="small" onClick={() => {
-                void face.github!({ action: "remove", projectId: detail.project.projectId }).then(() => { selectTrellisProject(null); }).catch((cause: unknown) => { setNotice(String(cause)); });
+                void face.github!({ action: "remove", projectId: detail.project.projectId }).then((result) => {
+                  showMuziNotification({ kind: "success", message: result.message ?? t("github.remove"), key: "trellis-project-remove-success" });
+                  selectTrellisProject(null);
+                }).catch((cause: unknown) => {
+                  const message = cause instanceof Error ? cause.message : String(cause);
+                  setNotice(message);
+                  showMuziNotification({ kind: "error", message, key: "trellis-project-remove-error" });
+                });
               }}>{t("github.remove")}</IslandButton>}
             </div>}
             {counts !== null && <div className="trellisDistribution" aria-label="任务状态分布">
@@ -357,7 +390,7 @@ export function TrellisProjectInspector({ face, t }: TrellisProjectInspectorProp
         </div>
       )}
 
-      {notice !== null && <div className="trellisNotice" role="status"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
+      {notice !== null && <div className="trellisNotice trellisNoticeCritical" role="alert" aria-live="assertive"><span>{notice}</span><IslandButton type="text" size="small" aria-label="关闭提示" onClick={() => { setNotice(null); }}>关闭</IslandButton></div>}
       {archivePreview !== null && <ArchiveDialog preview={archivePreview} busy={archiveBusy} error={archiveError} t={t} onCancel={() => { if (!archiveBusy) setArchivePreview(null); }} onConfirm={() => { void executeArchive(); }} />}
     </article>
   );

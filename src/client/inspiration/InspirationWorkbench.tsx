@@ -29,6 +29,7 @@ import {
   IslandTag,
   type IslandTabItem,
 } from "../ui/IslandControls.tsx";
+import { showMuziNotification } from "../ui/MuziNotification.ts";
 import type { ReadonlyResource } from "../workbench/WorkbenchData.ts";
 import { useResourceSnapshot } from "../workbench/WorkbenchData.ts";
 import { inspirationZh } from "./copy.ts";
@@ -132,8 +133,6 @@ export function InspirationWorkbench({
   const [detail, setDetail] = useState<InspirationDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailAttempt, retryDetail] = useState(0);
-  const [notice, setNotice] = useState("");
-  const [noticeError, setNoticeError] = useState(false);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
   const selectionRef = useRef(selection);
@@ -220,17 +219,13 @@ export function InspirationWorkbench({
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    setNotice("");
-    setNoticeError(false);
     try {
       await action();
       if (success !== undefined) {
-        setNotice(success);
-        setNoticeError(false);
+        showMuziNotification({ kind: "success", message: success, key: "inspiration-action-success" });
       }
     } catch (cause) {
-      setNotice(errorText(cause));
-      setNoticeError(true);
+      showMuziNotification({ kind: "error", message: errorText(cause), key: "inspiration-action-error" });
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -256,7 +251,7 @@ export function InspirationWorkbench({
       const result = await face.startResearch({ spec });
       await refresh();
       select({ kind: "item", id: result.item.id, runId: result.run.id });
-    });
+    }, text(t, "started"));
   };
   const rerun = async (selected: InspirationDetail): Promise<void> => {
     await perform(async () => {
@@ -265,7 +260,7 @@ export function InspirationWorkbench({
       });
       await refresh();
       select({ kind: "item", id: result.item.id, runId: result.run.id });
-    });
+    }, text(t, "started"));
   };
   const stop = async (run: InspirationRun): Promise<void> => {
     await perform(
@@ -308,7 +303,7 @@ export function InspirationWorkbench({
           : { expectedSha256: run.reportSha256 }),
       });
       await promote(reference, { title, sourceRunId: run.id, reference });
-    });
+    }, text(t, "promoted"));
   };
   const active = useMemo(
     () =>
@@ -360,7 +355,7 @@ export function InspirationWorkbench({
               onOpenObsidian={(run) => {
                 void perform(async () => {
                   await face.openReportInObsidian(run.id);
-                });
+                }, text(t, "opened"));
               }}
               onPromote={(run, title) => {
                 void promoteRun(run, title);
@@ -369,14 +364,6 @@ export function InspirationWorkbench({
                 select({ kind: run.ownerKind, id: run.ownerId, runId: run.id })
               }
             />
-          )}
-          {notice !== "" && (
-            <p
-              className="inspirationLive"
-              role={noticeError ? "alert" : "status"}
-            >
-              {notice}
-            </p>
           )}
         </section>
       </div>
@@ -500,14 +487,6 @@ export function InspirationWorkbench({
               </div>
             ))}
           </div>
-        )}
-        {notice !== "" && (
-          <p
-            className="inspirationLive"
-            role={noticeError ? "alert" : "status"}
-          >
-            {notice}
-          </p>
         )}
       </section>
       {error !== null && (

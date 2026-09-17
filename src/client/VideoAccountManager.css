@@ -7,7 +7,14 @@
 .videoAccountCount { color: var(--muzi-island-text-muted); font-weight: var(--muzi-type-support-weight, 500); }
 .videoAccountManager p { margin: 6px 0 10px; font-size: var(--muzi-type-body-size, 0.875rem); line-height: var(--muzi-type-body-line, 1.3125rem); overflow-wrap: anywhere; }
 .videoAccountMessage { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muzi-island-text); }
-.videoAccountMessage.error { color: var(--muzi-island-danger, #953a29); }
+.videoAccountMessage.error {
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--muzi-island-danger) 45%, var(--muzi-island-line));
+  border-radius: var(--muzi-island-radius-sm);
+  background: var(--muzi-island-danger-soft);
+  color: var(--muzi-island-danger, #953a29);
+}
+.videoAccountMessage.error::before { width: 7px; height: 7px; flex: none; border-radius: 50%; background: currentColor; content: ""; }
 .videoAccountState { padding: 14px 0; color: var(--muzi-island-text-muted); }
 .videoAccountPaper { margin: 14px 0; padding: 4px 14px; border: 1px solid var(--muzi-island-line); border-radius: var(--muzi-island-radius-md); background: var(--muzi-island-paper); }
 .videoAccountList { display: grid; margin: 0; padding: 0; list-style: none; }

@@ -9,7 +9,7 @@
 [data-plugin="dsh-muzi-creator"] .githubSourceAuth p,
 [data-plugin="dsh-muzi-creator"] .githubSourceReadonly {
   margin: 0;
-  color: var(--muzi-island-text-muted);
+  color: var(--muzi-island-text-soft);
   font-size: var(--muzi-type-support-size, 0.75rem);
   line-height: var(--muzi-type-support-line, 1.125rem);
 }
@@ -24,7 +24,7 @@
 
 [data-plugin="dsh-muzi-creator"] .githubSourceSettings form > span {
   grid-column: 1 / -1;
-  color: var(--muzi-island-text-muted);
+  color: var(--muzi-island-text-soft);
   font-size: var(--muzi-type-support-size, 0.75rem);
   line-height: var(--muzi-type-support-line, 1.125rem);
 }
@@ -89,6 +89,32 @@
   align-items: center;
   gap: 4px;
   color: var(--dsw-alias-brand-primary);
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceFeedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid var(--muzi-island-line);
+  border-radius: var(--muzi-island-radius-sm);
+  overflow-wrap: anywhere;
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceFeedback::before {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+[data-plugin="dsh-muzi-creator"] .githubSourceFeedbackError {
+  border-color: color-mix(in srgb, var(--muzi-island-danger) 45%, var(--muzi-island-line));
+  background: var(--muzi-island-danger-soft);
+  color: var(--muzi-island-danger);
 }
 
 @media (max-width: 520px) {
